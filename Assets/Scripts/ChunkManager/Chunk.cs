@@ -6,10 +6,11 @@ public class Chunk
     public Vector2Int ChunkCoord;
     public GameObject ChunkObject;
     public bool IsLoaded = false;
-    public bool IsDirty = true;
+    public bool IsGenerate = false;
     public bool IsCombineMesh = false;
     public HashSet<Vector2> CheckDirection = new HashSet<Vector2>();
     public RectInt Bounds;
+    public List<Vector3> floorPosData;
 
     public Chunk(Vector2Int coord, int size)
     {
@@ -19,14 +20,8 @@ public class Chunk
         ChunkObject.SetActive(false);
     }
 
-    public void Load(GameObject floorPrefab, GameObject wallPrefab, int minRoomSize)
+    public void Load()
     {
-        if (IsDirty)
-        {
-            MapGenerator.GenerateChunk(Bounds, ChunkObject.transform, floorPrefab, wallPrefab, minRoomSize);
-            IsDirty = false;
-        }
-
         ChunkObject.SetActive(true);
         IsLoaded = true;
     }
@@ -35,6 +30,15 @@ public class Chunk
     {
         ChunkObject.SetActive(false);
         IsLoaded = false;
+    }
+
+    public void Generate(int minRoomSize)
+    {
+        if (!IsGenerate)
+        {
+            IsGenerate = true;
+            MapGenerator.Instance.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, out floorPosData);
+        }
     }
 
     public bool IsCheckClosedChunk(Vector2 dir)
