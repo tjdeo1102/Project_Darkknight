@@ -5,10 +5,10 @@ public abstract class State
     protected Animator anim;
     protected PlayerController ctrl;
 
-    public State(PlayerController controller, Animator animator)
+    public State(PlayerController controller)
     {
         this.ctrl = controller;
-        this.anim = animator;
+        anim = controller.animator;
     }
 
     public virtual void Enter() { }

@@ -7,24 +7,25 @@ using static UnityEditor.VersionControl.Asset;
 
 public enum StateType
 {
-    Idle,Walk
+    Idle,Walk,Attack,SwapWeapon
 }
 
 public class PlayerStateMachine : MonoBehaviour
 {
-    private StateType curType;
+    public StateType curType;
 
     private Dictionary<StateType, State> states;
     private State curState;
-    public Animator animator;
-    public PlayerController controller;
+    public PlayerController ctrl;
 
     void Start()
     {
         states = new Dictionary<StateType, State>()
         {
-            { StateType.Idle,new IdleState(controller, animator) },
-            { StateType.Walk,new WalkState(controller, animator) }
+            { StateType.Idle,new IdleState(ctrl) },
+            { StateType.Walk,new WalkState(ctrl) },
+            { StateType.Attack,new AttackState(ctrl) },
+            { StateType.SwapWeapon,new SwapWeaponState(ctrl) },
         };
 
         // 시작 상태 세팅
@@ -40,6 +41,7 @@ public class PlayerStateMachine : MonoBehaviour
 
     public void ChangeState(StateType type)
     {
+        //print($"{curType}에서 {type}으로 전환");
         curState?.Exit();
         curType = type;
         curState = states[curType];

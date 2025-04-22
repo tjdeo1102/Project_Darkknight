@@ -1,5 +1,10 @@
 using UnityEngine;
 
+public enum StatType
+{
+    Health,Mana,AttackPower,Defense,Speed,RunSpeed
+}
+
 public class PlayerModel : MonoBehaviour
 {
     public Stat<float> Health = new Stat<float>();
