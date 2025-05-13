@@ -1,14 +1,7 @@
-using NUnit.Framework.Interfaces;
 using System.Collections.Generic;
-using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
-using static UnityEditor.Rendering.InspectorCurveEditor;
-using static UnityEditor.VersionControl.Asset;
 
-public enum StateType
-{
-    Idle,Walk,Attack,SwapWeapon
-}
+
 
 public class PlayerStateMachine : MonoBehaviour
 {
@@ -26,6 +19,7 @@ public class PlayerStateMachine : MonoBehaviour
             { StateType.Walk,new WalkState(ctrl) },
             { StateType.Attack,new AttackState(ctrl) },
             { StateType.SwapWeapon,new SwapWeaponState(ctrl) },
+            { StateType.Skill,new SkillState(ctrl) },
         };
 
         // 시작 상태 세팅
@@ -48,4 +42,10 @@ public class PlayerStateMachine : MonoBehaviour
         curState?.Enter();
     }
 
+    public bool CanOtherAction()
+    {
+        bool canAction = curType == StateType.Idle 
+                        || curType == StateType.Walk;
+        return canAction;
+    }
 }

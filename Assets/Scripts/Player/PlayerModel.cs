@@ -1,17 +1,30 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-public enum StatType
-{
-    Health,Mana,AttackPower,Defense,Speed,RunSpeed
-}
 
 public class PlayerModel : MonoBehaviour
 {
-    public Stat<float> Health = new Stat<float>();
-    public Stat<float> Mana = new Stat<float>();
-    public Stat<float> AttackPower = new Stat<float>();
-    public Stat<float> Defense = new Stat<float>();
-    public Stat<float> Speed = new Stat<float>();
-    public Stat<float> RunSpeed = new Stat<float>();
+    public Stat Health = new Stat();
+    public Stat Mana = new Stat();
+    public Stat AttackPower = new Stat();
+    public Stat Defense = new Stat();
+    public Stat Speed = new Stat();
+    public Stat RunSpeed = new Stat();
+    public Stat LifeSteel = new Stat();
 
+    public Dictionary<StatType, Stat> Stats;
+
+    private void Start()
+    {
+        Stats = new Dictionary<StatType, Stat>()
+        {
+            { StatType.Health, Health },
+            { StatType.Mana, Mana },
+            { StatType.AttackPower, AttackPower },
+            { StatType.Defense, Defense },
+            { StatType.Speed, Speed},
+            { StatType.RunSpeed, RunSpeed},
+            { StatType.LifeSteel, LifeSteel},
+        };
+    }
 }

@@ -2,31 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public enum WeaponType
-{
-    None, Sword, Knife, Gun, Size
-}
+
 
 public class PlayerCombat : MonoBehaviour
 {
     public PlayerController ctrl;
+    
+    #region Weapon & General Attack
     public WeaponType curType;
 
     private IWeapon curWeapon;
-    private Dictionary<WeaponType,IWeapon> weapons;
+    private Dictionary<WeaponType, IWeapon> weapons;
     private bool changeLocked = false;
     private bool attackLocked = false;
 
     private int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private int curWeaponParam = Animator.StringToHash("CurWeapon");
-
-    private void Awake()
-    {
-        weapons = new Dictionary<WeaponType, IWeapon>();
-        weapons.Add(WeaponType.None, null);
-        curType = WeaponType.None;
-    }
-
 
     public void ChangeWeapon(WeaponType type)
     {
@@ -69,7 +60,7 @@ public class PlayerCombat : MonoBehaviour
     {
         bool isPressed = value.isPressed;
 
-        if (isPressed && ctrl.machine.curType != StateType.Attack)
+        if (isPressed && ctrl.machine.CanOtherAction())
         {
             if (attackLocked) return;
             attackLocked = true;
@@ -89,17 +80,98 @@ public class PlayerCombat : MonoBehaviour
     {
         bool isPressed = value.isPressed;
 
-        if (isPressed)
+        if (isPressed && ctrl.machine.CanOtherAction())
         {
             if (changeLocked) return;
             changeLocked = true;
             int next = ((int)curType + 1) % (int)WeaponType.Size;
-            Debug.Log(next);
+
             ChangeWeapon((WeaponType)next);
         }
         else
         {
             changeLocked = false;
         }
+    }
+    #endregion
+
+    #region Skill
+    private bool skillLocked = false;
+
+    public SkillBase testSkill1;
+    public SkillBase testSkill2;
+    public SkillBase testSkill3;
+
+    public List<SkillBase> skills;
+    public void OnSkillQ(InputValue value)
+    {
+        bool isPressed = value.isPressed;
+
+        if (isPressed && ctrl.machine.CanOtherAction())
+        {
+            if (skillLocked) return;
+            skillLocked = true;
+
+            if (skills[0] != null)
+            {
+                StartCoroutine(skills[0].Active(ctrl));
+            }
+        }
+        else
+        {
+            skillLocked = false;
+        }
+    }
+
+    public void OnSkillW(InputValue value)
+    {
+        bool isPressed = value.isPressed;
+
+        if (isPressed && ctrl.machine.CanOtherAction())
+        {
+            if (skillLocked) return;
+            skillLocked = true;
+
+            if (skills[1] != null) StartCoroutine(skills[1].Active(ctrl));
+        }
+        else
+        {
+            skillLocked = false;
+        }
+    }
+
+    public void OnSkillE(InputValue value)
+    {
+        bool isPressed = value.isPressed;
+
+        if (isPressed && ctrl.machine.CanOtherAction())
+        {
+            if (skillLocked) return;
+            skillLocked = true;
+
+            if (skills[2] != null) StartCoroutine(skills[2].Active(ctrl));
+        }
+        else
+        {
+            skillLocked = false;
+        }
+    }
+
+    #endregion
+
+    private void Awake()
+    {
+        weapons = new Dictionary<WeaponType, IWeapon>()
+        {
+            {WeaponType.None, null},
+        };
+        curType = WeaponType.None;
+
+        skills = new List<SkillBase>()
+        {
+            { testSkill1 },
+            { testSkill2 },
+            { testSkill3 },
+        };
     }
 }
