@@ -2,17 +2,19 @@ using UnityEngine.Events;
 using UnityEngine;
 
 [System.Serializable]
-public class Stat<T>
+public class Stat
 {
-    [SerializeField] private T value;
-    public UnityEvent<T> OnChange = new UnityEvent<T>();
+    [SerializeField] private float value;
+    public UnityEvent<float> OnChange = new UnityEvent<float>();
 
-    public T Value
+    public float Value
     {
         get => value;
         set
         {
             this.value = value;
+            if (value < 0f) this.value = 0f;
+
             OnChange?.Invoke(value);
         }
     }
