@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2930343228272510413
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7325166333014499354}
+  - component: {fileID: 5976454779582439307}
+  - component: {fileID: 4396002118566375720}
+  m_Layer: 0
+  m_Name: ChunkManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7325166333014499354
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2930343228272510413}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5976454779582439307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2930343228272510413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc5166599f786c4382ca507a816927a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ChunkSize: 16
+  ViewRadius: 2
+  MinRoomSize: 8
+  BlockSize: {x: 3, y: 3, z: 3}
+  Player: {fileID: 0}
+  PlayerSpawnOffset: {x: 0, y: 1, z: 0}
+--- !u!114 &4396002118566375720
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2930343228272510413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2b8a98eca4fac44ea80c7dbfc9bfd7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  FloorPrefab: {fileID: 601994546481454675, guid: 52f84feec0a19494da1e8d6fe2941cfc,
+    type: 3}
+  WallPrefab: {fileID: 2525660121652627747, guid: 4aa90d525cc6b774895a12d260ac948a,
+    type: 3}
+  PillarPrefab: {fileID: 848839227153326384, guid: e84f1e1a993de16488fb499f58a60c4c,
+    type: 3}
+  CeilingPrefab: {fileID: 0}
+  GatePrefab: {fileID: 4330297898824315860, guid: 453b81b5451a01745b94cb034b043a38,
+    type: 3}
+  WallOffset: {x: 0, y: 2, z: 0}
+  PillarOffset: {x: -1.5, y: 0.5, z: 1.5}
+  CeilingOffset: {x: 0, y: 1.5, z: 0}
+  GateOffset: {x: -1, y: -0.5, z: 4.5}
