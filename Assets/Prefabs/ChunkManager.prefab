@@ -69,10 +69,11 @@ MonoBehaviour:
     type: 3}
   PillarPrefab: {fileID: 848839227153326384, guid: e84f1e1a993de16488fb499f58a60c4c,
     type: 3}
-  CeilingPrefab: {fileID: 0}
+  CeilingPrefab: {fileID: 7131319216825598803, guid: a0da255decad2d24aa02b199973eb540,
+    type: 3}
   GatePrefab: {fileID: 4330297898824315860, guid: 453b81b5451a01745b94cb034b043a38,
     type: 3}
   WallOffset: {x: 0, y: 2, z: 0}
   PillarOffset: {x: -1.5, y: 0.5, z: 1.5}
-  CeilingOffset: {x: 0, y: 1.5, z: 0}
-  GateOffset: {x: -1, y: -0.5, z: 4.5}
+  CeilingOffset: {x: 0, y: 3.5, z: 0}
+  GateOffset: {x: 0, y: -0.5, z: 4.5}

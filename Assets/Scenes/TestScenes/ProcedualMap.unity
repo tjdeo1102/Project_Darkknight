@@ -2056,32 +2056,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: ChunkManager
       objectReference: {fileID: 0}
-    - target: {fileID: 4396002118566375720, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
-        type: 3}
-      propertyPath: GateOffset.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4396002118566375720, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
-        type: 3}
-      propertyPath: CeilingPrefab
-      value: 
-      objectReference: {fileID: 7131319216825598803, guid: a0da255decad2d24aa02b199973eb540,
-        type: 3}
-    - target: {fileID: 4396002118566375720, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
-        type: 3}
-      propertyPath: CeilingOffset.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4396002118566375720, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
-        type: 3}
-      propertyPath: CeilingOffset.y
-      value: 3.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4396002118566375720, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
-        type: 3}
-      propertyPath: CeilingOffset.z
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 5976454779582439307, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
         type: 3}
       propertyPath: Player
