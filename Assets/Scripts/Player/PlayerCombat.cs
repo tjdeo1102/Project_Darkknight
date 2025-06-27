@@ -7,9 +7,21 @@ using UnityEngine.InputSystem;
 public class PlayerCombat : MonoBehaviour
 {
     public PlayerController ctrl;
-    
+    private void Start()
+    {
+        ctrl.input.actions["Skill"].performed += OnSkill;
+        ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
+    }
+
+    private void OnDisable()
+    {
+        ctrl.input.actions["Skill"].performed -= OnSkill;
+        ctrl.input.actions["SwapWeapon"].performed -= OnSwapWeapon;
+    }
+
+
     #region Weapon & General Attack
-    public WeaponType curType;
+    public WeaponType CurType;
 
     private IWeapon curWeapon;
     private Dictionary<WeaponType, IWeapon> weapons;
@@ -21,19 +33,19 @@ public class PlayerCombat : MonoBehaviour
 
     public void ChangeWeapon(WeaponType type)
     {
-        ctrl.animator.SetInteger(lastWeaponParam, (int)curType);
+        ctrl.animator.SetInteger(lastWeaponParam, (int)CurType);
         if (weapons.ContainsKey(type))
         {
-            curType = type;
+            CurType = type;
         }
         else
         {
-            curType = WeaponType.None;
+            CurType = WeaponType.None;
         }
-        ctrl.animator.SetInteger(curWeaponParam, (int)curType);
+        ctrl.animator.SetInteger(curWeaponParam, (int)CurType);
 
         ctrl.machine.ChangeState(StateType.SwapWeapon);
-        curWeapon = weapons[curType];
+        curWeapon = weapons[CurType];
     }
 
     public void RegisterWeapon(WeaponType type, IWeapon weapon)
@@ -76,21 +88,13 @@ public class PlayerCombat : MonoBehaviour
         }
     }
 
-    public void OnSwapWeapon(InputValue value)
+    public void OnSwapWeapon(InputAction.CallbackContext context)
     {
-        bool isPressed = value.isPressed;
-
-        if (isPressed && ctrl.machine.CanOtherAction())
+        if (ctrl.machine.CanOtherAction())
         {
-            if (changeLocked) return;
-            changeLocked = true;
-            int next = ((int)curType + 1) % (int)WeaponType.Size;
+            int next = ((int)CurType + 1) % (int)WeaponType.Size;
 
             ChangeWeapon((WeaponType)next);
-        }
-        else
-        {
-            changeLocked = false;
         }
     }
     #endregion
@@ -98,80 +102,31 @@ public class PlayerCombat : MonoBehaviour
     #region Skill
     private bool skillLocked = false;
 
-    public SkillBase testSkill1;
-    public SkillBase testSkill2;
-    public SkillBase testSkill3;
-
     public List<SkillBase> skills;
-    public void OnSkillQ(InputValue value)
+
+    public void OnSkill(InputAction.CallbackContext context)
     {
-        bool isPressed = value.isPressed;
+        if (ctrl.InputSkillDic.ContainsKey(context.control.name) == false) return;
 
-        if (isPressed && ctrl.machine.CanOtherAction())
+        int skillNum = (int)ctrl.InputSkillDic[context.control.name];
+        if (ctrl.machine.CanOtherAction() && skills[skillNum] != null)
         {
-            if (skillLocked) return;
-            skillLocked = true;
-
-            if (skills[0] != null)
-            {
-                StartCoroutine(skills[0].Active(ctrl));
-            }
-        }
-        else
-        {
-            skillLocked = false;
+            StartCoroutine(skills[skillNum].Active(ctrl));
         }
     }
-
-    public void OnSkillW(InputValue value)
-    {
-        bool isPressed = value.isPressed;
-
-        if (isPressed && ctrl.machine.CanOtherAction())
-        {
-            if (skillLocked) return;
-            skillLocked = true;
-
-            if (skills[1] != null) StartCoroutine(skills[1].Active(ctrl));
-        }
-        else
-        {
-            skillLocked = false;
-        }
-    }
-
-    public void OnSkillE(InputValue value)
-    {
-        bool isPressed = value.isPressed;
-
-        if (isPressed && ctrl.machine.CanOtherAction())
-        {
-            if (skillLocked) return;
-            skillLocked = true;
-
-            if (skills[2] != null) StartCoroutine(skills[2].Active(ctrl));
-        }
-        else
-        {
-            skillLocked = false;
-        }
-    }
-
     #endregion
 
     private void Awake()
     {
-        weapons = new Dictionary<WeaponType, IWeapon>()
+        weapons = new()
         {
             {WeaponType.None, null},
         };
-        curType = WeaponType.None;
+        CurType = WeaponType.None;
 
-        skills = new List<SkillBase>()
+        skills = new()
         {
-            { testSkill1 },
-            { testSkill2 },
-            { testSkill3 },
+            null, null, null,
         };
     }
 }
