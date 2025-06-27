@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2931227376072733481
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6057975645124855148}
+  - component: {fileID: 8626556521394402519}
+  m_Layer: 0
+  m_Name: 'SkillSystem '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6057975645124855148
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2931227376072733481}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8626556521394402519
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2931227376072733481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e319224d427f7654e98f0572334695a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Pools:
+  - SkillType: 1
+    Pool:
+      poolObj: {fileID: 9145224083937929664, guid: 8bfa008b628703b4da5e834b50f8c8bb,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 2
+    Pool:
+      poolObj: {fileID: 1461921824905443788, guid: 1c52cd0131f6bb04ebdc351959d6578e,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 3
+    Pool:
+      poolObj: {fileID: 4598140872700327850, guid: b22c368f79861004b8c65238dfcedf92,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 4
+    Pool:
+      poolObj: {fileID: 198393960337124616, guid: a496d90c00e9e0c47a04fcbb4b58013a,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 5
+    Pool:
+      poolObj: {fileID: 4523017090211163188, guid: 831ad5506d1fb8d4f918b99d83449be9,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 6
+    Pool:
+      poolObj: {fileID: 6435306557864783679, guid: 3a52b80c39398b942bd8ae17a40c6632,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 7
+    Pool:
+      poolObj: {fileID: 4785922281457660653, guid: b0661de25e993c64ea6e4573a205a096,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
+  - SkillType: 8
+    Pool:
+      poolObj: {fileID: 4766188471300750561, guid: 8ba77a1ea10ddb747a68c44b083c2384,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      initSize: 10
