@@ -12,20 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2828308db30200418275d7930c90807, type: 3}
   m_Name: Smash
   m_EditorClassIdentifier: 
-  skillName: "\uC5B4\uB5A4 \uC2A4\uD0AC"
-  description: "\uC2A4\uD0AC \uC124\uBA85\uC744 \uC368\uC8FC\uC138\uC694."
-  icon: {fileID: 0}
+  ID: 6
+  SkillName: "\uD30C\uC218\uC758 \uC131\uAC80"
+  Description: "\uAC70\uB300\uD55C \uBE5B\uC758 \uAC80\uC774 \uC9C0\uBA74\uC744 \uB0B4\uB824\uCE58\uBA70
+    \uAC70\uB300\uD55C \uAD11\uC5ED \uD53C\uD574\uB97C \uC785\uD799\uB2C8\uB2E4. "
+  Cooldown: 30
+  CostMP: 40
+  EnforceBaseCost: 500
+  EnforceCostFactor: 0.4
+  EnforceLevel: 0
+  CanActive: 0
+  CanUnlock: 0
+  Icon: {fileID: 21300000, guid: d473e35d9c998d443a00d04000f893e5, type: 3}
   SkillType: 3
-  activeDelay: 1
-  effectDelay: 0.5
-  cooldown: 5
-  costMP: 10
-  isLocked: 1
-  requireWeapon: 1
-  startOffset: {x: 0, y: 0, z: 1}
-  hitOffset: {x: 0, y: 1.75, z: 4}
-  range: {x: 1, y: 4, z: 10}
-  damage: 50
-  targetLayer:
+  RequireWeapon: 1
+  RequireSkill:
+  - {fileID: 11400000, guid: bec8db26cfaabde40b8dbc63caaac997, type: 2}
+  - {fileID: 11400000, guid: a0ba08691a073a2459083cb5e0c8f3de, type: 2}
+  StartOffset: {x: 0, y: 0, z: 1}
+  ActiveDelay: 1
+  EffectDelay: 0.5
+  HitOffset: {x: 0, y: 0, z: 0}
+  Range: {x: 0, y: 0, z: 0}
+  Damage: 150
+  DamageFactor: 2.5
+  TargetLayer:
     serializedVersion: 2
     m_Bits: 0

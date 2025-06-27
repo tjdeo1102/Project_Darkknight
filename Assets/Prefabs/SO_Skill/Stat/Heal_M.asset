@@ -12,25 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f865aaa3d2b32dc408e564828162d02b, type: 3}
   m_Name: Heal_M
   m_EditorClassIdentifier: 
-  skillName: "\uD790 Lv.2"
-  description: "\uC2A4\uD0AC \uC124\uBA85\uC744 \uC368\uC8FC\uC138\uC694."
-  icon: {fileID: 21300000, guid: c3aab7237df394c4890e647a4ae580ea, type: 3}
+  ID: 8
+  SkillName: "\uC7AC\uBE60\uB978 \uBC1C\uAC78\uC74C"
+  Description: "\uC77C\uC2DC\uC801\uC73C\uB85C \uC774\uB3D9\uC18D\uB3C4\uAC00 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  Cooldown: 30
+  CostMP: 50
+  EnforceBaseCost: 200
+  EnforceCostFactor: 0.4
+  EnforceLevel: 0
+  CanActive: 0
+  CanUnlock: 0
+  Icon: {fileID: 21300000, guid: c3aab7237df394c4890e647a4ae580ea, type: 3}
   SkillType: 7
-  activeDelay: 1
-  effectDelay: 0.5
-  cooldown: 5
-  costMP: 10
-  isLocked: 1
-  requireWeapon: 0
-  startOffset: {x: 0, y: 1, z: 0}
-  LastSkillUseTime: 0
-  stats:
-  - statType: 0
-    con:
-      changeAmount: 50
-    per:
-      changeAmount: 0
-      minRequireAmount: 0
-    isPercent: 0
-    isPersist: 1
-    duration: 0
+  RequireWeapon: 0
+  RequireSkill:
+  - {fileID: 11400000, guid: 27da3ed25a2b13c47bdb57830dbd3c58, type: 2}
+  StartOffset: {x: 0, y: 1, z: 0}
+  ActiveDelay: 1
+  EffectDelay: 0.5
+  Stats: []

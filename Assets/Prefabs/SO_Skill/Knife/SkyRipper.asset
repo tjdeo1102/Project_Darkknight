@@ -12,21 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2828308db30200418275d7930c90807, type: 3}
   m_Name: SkyRipper
   m_EditorClassIdentifier: 
-  skillName: "\uD558\uB298 \uAC00\uB974"
-  description: "\uCDA9\uACA9\uD30C\uC640 \uD568\uAED8 \uB300\uC9C0\uAE4C\uC9C0 \uAC00\uB974\uBA70
-    \uD53C\uD574\uB97C \uC785\uD799\uB2C8\uB2E4."
-  icon: {fileID: 21300000, guid: f5ab3f534c1138f4786f23cd74103223, type: 3}
+  ID: 3
+  SkillName: "\uD558\uB298 \uAC00\uB974\uAE30"
+  Description: "\uCDA9\uACA9\uD30C\uB85C \uB300\uC9C0\uB97C \uAC08\uB77C \uD070 \uD53C\uD574\uB97C
+    \uC785\uD799\uB2C8\uB2E4."
+  Cooldown: 20
+  CostMP: 20
+  EnforceBaseCost: 400
+  EnforceCostFactor: 0.3
+  EnforceLevel: 0
+  CanActive: 0
+  CanUnlock: 0
+  Icon: {fileID: 21300000, guid: f5ab3f534c1138f4786f23cd74103223, type: 3}
   SkillType: 6
-  activeDelay: 1
-  effectDelay: 1
-  cooldown: 20
-  costMP: 20
-  isLocked: 1
-  requireWeapon: 2
-  startOffset: {x: 0, y: 2, z: 5}
-  hitOffset: {x: 0, y: 0, z: 0}
-  range: {x: 4, y: 4, z: 4}
-  damage: 50
-  targetLayer:
+  RequireWeapon: 2
+  RequireSkill:
+  - {fileID: 11400000, guid: 8d410a7ca6fef904ab258273c6dff0c9, type: 2}
+  - {fileID: 11400000, guid: 23ad1da2bae82164b8ff7bcd4a39da22, type: 2}
+  StartOffset: {x: 0, y: 2, z: 5}
+  ActiveDelay: 1
+  EffectDelay: 1
+  HitOffset: {x: 0, y: 0, z: 0}
+  Range: {x: 0, y: 0, z: 0}
+  Damage: 100
+  DamageFactor: 2
+  TargetLayer:
     serializedVersion: 2
     m_Bits: 0
