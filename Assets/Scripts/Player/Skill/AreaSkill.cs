@@ -4,10 +4,13 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "AreaSkill", menuName = "Scriptable Objects/Area Skill")]
 public class AreaSkill: SkillBase
 {
-    public Vector3 hitOffset = Vector3.zero;
-    public Vector3 range = Vector3.zero;
-    public float damage = 50f;
-    public LayerMask targetLayer;
+    public Vector3 HitOffset = Vector3.zero;
+    public Vector3 Range = Vector3.zero;
+    [CSVField(CSVFIledType.None)]
+    public float Damage = 50f;
+    [CSVField(CSVFIledType.None)]
+    public float DamageFactor = 0f;
+    public LayerMask TargetLayer;
 
     public override IEnumerator Active(PlayerController player)
     {
@@ -19,14 +22,14 @@ public class AreaSkill: SkillBase
             yield break;
         }
 
-        if (player.combat.curType != requireWeapon) yield break;
+        if (player.combat.CurType != RequireWeapon) yield break;
 
-        var center = this.center + foward * hitOffset.z + right * hitOffset.x + up * hitOffset.y;
-        Vector3 halfExtents = range * 0.5f;
+        var center = this.center + foward * HitOffset.z + right * HitOffset.x + up * HitOffset.y;
+        Vector3 halfExtents = Range * 0.5f;
 
-        Collider[] hits = Physics.OverlapBox(center, halfExtents, Quaternion.identity, targetLayer);
+        Collider[] hits = Physics.OverlapBox(center, halfExtents, Quaternion.identity, TargetLayer);
 
-        Tool.DrawOverlapBox(center, range, Quaternion.LookRotation(foward), Color.green, 2f);
+        Tool.DrawOverlapBox(center, Range, Quaternion.LookRotation(foward), Color.green, 2f);
 
         foreach (Collider hit in hits)
         {

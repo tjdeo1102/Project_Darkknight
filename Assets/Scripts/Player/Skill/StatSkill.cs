@@ -10,37 +10,23 @@ public class StatSkill: SkillBase
     [Serializable]
     public struct StatChange
     {
-        [SerializeField] public StatType statType;
-        [SerializeField] public ConstStatChange con;
-        [SerializeField] public PercentStatChange per;
-        [SerializeField] public bool isPercent;
-        [SerializeField] public bool isPersist;
-        [SerializeField] public float duration;
+        [SerializeField] public StatType StatType;
+        [SerializeField] public StatModifier StatModifier;
+        [SerializeField] public float MinNeeded;
+        [SerializeField] public float Duration;
+        [SerializeField] public float EnforceStatFactor;
     }
 
-    [Serializable]
-    public struct ConstStatChange
-    {
-        [SerializeField] public float changeAmount;
-    }
-
-    [Serializable]
-    public struct PercentStatChange
-    {
-        [SerializeField] public float changeAmount;
-        [SerializeField] public float minRequireAmount;
-    }
-
-    public StatChange[] stats;
+    [CSVField(CSVFIledType.StatArr)]
+    public StatChange[] Stats;
 
     public override IEnumerator Active(PlayerController player)
     {
         // 요구 조건 만족 후, 스킬 사용
-        foreach (StatChange statChange in stats)
+        foreach (StatChange statChange in Stats)
         {
-            float require = statChange.isPercent ? statChange.per.minRequireAmount : statChange.con.changeAmount;
-
-            if (require + player.model.Stats[statChange.statType].Value < 0f) yield break;
+            if (player.model.Stats[statChange.StatType].TotalValue < statChange.MinNeeded)
+                yield break;
         }
 
         yield return base.Active(player);
@@ -51,47 +37,31 @@ public class StatSkill: SkillBase
             yield break;
         }
 
-        List<Coroutine> curRoutine = new List<Coroutine>();
+        var maxDuration = 0f;
         // 스탯 관련 로직 적용
-        foreach (StatChange statChange in stats)
+        foreach (StatChange statChange in Stats)
         {
-            curRoutine.Add(player.StartCoroutine(ApplyStatChange(player, statChange)));
+            maxDuration = Mathf.Max(maxDuration, statChange.Duration);
+            player.StartCoroutine(ApplyStatChange(player, statChange));
         }
-
-        while (curRoutine.Count > 0)
-        {
-            yield return null;
-        }
-        yield break;
+        yield return new WaitForSeconds(maxDuration);
     }
 
     private IEnumerator ApplyStatChange(PlayerController player, StatChange statChange)
     {
-        StatType type = statChange.statType;
+        StatType type = statChange.StatType;
 
-        float originalValue = player.model.Stats[type].Value;
-        float changeValue;
+        // 강화 레벨 * (스탯 증폭치 + 1) * 원래 수치
+        var stat = statChange.StatModifier * (statChange.EnforceStatFactor + 1) * EnforceLevel;
 
-        if (statChange.isPercent)
+        // 일시적 버프
+        if (statChange.Duration > 0f)
         {
-            changeValue = originalValue * (statChange.per.changeAmount - 1f);
-            if (changeValue < 0)
-            {
-                if (changeValue > statChange.per.minRequireAmount) changeValue = statChange.per.minRequireAmount;
-            }
+            player.model.Stats[type].AddModifier(stat, StatModifyType.Buff);
+            yield return new WaitForSeconds(statChange.Duration);
+            player.model.Stats[type].AddModifier(-stat, StatModifyType.Buff);
         }
-        else
-        {
-            changeValue = statChange.con.changeAmount;
-        }
-
-        player.model.Stats[type].Value += changeValue;
-
-        yield return new WaitForSeconds(statChange.duration);
-
-        if (!statChange.isPersist)
-        {
-            player.model.Stats[type].Value -= changeValue;
-        }
+        // 영구 버프
+        else player.model.Stats[type].AddModifier(stat, StatModifyType.Perment);
     }
 }
