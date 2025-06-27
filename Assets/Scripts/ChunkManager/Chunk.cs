@@ -12,10 +12,12 @@ public class Chunk
     public RectInt Bounds;
     public List<Vector3> floorPosData;
 
-    public Chunk(Vector2Int coord, int size)
+    public Chunk(Vector2Int coord, int size, Vector3Int blockSize)
     {
         ChunkCoord = coord;
-        Bounds = new RectInt(coord.x * size, coord.y * size, size, size);
+        Bounds = new RectInt(coord.x * size * blockSize.x,
+            coord.y * size * blockSize.z,
+            size, size);
         ChunkObject = new GameObject($"Chunk_{coord.x}_{coord.y}");
         ChunkObject.SetActive(false);
     }
@@ -32,12 +34,12 @@ public class Chunk
         IsLoaded = false;
     }
 
-    public void Generate(int minRoomSize)
+    public void Generate(int minRoomSize, Vector3Int blockSize)
     {
         if (!IsGenerate)
         {
             IsGenerate = true;
-            MapGenerator.Instance.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, out floorPosData);
+            MapGenerator.Instance.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
         }
     }
 

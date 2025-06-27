@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using UnityEngine;
 
 public class ChunkManager : MonoBehaviour
@@ -7,19 +8,26 @@ public class ChunkManager : MonoBehaviour
     public int ChunkSize = 16;
     public int ViewRadius = 2;
     public int MinRoomSize = 6;
+    public Vector3Int BlockSize = Vector3Int.one;
 
     public Transform Player;
+    public Vector3 PlayerSpawnOffset = new Vector3(0 , 2 , 0);
 
     public static ChunkManager Instance;
 
-    private Vector2Int playerChunk;
-    private Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
+    private Vector2Int m_playerChunk;
+    private Dictionary<Vector2Int, Chunk> m_chunks = new Dictionary<Vector2Int, Chunk>();
 
     private void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
+
+            if (Player != null)
+            {
+                StartCoroutine(PlayerStartRoutine());
+            }
         }
         else
         {
@@ -28,20 +36,20 @@ public class ChunkManager : MonoBehaviour
     }
     void Update()
     {
-        playerChunk = new Vector2Int(
-            Mathf.FloorToInt(Player.position.x / ChunkSize),
-            Mathf.FloorToInt(Player.position.z / ChunkSize)
+        m_playerChunk = new Vector2Int(
+            Mathf.FloorToInt(Player.position.x / (ChunkSize * BlockSize.x)),
+            Mathf.FloorToInt(Player.position.z / (ChunkSize * BlockSize.z))
         );
 
-        foreach (var chunk in chunks)
+        foreach (var chunk in m_chunks)
         {
-            float dist = Vector2Int.Distance(playerChunk, chunk.Key);
+            float dist = Vector2Int.Distance(m_playerChunk, chunk.Key);
             if (dist <= ViewRadius * 2)
             {
                 // 积己 救等 版快绰 老窜 积己
                 if (!chunk.Value.IsGenerate)
                 {
-                    chunk.Value.Generate(MinRoomSize);
+                    chunk.Value.Generate(MinRoomSize,BlockSize);
                 }
                 // 积己等 没农老 锭, 矫具 芭府 观 没农绰 攫肺靛
                 else
@@ -50,7 +58,7 @@ public class ChunkManager : MonoBehaviour
                     else
                     {
                         chunk.Value.Load();
-                        ConnectNeighborChunk(chunk.Key);
+                        ConnectNeighborChunk(chunk.Key, BlockSize);
                     }
                 }
             }
@@ -64,36 +72,45 @@ public class ChunkManager : MonoBehaviour
         {
             for (int y = -ViewRadius * 2; y <= ViewRadius * 2; y++)
             {
-                Vector2Int coord = playerChunk + new Vector2Int(x, y);
-                if (!chunks.ContainsKey(coord))
+                Vector2Int coord = m_playerChunk + new Vector2Int(x, y);
+                if (!m_chunks.ContainsKey(coord))
                 {
-                    chunks[coord] = new Chunk(coord, ChunkSize);
+                    m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize);
                 }
             }
         }
     }
 
+    public IEnumerator PlayerStartRoutine()
+    {
+        while(true)
+        {
+            if (m_chunks.ContainsKey(m_playerChunk) && m_chunks[m_playerChunk].IsLoaded) break;
+            yield return null;
+        }
+        var floor = m_chunks[m_playerChunk].floorPosData;
+        Player.transform.position = floor[Random.Range(0, floor.Count)];
+    }
     public Vector3 GetSpawnPoint(float minDist, Vector3 spawnOffset)
     {
         List<Chunk> pickChunks = new List<Chunk>();
         Vector3 res = Vector3.zero;
 
-        foreach (var chunk in chunks)
+        foreach (var chunk in m_chunks)
         {
-            float dist = Vector2Int.Distance(playerChunk, chunk.Key);
+            float dist = Vector2Int.Distance(m_playerChunk, chunk.Key);
             if (dist >= minDist && chunk.Value.IsLoaded)
             {
                 pickChunks.Add(chunk.Value);
             }
         }
-        System.Random rand = new System.Random();
         if (pickChunks.Count > 0)
         {
-            int pickNum = rand.Next(0, pickChunks.Count);
+            int pickNum = Random.Range(0, pickChunks.Count);
             var pickFloor = pickChunks[pickNum].floorPosData;
             if (pickFloor.Count > 0)
             {
-                pickNum = rand.Next(0, pickFloor.Count);
+                pickNum = Random.Range(0, pickFloor.Count);
                 res = pickFloor[pickNum] + spawnOffset;
             }
         }
@@ -108,7 +125,7 @@ public class ChunkManager : MonoBehaviour
             Mathf.FloorToInt(currentPos.z / ChunkSize)
         );
 
-        foreach (var chunk in chunks)
+        foreach (var chunk in m_chunks)
         {
             float dist = Vector2Int.Distance(currentChunk, chunk.Key);
             if (dist < 1)
@@ -120,7 +137,7 @@ public class ChunkManager : MonoBehaviour
         return false;
     }
 
-    private void ConnectNeighborChunk(Vector2Int chunkCoord)
+    private void ConnectNeighborChunk(Vector2Int chunkCoord, Vector3Int blockSIze)
     {
         Vector2Int[] dirs = {
         Vector2Int.up, Vector2Int.down,
@@ -130,10 +147,10 @@ public class ChunkManager : MonoBehaviour
         foreach (var dir in dirs)
         {
             Vector2Int neighborCoord = chunkCoord + dir;
-            if (chunks.ContainsKey(neighborCoord))
+            if (m_chunks.ContainsKey(neighborCoord))
             {
-                Chunk currentChunk = chunks[chunkCoord];
-                Chunk neighborChunk = chunks[neighborCoord];
+                Chunk currentChunk = m_chunks[chunkCoord];
+                Chunk neighborChunk = m_chunks[neighborCoord];
 
                 if (currentChunk.IsLoaded && neighborChunk.IsLoaded)
                 {
@@ -141,6 +158,7 @@ public class ChunkManager : MonoBehaviour
                     MapGenerator.Instance.TryConnectChunks(
                         currentChunk.Bounds,
                         neighborChunk.Bounds,
+                        blockSIze,
                         currentChunk.ChunkObject.transform
                     );
                     // 辑肺俊 措秦辑 眉农
@@ -165,7 +183,7 @@ public class ChunkManager : MonoBehaviour
 
         List<string> list = new List<string>()
         {
-            "Floor","Wall","Pillar","Ceiling"
+            "Floor","Wall","Pillar","Ceiling", "Gate"
         };
 
         foreach(var item in list)
