@@ -14,9 +14,9 @@ public abstract class SkillBase : ScriptableObject
     [CSVField(CSVFIledType.None)]
     public string ID = "";
     [CSVField(CSVFIledType.None)]
-    public string SkillName = "¾î¶² ½ºÅ³";
+    public string SkillName = "ï¿½î¶² ï¿½ï¿½Å³";
     [CSVField(CSVFIledType.None)]
-    public string Description = "½ºÅ³ ¼³¸íÀ» ½áÁÖ¼¼¿ä.";
+    public string Description = "ï¿½ï¿½Å³ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ö¼ï¿½ï¿½ï¿½.";
     [CSVField(CSVFIledType.None)]
     public float Cooldown = 5f;
     [CSVField(CSVFIledType.None)]
@@ -45,6 +45,7 @@ public abstract class SkillBase : ScriptableObject
 
     private PlayerController m_player;
     private HashSet<SkillBase> lockRequireSkills;
+    private float m_lastSkillUseTime;
     protected Vector3 center;
     protected Vector3 foward;
     protected Vector3 right;
@@ -52,11 +53,11 @@ public abstract class SkillBase : ScriptableObject
 
     protected bool isBreak;
 
-    [HideInInspector] public float LastSkillUseTime = float.MinValue;
 
 
     public void OnEnable()
     {
+        m_lastSkillUseTime = -Cooldown;
         lockRequireSkills = new HashSet<SkillBase>();
         foreach (SkillBase skill in RequireSkill)
         {
@@ -75,9 +76,9 @@ public abstract class SkillBase : ScriptableObject
     public virtual IEnumerator Active(PlayerController m_player)
     {
         var mp = m_player.model.Stats[StatType.Mana];
-
-        // ÄðÅ¸ÀÓ + mp È®ÀÎ
-        if (Time.realtimeSinceStartup - LastSkillUseTime < Cooldown
+        
+        // ï¿½ï¿½Å¸ï¿½ï¿½ + mp È®ï¿½ï¿½
+        if (Time.time - m_lastSkillUseTime < Cooldown
             || CostMP > mp.TotalValue)
         {
             isBreak = true;
@@ -93,22 +94,22 @@ public abstract class SkillBase : ScriptableObject
 
         if (m_player.combat.CurType != RequireWeapon && RequireWeapon != WeaponType.None)
         {
-            Debug.Log("Àü¿ë ¹«±â ÀåÂø ÈÄ, »ç¿ë");
+            Debug.Log("ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½, ï¿½ï¿½ï¿½");
             yield break;
         }
 
         if (SkillType != VFX.None)
         {
-            // °¢ ½ºÅ³¿¡ µû¸¥ ¾Ö´Ï¸ÞÀÌ¼Ç Àç»ý
+            // ï¿½ï¿½ ï¿½ï¿½Å³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½
             m_player.animator.SetInteger(skillAnimationParam, (int)SkillType);
             m_player.machine.ChangeState(StateType.Skill);
 
-            // °¢ ½ºÅ³¿¡ µû¸¥ ÀÌÆåÆ® Àç»ý
+            // ï¿½ï¿½ ï¿½ï¿½Å³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½
             SkillEffectManager.Instance.PlayVFX(SkillType, center, m_player.transform.rotation,EffectDelay);
         }
 
-        LastSkillUseTime = Time.realtimeSinceStartup;
-        // mp ¿µ±¸ °¨¼Ò
+        m_lastSkillUseTime = Time.realtimeSinceStartup;
+        // mp ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         mp.AddModifier(new StatModifier(-CostMP,0),StatModifyType.Perment);
 
         yield return new WaitForSeconds(ActiveDelay);
