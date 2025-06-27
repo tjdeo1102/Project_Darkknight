@@ -4,13 +4,14 @@ using UnityEngine;
 
 public class PlayerModel : MonoBehaviour
 {
-    public Stat Health = new Stat();
-    public Stat Mana = new Stat();
-    public Stat AttackPower = new Stat();
-    public Stat Defense = new Stat();
-    public Stat Speed = new Stat();
-    public Stat RunSpeed = new Stat();
-    public Stat LifeSteel = new Stat();
+    public Stat Health = new();
+    public Stat Mana = new();
+    public Stat AttackPower = new();
+    public Stat Defense = new();
+    public Stat Speed = new();
+    public Stat RunSpeed = new();
+    public Stat LifeSteel = new();
+    public Stat Money = new();
 
     public Dictionary<StatType, Stat> Stats;
 
@@ -25,6 +26,12 @@ public class PlayerModel : MonoBehaviour
             { StatType.Speed, Speed},
             { StatType.RunSpeed, RunSpeed},
             { StatType.LifeSteel, LifeSteel},
+            { StatType.Money, Money},
         };
+        foreach (var item in Stats)
+        {
+            item.Value.UpdateTotalValue();
+            item.Value.OnChangeStat?.Invoke();
+        }
     }
 }
