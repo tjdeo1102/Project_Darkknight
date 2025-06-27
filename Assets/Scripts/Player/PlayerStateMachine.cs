@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class PlayerStateMachine : MonoBehaviour
 {
-    public StateType curType;
+    public StateType CurType;
 
     private Dictionary<StateType, State> states;
     private State curState;
@@ -23,8 +23,8 @@ public class PlayerStateMachine : MonoBehaviour
         };
 
         // 시작 상태 세팅
-        curType = StateType.Idle;
-        curState = states[curType];
+        CurType = StateType.Idle;
+        curState = states[CurType];
         curState.Enter();
     }
 
@@ -35,17 +35,17 @@ public class PlayerStateMachine : MonoBehaviour
 
     public void ChangeState(StateType type)
     {
-        //print($"{curType}에서 {type}으로 전환");
+        //print($"{CurType}에서 {type}으로 전환");
         curState?.Exit();
-        curType = type;
-        curState = states[curType];
+        CurType = type;
+        curState = states[CurType];
         curState?.Enter();
     }
 
     public bool CanOtherAction()
     {
-        bool canAction = curType == StateType.Idle 
-                        || curType == StateType.Walk;
+        bool canAction = CurType == StateType.Idle 
+                        || CurType == StateType.Walk;
         return canAction;
     }
 }

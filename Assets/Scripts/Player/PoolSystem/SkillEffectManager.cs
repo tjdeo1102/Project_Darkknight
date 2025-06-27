@@ -8,25 +8,25 @@ public class SkillEffectManager : MonoBehaviour
     public static SkillEffectManager Instance;
 
     [Serializable]
-    public struct SkillPool
+    public struct SkillVFXPool
     {
-        [SerializeField] public VFX skillType;
-        [SerializeField] public ObjectPool<ParticleSystem> skillPool;
+        [SerializeField] public VFX SkillType;
+        [SerializeField] public ObjectPool<ParticleSystem> Pool;
     }
 
     private Dictionary<VFX, ObjectPool<ParticleSystem>> skillDic;
 
-    [SerializeField] public SkillPool[] skillPools;
+    [SerializeField] public SkillVFXPool[] Pools;
 
 
     private void Awake()
     {
         skillDic = new Dictionary<VFX, ObjectPool<ParticleSystem>>();
 
-        foreach(var kvp in skillPools)
+        foreach(var kvp in Pools)
         {
-            skillDic.Add(kvp.skillType, kvp.skillPool);
-            kvp.skillPool.Init(transform);
+            skillDic.Add(kvp.SkillType, kvp.Pool);
+            kvp.Pool.Init(transform);
         }
 
         if (Instance == null)
@@ -35,7 +35,7 @@ public class SkillEffectManager : MonoBehaviour
         }
         else
         {
-            Destroy(this);
+            Destroy(gameObject);
         }
     }
 

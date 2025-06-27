@@ -2,42 +2,55 @@ using UnityEngine;
 
 public class WalkState : State
 {
-    private readonly int WalkParam = Animator.StringToHash("Walk");
-    private readonly int RunParam = Animator.StringToHash("Run");
+    private static readonly string moveAction = "Move";
+    private static readonly string runAction = "Run";
+    private readonly int walkParam = Animator.StringToHash("Walk");
+    private readonly int runParam = Animator.StringToHash("Run");
+
+    private Transform m_cam;
+
     public WalkState(PlayerController controller) : base(controller) { }
+
+    public override void Enter()
+    {
+        base.Enter();
+        m_cam = Camera.main.transform;
+    }
 
     public override void Update()
     {
         base.Update();
-        var input = ctrl.input.actions["Move"].ReadValue<Vector2>();
+        var input = ctrl.input.actions[moveAction].ReadValue<Vector2>();
         Vector3 move = new Vector3(input.x, 0, input.y);
-        float runInput = ctrl.input.actions["Run"].ReadValue<float>();
+        float runInput = ctrl.input.actions[runAction].ReadValue<float>();
             
         if (move.sqrMagnitude < 0.1f)
         {
             ctrl.machine.ChangeState(StateType.Idle);
             return;
         }
-
-        ctrl.transform.rotation = Quaternion.LookRotation(move);
+        var camDir = new Vector3(m_cam.forward.x, 0, m_cam.forward.z);
+        var dir = Quaternion.LookRotation(camDir) * move;
+        ctrl.transform.rotation = Quaternion.LookRotation(dir);
         if (runInput > 0.1f)
         {
-            anim.SetBool(RunParam, true);
-            anim.SetBool(WalkParam, false);
-            ctrl.moveController.Move(ctrl.model.RunSpeed.Value * Time.deltaTime * ctrl.transform.forward);
+            anim.SetBool(runParam, true);
+            anim.SetBool(walkParam, false);
+            ctrl.rigid.linearVelocity = ctrl.model.RunSpeed.TotalValue * new Vector3(dir.x, 0, dir.z);
         }
         else
         {
-            anim.SetBool(RunParam, false);
-            anim.SetBool(WalkParam, true);
-            ctrl.moveController.Move(ctrl.model.Speed.Value * Time.deltaTime * ctrl.transform.forward);
+            anim.SetBool(runParam, false);
+            anim.SetBool(walkParam, true);
+            ctrl.rigid.linearVelocity = ctrl.model.Speed.TotalValue * new Vector3(dir.x, 0, dir.z);
         }
     }
 
     public override void Exit() 
     { 
         base.Exit();
-        anim.SetBool(WalkParam, false);
-        anim.SetBool(RunParam, false);
+        anim.SetBool(walkParam, false);
+        anim.SetBool(runParam, false);
+        ctrl.rigid.linearVelocity = new Vector3(0, ctrl.rigid.linearVelocity.y, 0);
     }
 }

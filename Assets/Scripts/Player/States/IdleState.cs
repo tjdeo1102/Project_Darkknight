@@ -2,15 +2,18 @@ using UnityEngine;
 
 public class IdleState : State
 {
+    private static readonly string moveAction = "Move";
+
     public IdleState(PlayerController controller) : base(controller) { }
 
     public override void Update()
     {
         base.Update();
 
-        var WalkInput = ctrl.input.actions["Move"].ReadValue<Vector2>();
+        var walkInput = ctrl.input.actions[moveAction].ReadValue<Vector2>();
 
-        if (WalkInput.sqrMagnitude > 0.1f)
+        if (ctrl.machine.CurType != StateType.Walk && 
+            walkInput.sqrMagnitude > 0.1f)
         {
             ctrl.machine.ChangeState(StateType.Walk);
         }

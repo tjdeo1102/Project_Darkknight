@@ -7,9 +7,20 @@ public class Knife : MonoBehaviour, IWeapon
     public int MaxComboCount = 2;
     public PlayerController ctrl;
 
-    private int attackCountParam = Animator.StringToHash("AttackCount");
-    private int attackCount;
-    private float lastAttackTime;
+    private static readonly int m_attackCountParam = Animator.StringToHash("AttackCount");
+    private int m_attackCount;
+    private float m_lastAttackTime;
+    private void Start()
+    {
+        if (ctrl == null)
+        {
+            Debug.LogError("No ctrl");
+            enabled = false;
+            return;
+        }
+        AddWeapon();
+        m_attackCount = 0;
+    }
     public void AddWeapon()
     {
         ctrl.combat.RegisterWeapon(WeaponType.Knife, this);
@@ -17,20 +28,15 @@ public class Knife : MonoBehaviour, IWeapon
 
     public void Attack()
     {
-        if (Time.time - lastAttackTime > comboTime)
+        if (Time.time - m_lastAttackTime > comboTime)
         {
-            attackCount = 0;
+            m_attackCount = 0;
         }
-        else attackCount++;
+        else m_attackCount = (m_attackCount + 1) % MaxComboCount;
 
-        ctrl.animator.SetInteger(attackCountParam, attackCount % MaxComboCount);
+        ctrl.animator.SetInteger(m_attackCountParam, m_attackCount);
 
-        lastAttackTime = Time.time;
+        m_lastAttackTime = Time.time;
     }
 
-    private void Start()
-    {
-        AddWeapon();
-        attackCount = 0;
-    }
 }

@@ -23,7 +23,11 @@ public class AttackState : State
     {
         base.Update();
         if (Time.time - enterTime < exitMinTime) return;
-        if (!ctrl.animator.GetCurrentAnimatorStateInfo(0).IsTag(tagName))
+
+        var stateInfo = ctrl.animator.GetCurrentAnimatorStateInfo(0);
+        bool inTransition = ctrl.animator.IsInTransition(0);
+
+        if (!inTransition && !stateInfo.IsTag(tagName))
         {
             ctrl.machine.ChangeState(StateType.Idle);
             return;
