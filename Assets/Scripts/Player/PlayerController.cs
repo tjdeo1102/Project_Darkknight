@@ -21,7 +21,7 @@ public class PlayerController : MonoBehaviour
     }
 
     #region PlayerKeySetting
-    public Dictionary<string, InputSkill> InputSkillDic = new Dictionary<string, InputSkill >()
+    public Dictionary<string, InputSkill> InputSkillDic = new()
     {
         { "q", InputSkill.SkillQ },
         { "w", InputSkill.SkillW },
