@@ -127,60 +127,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 104167326000997626, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: ctrl
-      value: 
-      objectReference: {fileID: 1093127851}
-    - target: {fileID: 294563545360527041, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: ctrl
-      value: 
-      objectReference: {fileID: 1093127851}
     - target: {fileID: 1327669763105304696, guid: 395874e9f74a57a41b5de23ca3b4e21d,
         type: 3}
       propertyPath: m_Name
       value: Player
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: Mana.baseValue
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: Money.baseValue
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: Speed.baseValue
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: Health.baseValue
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: Defense.baseValue
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: RunSpeed.baseValue
-      value: 8
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: LifeSteel.baseValue
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: AttackPower.baseValue
-      value: 200
       objectReference: {fileID: 0}
     - target: {fileID: 4171037769350407759, guid: 395874e9f74a57a41b5de23ca3b4e21d,
         type: 3}
@@ -232,16 +182,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5070074669775250085, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: ctrl
-      value: 
-      objectReference: {fileID: 1093127851}
-    - target: {fileID: 8467566657350972282, guid: 395874e9f74a57a41b5de23ca3b4e21d,
-        type: 3}
-      propertyPath: ctrl
-      value: 
-      objectReference: {fileID: 1093127851}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

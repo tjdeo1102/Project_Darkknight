@@ -1,5 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
+using Unity.AI.Navigation;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class Chunk
 {
@@ -24,14 +28,16 @@ public class Chunk
 
     public void Load()
     {
+        if (IsLoaded) return;
         ChunkObject.SetActive(true);
         IsLoaded = true;
     }
 
     public void Unload()
     {
-        ChunkObject.SetActive(false);
+        if (!IsLoaded) return;
         IsLoaded = false;
+        ChunkObject.SetActive(false);
     }
 
     public void Generate(int minRoomSize, Vector3Int blockSize)
@@ -39,7 +45,7 @@ public class Chunk
         if (!IsGenerate)
         {
             IsGenerate = true;
-            MapGenerator.Instance.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
+            ChunkManager.Instance.Generator.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
         }
     }
 
