@@ -98,6 +98,7 @@ GameObject:
   - component: {fileID: 7426843631017512894}
   - component: {fileID: 1193764171379916451}
   - component: {fileID: 222271177250991805}
+  - component: {fileID: 5149763805494785176}
   m_Layer: 19
   m_Name: Wall_Asset_Combined
   m_TagString: Untagged
@@ -195,3 +196,23 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.0500001, y: 1, z: 1.05}
   m_Center: {x: -0.000000059604645, y: 0, z: 0}
+--- !u!114 &5149763805494785176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2525660121652627747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e3fdca004f2d45fe8abbed571a8abd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SerializedVersion: 0
+  m_OverrideArea: 1
+  m_Area: 1
+  m_OverrideGenerateLinks: 0
+  m_GenerateLinks: 0
+  m_IgnoreFromBuild: 0
+  m_ApplyToChildren: 1
+  m_AffectedAgents: ffffffff

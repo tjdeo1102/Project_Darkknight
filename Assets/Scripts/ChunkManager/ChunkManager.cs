@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using Unity.AI.Navigation;
 using UnityEngine;
 
 public class ChunkManager : MonoBehaviour
@@ -12,18 +13,20 @@ public class ChunkManager : MonoBehaviour
 
     public Transform Player;
     public Vector3 PlayerSpawnOffset = new Vector3(0 , 2 , 0);
+    public MapGenerator Generator;
 
     public static ChunkManager Instance;
 
     private Vector2Int m_playerChunk;
     private Dictionary<Vector2Int, Chunk> m_chunks = new Dictionary<Vector2Int, Chunk>();
-
+    private Vector2Int m_lastPlayerChunk;
+    [SerializeField] private NavMeshSurface m_surface;
     private void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
-
+            
             if (Player != null)
             {
                 StartCoroutine(PlayerStartRoutine());
@@ -79,6 +82,16 @@ public class ChunkManager : MonoBehaviour
                 }
             }
         }
+
+        if (m_playerChunk != m_lastPlayerChunk)
+        {
+            // ¸Ê ¾÷¿¡ÀÌÆ®
+            if (m_surface != null)
+            {
+                m_surface.UpdateNavMesh(m_surface.navMeshData);
+            }
+        }
+        m_lastPlayerChunk = m_playerChunk;
     }
 
     public IEnumerator PlayerStartRoutine()
@@ -90,6 +103,11 @@ public class ChunkManager : MonoBehaviour
         }
         var floor = m_chunks[m_playerChunk].floorPosData;
         Player.transform.position = floor[Random.Range(0, floor.Count)];
+
+        yield return new WaitForSeconds(3f);
+        if (m_surface != null)
+            m_surface.BuildNavMesh();
+
     }
     public Vector3 GetSpawnPoint(float minDist, Vector3 spawnOffset)
     {
@@ -155,7 +173,7 @@ public class ChunkManager : MonoBehaviour
                 if (currentChunk.IsLoaded && neighborChunk.IsLoaded)
                 {
                     if (currentChunk.IsCheckClosedChunk(dir)) continue;
-                    MapGenerator.Instance.TryConnectChunks(
+                    Generator.TryConnectChunks(
                         currentChunk.Bounds,
                         neighborChunk.Bounds,
                         blockSIze,

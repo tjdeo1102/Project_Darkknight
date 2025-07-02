@@ -1,3 +1,5 @@
+using Unity.Behavior;
+
 public enum VFX
 {
     None, VerticalSlash, HorizontalSlash, Smash, SpinSlash, FireBreath, SkyRipper, Heal, PactOfDeath
@@ -27,9 +29,15 @@ public enum StateType
     Idle, Walk, Attack, SwapWeapon, Skill
 }
 
+[BlackboardEnum]
+public enum EnemyStateType
+{
+    Idle, Patrol, Chase, Attack
+}
+
 public enum WeaponType
 {
-    None, Sword, Knife, Gun, Size
+    None, Sword, Knife, Size
 }
 
 public enum InputSkill

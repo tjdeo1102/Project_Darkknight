@@ -17,20 +17,6 @@ public class MapGenerator: MonoBehaviour
     public Vector3 CeilingOffset;
     public Vector3 GateOffset;
 
-    public static MapGenerator Instance;
-
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(this);
-        }
-    }
-
     public void GenerateChunk(RectInt bounds, Transform parent, int minRoomSize, Vector3Int blockSize, out List<Vector3> floorPosData)
     {
         int width = bounds.width;

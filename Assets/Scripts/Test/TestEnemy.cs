@@ -4,7 +4,9 @@ using UnityEngine;
 public class TestEnemy : MonoBehaviour
 {
     public float MinDist = 2f;
-    public Vector3 SpawnOffset = new Vector3(0,0.5f,0);
+    public Vector3 SpawnOffset = Vector3.up;
+    public GameObject EnemyPref;
+    public GameObject Player;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -14,18 +16,26 @@ public class TestEnemy : MonoBehaviour
     IEnumerator SpawnRoutine()
     {
         yield return new WaitForSeconds(3f);
-        transform.position = ChunkManager.Instance.GetSpawnPoint(MinDist, SpawnOffset);
-        print("적 위치 설정");
-        StartCoroutine(CheckChunkRoutine());
-    }
 
-    IEnumerator CheckChunkRoutine()
-    {
-        yield return new WaitForSeconds(3f);
         while (true)
         {
-            print($"현재 지역 활성화 여부 {ChunkManager.Instance.IsLoadedChunk(transform.position)}");
-            yield return new WaitForSeconds(1f);
+            transform.position = ChunkManager.Instance.GetSpawnPoint(MinDist, SpawnOffset);
+            var enemy = GameObject.Instantiate(EnemyPref, transform.position, Quaternion.identity);
+            enemy.GetComponent<EnemyController>().Target = Player;
+            print("스폰 적");
+
+            yield return new WaitForSeconds(10f);
         }
     }
+
+    //IEnumerator CheckChunkRoutine()
+    //{
+    //    while (!ChunkManager.Instance.IsLoadedChunk(transform.position))
+    //    {
+    //        yield return new WaitForSeconds(1f);
+    //    }
+    //    var enemy = GameObject.Instantiate(EnemyPref, transform.position, Quaternion.identity);
+    //    enemy.GetComponent<EnemyController>().Target = Player;
+    //    print("스폰 적");
+    //}
 }
