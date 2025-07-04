@@ -1,9 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
-public class TestEnemy : MonoBehaviour
+public class EnemySpawn : MonoBehaviour
 {
     public float MinDist = 2f;
+    public float SpawnDelay = 5f;
     public Vector3 SpawnOffset = Vector3.up;
     public GameObject EnemyPref;
     public GameObject Player;
@@ -27,15 +28,4 @@ public class TestEnemy : MonoBehaviour
             yield return new WaitForSeconds(10f);
         }
     }
-
-    //IEnumerator CheckChunkRoutine()
-    //{
-    //    while (!ChunkManager.Instance.IsLoadedChunk(transform.position))
-    //    {
-    //        yield return new WaitForSeconds(1f);
-    //    }
-    //    var enemy = GameObject.Instantiate(EnemyPref, transform.position, Quaternion.identity);
-    //    enemy.GetComponent<EnemyController>().Target = Player;
-    //    print("½ºÆù Àû");
-    //}
 }

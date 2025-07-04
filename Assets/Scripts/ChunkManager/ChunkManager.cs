@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using Unity.AI.Navigation;
+using UnityEngine.AI;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 public class ChunkManager : MonoBehaviour
 {
@@ -78,20 +79,124 @@ public class ChunkManager : MonoBehaviour
                 Vector2Int coord = m_playerChunk + new Vector2Int(x, y);
                 if (!m_chunks.ContainsKey(coord))
                 {
-                    m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize);
+                    m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize,transform);
                 }
             }
         }
 
         if (m_playerChunk != m_lastPlayerChunk)
         {
-            // 맵 업에이트
+            // 맵 업데이트
             if (m_surface != null)
             {
-                m_surface.UpdateNavMesh(m_surface.navMeshData);
+                //m_surface.UpdateNavMesh(m_surface.navMeshData);
+                //StartCoroutine(UpdateMapRoutine());
+                UpdateMapRoutine().Forget();
             }
         }
         m_lastPlayerChunk = m_playerChunk;
+    }
+
+    public async UniTaskVoid UpdateMapRoutine()
+    {
+        var data = m_surface.navMeshData;
+        var setting = m_surface.GetBuildSettings();
+        List<NavMeshBuildMarkup> markups = new();
+        int count = 0;
+        int batchSize = 50;
+
+        foreach (var chunk in m_chunks)
+        {
+            if (chunk.Value.IsLoaded)
+            {
+                var modifiers = chunk.Value.navMeshModifiers;
+                foreach (var mod in modifiers)
+                {
+                    if (mod == null) continue;
+
+                    var item = new NavMeshBuildMarkup
+                    {
+                        root = mod.transform,
+                        overrideArea = mod.overrideArea,
+                        area = mod.area,
+                        ignoreFromBuild = mod.ignoreFromBuild,
+                    };
+                    markups.Add(item);
+                    count++;
+                    if (count % batchSize == 0)
+                        await UniTask.Yield();
+                }
+            }
+        }
+        count = 0;
+
+        // modifier은 비활성화 한 채로, 수동으로 마크업 추가
+
+        List<NavMeshBuildSource> sources = new();
+        NavMeshBuilder.CollectSources(
+            transform, ~0, NavMeshCollectGeometry.PhysicsColliders, 0, markups, sources);
+        await UniTask.Yield();
+
+        Matrix4x4 worldToLocal = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+        worldToLocal = worldToLocal.inverse;
+        await UniTask.Yield();
+
+        var result = new Bounds();
+        foreach (var src in sources)
+        {
+            switch (src.shape)
+            {
+                case NavMeshBuildSourceShape.Mesh:
+                    {
+                        var m = src.sourceObject as Mesh;
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, m.bounds));
+                        break;
+                    }
+                case NavMeshBuildSourceShape.Terrain:
+                    {
+#if NMC_CAN_ACCESS_TERRAIN
+                        // Terrain pivot is lower/left corner - shift bounds accordingly
+                        var t = src.sourceObject as TerrainData;
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * t.size, t.size)));
+#else
+                        Debug.LogWarning("The NavMesh cannot be properly baked for the terrain because the necessary functionality is missing. Add the com.unity.modules.terrain package through the Package Manager.");
+#endif
+                        break;
+                    }
+                case NavMeshBuildSourceShape.Box:
+                case NavMeshBuildSourceShape.Sphere:
+                case NavMeshBuildSourceShape.Capsule:
+                case NavMeshBuildSourceShape.ModifierBox:
+                    result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(Vector3.zero, src.size)));
+                    break;
+            }
+
+            count++;
+            if (count % batchSize == 0)
+                await UniTask.Yield();
+        }
+        result.Expand(0.1f);
+
+        var process = NavMeshBuilder.UpdateNavMeshDataAsync(data, setting, sources, result);
+        //var process = m_surface.UpdateNavMesh(m_surface.navMeshData);
+        while (!process.isDone) await UniTask.Yield();
+
+        await UniTask.Yield();
+    }
+
+    private Bounds GetWorldBounds(Matrix4x4 mat, Bounds bounds)
+    {
+        var absAxisX = Abs(mat.MultiplyVector(Vector3.right));
+        var absAxisY = Abs(mat.MultiplyVector(Vector3.up));
+        var absAxisZ = Abs(mat.MultiplyVector(Vector3.forward));
+        var worldPosition = mat.MultiplyPoint(bounds.center);
+        var worldSize = absAxisX * bounds.size.x + absAxisY * bounds.size.y + absAxisZ * bounds.size.z;
+        return new Bounds(worldPosition, worldSize);
+    }
+
+    private Vector3 Abs(Vector3 v)
+    {
+        return new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
     }
 
     public IEnumerator PlayerStartRoutine()

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.AI.Navigation;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -16,13 +17,16 @@ public class Chunk
     public RectInt Bounds;
     public List<Vector3> floorPosData;
 
-    public Chunk(Vector2Int coord, int size, Vector3Int blockSize)
+    public NavMeshModifier[] navMeshModifiers;
+
+    public Chunk(Vector2Int coord, int size, Vector3Int blockSize, Transform parent)
     {
         ChunkCoord = coord;
         Bounds = new RectInt(coord.x * size * blockSize.x,
             coord.y * size * blockSize.z,
             size, size);
         ChunkObject = new GameObject($"Chunk_{coord.x}_{coord.y}");
+        ChunkObject.transform.parent = parent;
         ChunkObject.SetActive(false);
     }
 
@@ -46,6 +50,7 @@ public class Chunk
         {
             IsGenerate = true;
             ChunkManager.Instance.Generator.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
+            navMeshModifiers = ChunkObject.transform.GetComponentsInChildren<NavMeshModifier>(true);
         }
     }
 
