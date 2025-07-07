@@ -1016,6 +1016,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 361308186252140580, guid: 5a3544086b936c349b0823b2d9b620ed,
         type: 3}
+      propertyPath: managedReferences[5345647559534969344].m_Value
+      value: 
+      objectReference: {fileID: 339166985}
+    - target: {fileID: 361308186252140580, guid: 5a3544086b936c349b0823b2d9b620ed,
+        type: 3}
       propertyPath: 'managedReferences[5345647441460330685].m_Value.Array.data[0]'
       value: 
       objectReference: {fileID: 1913268075}
@@ -1024,6 +1029,16 @@ PrefabInstance:
       propertyPath: 'managedReferences[5345647441460330685].m_Value.Array.data[1]'
       value: 
       objectReference: {fileID: 882081836}
+    - target: {fileID: 361308186252140580, guid: 5a3544086b936c349b0823b2d9b620ed,
+        type: 3}
+      propertyPath: 'managedReferences[5345647441460330685].m_Value.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1190449309}
+    - target: {fileID: 361308186252140580, guid: 5a3544086b936c349b0823b2d9b620ed,
+        type: 3}
+      propertyPath: 'managedReferences[5345647441460330685].m_Value.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1624208492}
     - target: {fileID: 2110432378879899353, guid: 5a3544086b936c349b0823b2d9b620ed,
         type: 3}
       propertyPath: Target
@@ -1057,7 +1072,7 @@ PrefabInstance:
     - target: {fileID: 2991609559782881862, guid: 5a3544086b936c349b0823b2d9b620ed,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2991609559782881862, guid: 5a3544086b936c349b0823b2d9b620ed,
         type: 3}
@@ -1102,7 +1117,7 @@ PrefabInstance:
     - target: {fileID: 8814213711082660225, guid: 5a3544086b936c349b0823b2d9b620ed,
         type: 3}
       propertyPath: m_Name
-      value: Enemy
+      value: RangeEnemy
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

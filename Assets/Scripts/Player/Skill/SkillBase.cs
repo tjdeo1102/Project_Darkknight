@@ -44,73 +44,108 @@ public abstract class SkillBase : ScriptableObject
     public float EffectDelay = 0.5f;
 
     private PlayerController m_player;
-    private HashSet<SkillBase> lockRequireSkills;
+    private Transform m_origin;
+    private HashSet<SkillBase> m_lockRequireSkills;
     private float m_lastSkillUseTime;
     protected Vector3 center;
     protected Vector3 foward;
     protected Vector3 right;
     protected Vector3 up;
 
-    protected bool isBreak;
+    protected bool isFailSkill;
 
 
 
-    public void OnEnable()
+    public virtual void OnEnable()
     {
         m_lastSkillUseTime = -Cooldown;
-        lockRequireSkills = new HashSet<SkillBase>();
+        m_lockRequireSkills = new HashSet<SkillBase>();
         foreach (SkillBase skill in RequireSkill)
         {
-            lockRequireSkills.Add(skill);
+            m_lockRequireSkills.Add(skill);
         }
     }
     public void UnlockRequireSkill(SkillBase skill)
     {
-        if (lockRequireSkills.Contains(skill))
+        if (m_lockRequireSkills.Contains(skill))
         {
-            lockRequireSkills.Remove(skill);
+            m_lockRequireSkills.Remove(skill);
         }
-        if (lockRequireSkills.Count < 1) CanUnlock = true;
+        if (m_lockRequireSkills.Count < 1) CanUnlock = true;
     }
 
-    public virtual IEnumerator Active(PlayerController m_player)
+    private bool CanUseSkill(Stat mp)
     {
-        var mp = m_player.model.Stats[StatType.Mana];
-        
-        // ��Ÿ�� + mp Ȯ��
+        isFailSkill = false;
+        if (mp ==  null) mp = new Stat();
+
         if (Time.time - m_lastSkillUseTime < Cooldown
             || CostMP > mp.TotalValue)
         {
-            isBreak = true;
-            yield break;
-        }
-        
-        this.m_player = m_player;
-        var trans = m_player.transform;
-        foward = trans.forward;
-        right = trans.right;
-        up = trans.up;
-        center = trans.position + foward * StartOffset.z + right * StartOffset.x + up * StartOffset.y;
+            Debug.Log("no actgive");
 
-        if (m_player.combat.CurType != RequireWeapon && RequireWeapon != WeaponType.None)
-        {
-            Debug.Log("���� ���� ���� ��, ���");
-            yield break;
+            isFailSkill = true;
+            return false;
         }
 
+        mp.AddModifier(new StatModifier(-CostMP, 0), StatModifyType.Perment);
+        m_lastSkillUseTime = Time.time;
+        return true;
+    }
+
+    private void SetStartPos()
+    {
+        foward = m_origin.forward;
+        right = m_origin.right;
+        up = m_origin.up;
+        center = m_origin.position + foward * StartOffset.z + right * StartOffset.x + up * StartOffset.y;
+    }
+
+    private void SkillEffect()
+    {
         if (SkillType != VFX.None)
         {
-            // �� ��ų�� ���� �ִϸ��̼� ���
-            m_player.animator.SetInteger(skillAnimationParam, (int)SkillType);
-            m_player.machine.ChangeState(StateType.Skill);
-
-            // �� ��ų�� ���� ����Ʈ ���
-            SkillEffectManager.Instance.PlayVFX(SkillType, center, m_player.transform.rotation,EffectDelay);
+            if (m_player != null)
+            {
+                m_player.animator.SetInteger(skillAnimationParam, (int)SkillType);
+                m_player.machine.ChangeState(StateType.Skill);
+            }
+            SkillEffectManager.Instance.PlayVFX(SkillType, center, m_origin.rotation, EffectDelay);
         }
+    }
 
-        m_lastSkillUseTime = Time.realtimeSinceStartup;
-        // mp ���� ����
-        mp.AddModifier(new StatModifier(-CostMP,0),StatModifyType.Perment);
+    public virtual IEnumerator Active(PlayerController player)
+    {
+        if (player != null)
+        {
+            this.m_player = player;
+            var mp = player.model.Stats[StatType.Mana];
+            m_origin = player.transform;
+
+            if (m_player.combat.CurType != RequireWeapon && RequireWeapon != WeaponType.None)
+            {
+                Debug.Log("전용무기 장착 후, 사용 필요");
+                isFailSkill = true;
+                yield break;
+            }
+
+            if (CanUseSkill(mp) == false) yield break;
+            SetStartPos();
+            SkillEffect();
+        }
+        yield return new WaitForSeconds(ActiveDelay);
+    }
+
+    public virtual IEnumerator Active(Transform origin, Dictionary<StatType,Stat> stats, GameObject Target)
+    {
+        if (origin != null && stats.TryGetValue(StatType.Mana,out var mp))
+        {
+            m_origin = origin;
+            if (CanUseSkill(mp) == false) yield break;
+            Debug.Log("Active");
+            SetStartPos();
+            SkillEffect();
+        }
 
         yield return new WaitForSeconds(ActiveDelay);
     }
