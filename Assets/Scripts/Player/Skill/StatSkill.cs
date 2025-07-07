@@ -31,11 +31,7 @@ public class StatSkill: SkillBase
 
         yield return base.Active(player);
 
-        if (isBreak)
-        {
-            isBreak = false;
-            yield break;
-        }
+        if (isFailSkill) yield break;
 
         var maxDuration = 0f;
         // 스탯 관련 로직 적용

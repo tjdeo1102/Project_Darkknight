@@ -15,9 +15,10 @@ public class EnemyController : MonoBehaviour
 
     private void Start()
     {
-        patrolPoints = new List<GameObject>();
         if (ChunkManager.Instance != null)
         {
+            patrolPoints = new List<GameObject>();
+
             for (int i = 0; i < 4; i++)
             {
                 var obj = CreatePatrolPoint();

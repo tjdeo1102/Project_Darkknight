@@ -25,11 +25,10 @@ public class PlayerCombat : MonoBehaviour
 
     private IWeapon curWeapon;
     private Dictionary<WeaponType, IWeapon> weapons;
-    private bool changeLocked = false;
     private bool attackLocked = false;
 
-    private int lastWeaponParam = Animator.StringToHash("LastWeapon");
-    private int curWeaponParam = Animator.StringToHash("CurWeapon");
+    private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
+    private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
 
     public void ChangeWeapon(WeaponType type)
     {
@@ -100,7 +99,6 @@ public class PlayerCombat : MonoBehaviour
     #endregion
 
     #region Skill
-    private bool skillLocked = false;
 
     public List<SkillBase> skills;
 

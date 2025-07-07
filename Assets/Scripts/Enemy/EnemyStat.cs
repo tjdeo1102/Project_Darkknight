@@ -12,11 +12,11 @@ public class EnemyStat : MonoBehaviour
     public Stat LifeSteel = new();
     public Stat Money = new();
 
-    public Dictionary<StatType, Stat> Stats;
+    public Dictionary<StatType, Stat> StatDic;
 
     private void Start()
     {
-        Stats = new Dictionary<StatType, Stat>()
+        StatDic = new Dictionary<StatType, Stat>()
         {
             { StatType.Health, Health },
             { StatType.Mana, Mana },
@@ -27,7 +27,7 @@ public class EnemyStat : MonoBehaviour
             { StatType.LifeSteel, LifeSteel},
             { StatType.Money, Money},
         };
-        foreach (var item in Stats)
+        foreach (var item in StatDic)
         {
             item.Value.UpdateTotalValue();
             item.Value.OnChangeStat?.Invoke();
@@ -36,7 +36,7 @@ public class EnemyStat : MonoBehaviour
 
     public void ApplyDamage(StatModifier stat, StatType statType, StatModifyType modifyType)
     {
-        if (Stats.TryGetValue(statType, out var value))
+        if (StatDic.TryGetValue(statType, out var value))
         {
             value.AddModifier(stat, modifyType);
             value.UpdateTotalValue();

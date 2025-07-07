@@ -7,7 +7,7 @@ public class StatModifier
     public float FixedValue;
     public float PercentValue;
 
-    public StatModifier(float fixedValue, float percentValue)
+    public StatModifier(float fixedValue = 0, float percentValue = 0)
     {
         this.FixedValue = fixedValue;
         this.PercentValue = percentValue;
