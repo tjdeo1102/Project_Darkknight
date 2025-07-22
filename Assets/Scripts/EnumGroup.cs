@@ -1,10 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Behavior;
+using UnityEngine;
 
 public enum VFX
 {
-    None, VerticalSlash, HorizontalSlash, Smash, SpinSlash, FireBreath, SkyRipper, Heal, PactOfDeath
+    None, VerticalSlash, HorizontalSlash, Smash, SpinSlash, FireBreath, SkyRipper, Heal, PactOfDeath, Boss1_ThrowSkill, Boss1_JumpSkill
+}
+
+public enum ProjectileType
+{
+    None, ClosedEnemyBullet
 }
 
 public enum StatType
@@ -12,9 +18,17 @@ public enum StatType
     Health, Mana, AttackPower, Defense, Speed, RunSpeed, LifeSteel,Money,Size
 }
 
+[System.Flags]
 public enum StatModifyType
 {
-    Perment, Buff, Equipment, Damage
+    None = 0,
+    Permanent = 1 << 0,
+    Buff = 1 << 1,
+    Equipment = 1 << 2, 
+    Damage = 1 << 3,
+    SkillUse = 1 << 4,
+    KillEnemy = 1 << 5,
+    BuyItem = 1 << 6,
 }
 
 public enum TileType
@@ -24,6 +38,8 @@ public enum TileType
     Wall,
     Pillar,
     Celling,
+    Gate,
+    Size,
 }
 
 public enum StateType
@@ -31,12 +47,35 @@ public enum StateType
     Idle, Walk, Attack, SwapWeapon, Skill
 }
 
+[System.Flags]
+public enum EnemyType
+{
+    None = 0,
+    NormalBlade = 1 << 0,   
+    NormalGunner = 1 << 1,  
+    CinemaBoss_1 = 1 << 2,              
+    CinemaBoss_2 = 1 << 3,              
+    CinemaBoss_3 = 1 << 4,
+    Boss_1 = 1 << 5,        
+    Boss_2 = 1 << 6,        
+    Boss_3 = 1 << 7,
+}
+
+[System.Flags]
+public enum NPCType
+{
+    None = 0,
+    Npc1 = 1 << 0,
+    Npc2 = 1 << 1, 
+    Npc3 = 1 << 2, 
+    Npc4 = 1 << 3 
+}
+
 [BlackboardEnum]
 public enum EnemyStateType
 {
-    Idle, Patrol, Chase, Attack
+    Idle, Patrol, Chase, Attack, KnockBack, Die
 }
-
 
 [BlackboardEnum]
 public enum EnemyAttackType
@@ -61,17 +100,22 @@ public enum ItemType
 
 public enum UIState
 {
-    None, Inventory, SkillTree, 
+    None, RadialMenu ,Inventory, SkillTree, Dialog, Die, Setting
 }
 
 public enum InputActionMap
 {
-    Player,UI
+    Player,UI,Dialog,Pause
 }
 
 public enum CSVFIledType
 {
     None, StatArr,
+}
+
+public enum CSVImportType
+{
+    SkillBase, InventroyItem, StatBaseSO
 }
 
 public enum TargetTag
@@ -98,5 +142,26 @@ public static class TagManager
     {
         if (m_StringToTag.TryGetValue(tag, out TargetTag result)) { return result; }
         return TargetTag.None;
+    }
+}
+
+public enum TargetLayer
+{
+    None, Player, Enemy
+}
+
+public static class TargetLayerManager
+{
+    private static Dictionary<TargetLayer, LayerMask> m_LayerToLayerMask = new()
+    {
+        { TargetLayer.None, LayerMask.GetMask("Default") },
+        { TargetLayer.Player, LayerMask.GetMask("Player") },
+        { TargetLayer.Enemy, LayerMask.GetMask("Enemy") },
+    };
+
+    public static LayerMask GetLayerMask(TargetLayer tag)
+    {
+        if (m_LayerToLayerMask.TryGetValue(tag, out LayerMask result)) { return result; }
+        return LayerMask.GetMask("Default");
     }
 }
