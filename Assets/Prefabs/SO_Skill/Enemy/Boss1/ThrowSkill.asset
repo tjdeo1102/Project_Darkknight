@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bea75f1f8677c244eb723f4506990347, type: 3}
+  m_Name: ThrowSkill
+  m_EditorClassIdentifier: 
+  ID: 
+  OriginSO: 
+  SkillName: "\uBCF4\uC2A41 \uD22C\uCC99 \uC2A4\uD0AC"
+  Description: 
+  Cooldown: 0
+  CostMP: 0
+  EnforceBaseCost: 0
+  EnforceCostFactor: 0
+  EnforceLevel: 0
+  CanActive: 0
+  CanUnlock: 0
+  SkillStats: []
+  Icon: {fileID: 0}
+  SkillType: 9
+  RequireWeapon: 0
+  RequireSkill: []
+  StartOffset: {x: 0, y: 0, z: 0}
+  ActiveDelay: 1
+  EffectDelay: 0.5
+  ProjectileType: 0
+  Speed: 0
+  LifeTime: 0
+  KnockBackForce: 1
