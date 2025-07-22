@@ -1,45 +1,63 @@
+using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.Properties;
+using UnityEditor;
 
+
+[RequireComponent(typeof(Rigidbody))]
 public class EnemyController : MonoBehaviour
 {
     public EnemyStat Model;
     public EnemyAI AI;
+    public EnemyType EnemyType;
+    public Rigidbody Rigid;
+    public InGameLoop GameLoop;
 
-    // Test
-    public List<GameObject> patrolPoints;
     public GameObject Target;
-    public float PatrolPointDistance = 10f;
 
-    private void Start()
+    public Vector3 SpawnOffset = Vector3.up;
+    public float ChunkRefreshDelay = 2f;
+    private ChunkManager m_chunkManager;
+
+    private void Awake()
     {
-        if (ChunkManager.Instance != null)
-        {
-            patrolPoints = new List<GameObject>();
-
-            for (int i = 0; i < 4; i++)
-            {
-                var obj = CreatePatrolPoint();
-                if (obj != null)
-                    patrolPoints.Add(obj);
-            }
-        }
-
-        AI.Setup(Target, patrolPoints);
+        Rigid = GetComponent<Rigidbody>();
+        Rigid.useGravity = false;
+        AI.enabled = false;
     }
 
-    public GameObject CreatePatrolPoint()
+    private void OnEnable()
     {
-        Vector3 ranPos = Random.insideUnitCircle * PatrolPointDistance;
-        ranPos += transform.position;
-        if (NavMesh.SamplePosition(ranPos, out NavMeshHit hit, PatrolPointDistance, NavMesh.AllAreas))
+        if (InGameLoop.Instance != null)
         {
-            GameObject obj = new GameObject("point");
-            obj.transform.position = hit.position;
-            return obj;
+            GameLoop = InGameLoop.Instance;
+            m_chunkManager = GameLoop.ChunkManager;
         }
-        return null;
+    }
+
+    private void OnDisable()
+    {
+        AI.enabled = false;
+        Rigid.useGravity = false;
+    }
+    public void ChunkRefresh()
+    {
+        if (m_chunkManager == null) return;
+
+        var chunk = m_chunkManager.GetChunk(transform.position);
+        // 청크와 함께 관리
+        if (chunk != null)
+        {
+            transform.parent = chunk.ChunkObject.transform;
+            Rigid.useGravity = true;
+            AI.enabled = true;
+        }
+        // 정해진 청크 위치에 없는 적은 다시 반환
+        else
+        {
+            GameLoop.EnemySpawner.DestroyEnemy(this);
+        }
     }
 }
