@@ -2,16 +2,18 @@ using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class Bullet : MonoBehaviour
+public class Projectile : MonoBehaviour
 {
     public float Damage;
+    public float KnockBackForce;
     public TargetTag Tag;
     private WaitForSeconds m_LifeTIme;
-    private ObjectPool<Bullet> m_pool;
+    private ObjectPool<Projectile> m_pool;
 
-    public void Init(float damage, float lifeTime, Vector3 velocity,TargetTag tag,ObjectPool<Bullet> pool)
+    public void Init(float damage, float lifeTime, Vector3 velocity, float knockBackForce,TargetTag tag,ObjectPool<Projectile> pool)
     {
         Damage = damage;
+        KnockBackForce = knockBackForce;
         GetComponent<Rigidbody>().linearVelocity = velocity;
         m_LifeTIme = new WaitForSeconds(lifeTime);
         Tag = tag;
@@ -31,11 +33,11 @@ public class Bullet : MonoBehaviour
         {
             if (Tag == TargetTag.Player)
             {
-                other.GetComponentInParent<PlayerModel>().Stats[StatType.Health].AddModifier(new StatModifier(Damage), StatModifyType.Damage);
+                other.GetComponentInParent<PlayerModel>().ApplyDamage(Damage, transform.position, KnockBackForce);
             }
             else if (Tag == TargetTag.Enemy)
             {
-                other.GetComponentInParent<EnemyStat>().StatDic[StatType.Health].AddModifier(new StatModifier(Damage), StatModifyType.Damage);
+                other.GetComponentInParent<EnemyStat>().ApplyDamage(Damage, transform.position, KnockBackForce);
             }
         }
     }
