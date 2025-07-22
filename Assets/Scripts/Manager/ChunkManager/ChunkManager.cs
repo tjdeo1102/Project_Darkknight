@@ -4,89 +4,112 @@ using Unity.AI.Navigation;
 using UnityEngine.AI;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
+using System.Linq;
 
-public class ChunkManager : MonoBehaviour
+public class ChunkManager : ManagerBase<ChunkManager>
 {
     public int ChunkSize = 16;
-    public int ViewRadius = 2;
+    public float ViewRadius = 2;
     public int MinRoomSize = 6;
     public Vector3Int BlockSize = Vector3Int.one;
+    public bool IsBlockUpdateMap = false;
 
     public Transform Player;
     public Vector3 PlayerSpawnOffset = new Vector3(0 , 2 , 0);
     public MapGenerator Generator;
-
-    public static ChunkManager Instance;
+    public InGameLoop GameLoop;
 
     private Vector2Int m_playerChunk;
     private Dictionary<Vector2Int, Chunk> m_chunks = new Dictionary<Vector2Int, Chunk>();
     private Vector2Int m_lastPlayerChunk;
     [SerializeField] private NavMeshSurface m_surface;
-    private void Awake()
+
+    private void Start()
     {
-        if (Instance == null)
+        if (Player != null)
         {
-            Instance = this;
-            
-            if (Player != null)
-            {
-                StartCoroutine(PlayerStartRoutine());
-            }
+            MapUpdate(true);
         }
-        else
-        {
-            Destroy(this);
-        }
+        GameLoop = InGameLoop.Instance;
+        IsReady = true;
     }
     void Update()
+    {
+        if (GameLoop != null && GameLoop.IsStartGame)
+        {
+            if (IsBlockUpdateMap == false)
+                MapUpdate(false);
+            NavUpdate();
+        }
+    }
+
+    private void MapUpdate(bool init)
     {
         m_playerChunk = new Vector2Int(
             Mathf.FloorToInt(Player.position.x / (ChunkSize * BlockSize.x)),
             Mathf.FloorToInt(Player.position.z / (ChunkSize * BlockSize.z))
         );
 
-        foreach (var chunk in m_chunks)
+        var range = Mathf.CeilToInt(ViewRadius + 2);
+        for (int i = -range; i < range; i++)
         {
-            float dist = Vector2Int.Distance(m_playerChunk, chunk.Key);
-            if (dist <= ViewRadius * 2)
+            for (int j = -range; j < range; j++)
             {
-                // »ı¼º ¾ÈµÈ °æ¿ì´Â ÀÏ´Ü »ı¼º
-                if (!chunk.Value.IsGenerate)
+                var offset = new Vector2Int(i, j);
+                Vector2Int coord = m_playerChunk + offset;
+                bool inView = offset.sqrMagnitude < ViewRadius * ViewRadius;
+
+                // ì‹œì•¼ ë‚´ë¶€ì¸ ê²½ìš°, ì²­í¬ ê´€ë¦¬
+                if (init == false && inView)
                 {
-                    chunk.Value.Generate(MinRoomSize,BlockSize);
-                }
-                // »ı¼ºµÈ Ã»Å©ÀÏ ¶§, ½Ã¾ß °Å¸® ¹Û Ã»Å©´Â ¾ğ·Îµå
-                else
-                {
-                    if (dist > ViewRadius) chunk.Value.Unload();
+                    var chunk = m_chunks[coord];
+                    if (chunk.IsGenerate)
+                    {
+                        if (chunk.IsLoaded == false)
+                        {
+                            chunk.Load();
+                            ConnectNeighborChunk(coord);
+                        }
+                    }
+                    // ìƒì„± ì•ˆëœ ê²½ìš°ëŠ” ì¼ë‹¨ ìƒì„±
                     else
                     {
-                        chunk.Value.Load();
-                        ConnectNeighborChunk(chunk.Key, BlockSize);
+                        chunk.Generate(MinRoomSize, BlockSize);
+                        // í•„ìš”í•œ ìŠ¤í¬ë„ˆ ê°™ì´ ë™ì‘
+                        if (GameLoop != null
+                            && chunk.IsGenerateMonster == false)
+                        {
+                            chunk.IsGenerateMonster = true;
+                            GameLoop.EnemySpawner.RandomUnitSpawnPerChunk(chunk);
+                            GameLoop.NPCSpawner.RandomUnitSpawnPerChunk(chunk);
+                        }
+                    }
+                }
+                // ì‹œì•¼ ë°–ì¸ ê²½ìš°, ì²­í¬ ìƒì„± or Unload
+                else
+                {
+                    if (m_chunks.TryGetValue(coord, out var chunk))
+                    {
+                        chunk.Unload();
+                    }
+                    else
+                    {
+                        m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize, transform);
+                        if (init == true && offset == Vector2Int.zero)
+                        {
+                            m_chunks[coord].IsGenerateMonster = true;
+                        }
                     }
                 }
             }
-            else
-            {
-                if (chunk.Value.IsLoaded) chunk.Value.Unload();
-            }
         }
+    }
 
-        for (int x = -ViewRadius * 2; x <= ViewRadius * 2; x++)
-        {
-            for (int y = -ViewRadius * 2; y <= ViewRadius * 2; y++)
-            {
-                Vector2Int coord = m_playerChunk + new Vector2Int(x, y);
-                if (!m_chunks.ContainsKey(coord))
-                {
-                    m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize,transform);
-                }
-            }
-        }
-
+    private void NavUpdate()
+    {
         if (m_playerChunk != m_lastPlayerChunk)
         {
-            // ¸Ê ¾÷µ¥ÀÌÆ®
+            // ë§µ ì—…ë°ì´íŠ¸
             if (m_surface != null)
             {
                 //m_surface.UpdateNavMesh(m_surface.navMeshData);
@@ -104,8 +127,8 @@ public class ChunkManager : MonoBehaviour
         List<NavMeshBuildMarkup> markups = new();
         int count = 0;
         int batchSize = 50;
-
-        foreach (var chunk in m_chunks)
+        var snap = m_chunks.ToArray();
+        foreach (var chunk in snap)
         {
             if (chunk.Value.IsLoaded)
             {
@@ -130,7 +153,7 @@ public class ChunkManager : MonoBehaviour
         }
         count = 0;
 
-        // modifierÀº ºñÈ°¼ºÈ­ ÇÑ Ã¤·Î, ¼öµ¿À¸·Î ¸¶Å©¾÷ Ãß°¡
+        // modifierì€ ë¹„í™œì„±í™” í•œ ì±„ë¡œ, ìˆ˜ë™ìœ¼ë¡œ ë§ˆí¬ì—… ì¶”ê°€
 
         List<NavMeshBuildSource> sources = new();
         NavMeshBuilder.CollectSources(
@@ -208,59 +231,87 @@ public class ChunkManager : MonoBehaviour
         }
         var floor = m_chunks[m_playerChunk].floorPosData;
         Player.transform.position = floor[Random.Range(0, floor.Count)];
-
-        yield return new WaitForSeconds(3f);
         if (m_surface != null)
+        {
+            // ë¨¼ì € ë¡œë”© í›„, ì»¤ìŠ¤í…€ìœ¼ë¡œ ë„¤ë¹„ ì—…ë°ì´íŠ¸ (BuildNavMeshì˜ Timeë¬¸ì œ)
             m_surface.BuildNavMesh();
+            yield return new WaitForSeconds(3f);
+            UpdateMapRoutine().Forget();
+        }
 
     }
-    public Vector3 GetSpawnPoint(float minDist, Vector3 spawnOffset)
+    public bool TryGetSpawnPointOnChunk(Vector3 pos, Vector3 spawnOffset,out Vector3 res)
     {
-        List<Chunk> pickChunks = new List<Chunk>();
-        Vector3 res = Vector3.zero;
-
-        foreach (var chunk in m_chunks)
+        res = Vector3.zero;
+        var chunk = GetChunk(pos);
+        if (chunk != null)
         {
-            float dist = Vector2Int.Distance(m_playerChunk, chunk.Key);
-            if (dist >= minDist && chunk.Value.IsLoaded)
+            var pickFloor = chunk.floorPosData;
+            if (pickFloor != null && pickFloor.Count > 0)
             {
-                pickChunks.Add(chunk.Value);
-            }
-        }
-        if (pickChunks.Count > 0)
-        {
-            int pickNum = Random.Range(0, pickChunks.Count);
-            var pickFloor = pickChunks[pickNum].floorPosData;
-            if (pickFloor.Count > 0)
-            {
-                pickNum = Random.Range(0, pickFloor.Count);
+                var pickNum = Random.Range(0, pickFloor.Count);
                 res = pickFloor[pickNum] + spawnOffset;
             }
+            else return false;
+            return true;
         }
-        // ¿¹¿Ü »óÈ²: Vector3.zero·Î ¹İÈ¯
+        else return false;
+    }
+
+    public bool TryGetSpawnPointOnChunk(Chunk chunk, Vector3 spawnOffset, out Vector3 res)
+    {
+        res = Vector3.zero;
+        if (chunk != null)
+        {
+            var pickFloor = chunk.floorPosData;
+            if (pickFloor != null && pickFloor.Count > 0)
+            {
+                var pickNum = Random.Range(0, pickFloor.Count);
+                res = pickFloor[pickNum] + spawnOffset;
+            }
+            else return false;
+            return true;
+        }
+        else return false;
+    }
+
+
+    // RandomPoint.y has -999f 
+    public Vector3 GetRandomSpawnPoint(Vector3 center,float minDist,float maxDist)
+    {
+        Vector3 res = Vector3.zero;
+        Vector2 dir = Random.insideUnitCircle.normalized;
+        var dist = Random.Range(minDist, maxDist);
+        Vector3 point = (Vector3)(dir * dist) + center;
+        res = new Vector3(point.x, -999f , point.z);
         return res;
     }
 
-    public bool IsLoadedChunk(Vector3 currentPos)
+    public Chunk GetChunk(Vector2Int pos)
     {
-        var currentChunk = new Vector2Int(
-            Mathf.FloorToInt(currentPos.x / ChunkSize),
-            Mathf.FloorToInt(currentPos.z / ChunkSize)
-        );
-
-        foreach (var chunk in m_chunks)
-        {
-            float dist = Vector2Int.Distance(currentChunk, chunk.Key);
-            if (dist < 1)
-            {
-                return chunk.Value.IsLoaded;
-            }
-        }
-        // Ã»Å©¸Ê »ı¼ºÀÌ ¾ÈµÈ°æ¿ì False
-        return false;
+        return m_chunks.TryGetValue(pos,out var res)? res: null;
     }
 
-    private void ConnectNeighborChunk(Vector2Int chunkCoord, Vector3Int blockSIze)
+    public Chunk GetChunk(Vector3 pos)
+    {
+        var currentChunk = new Vector2Int(
+            Mathf.FloorToInt(pos.x / (ChunkSize * BlockSize.x)),
+            Mathf.FloorToInt(pos.z / (ChunkSize * BlockSize.z))
+        );
+        return m_chunks.TryGetValue(currentChunk, out var res) ? res : null;
+    }
+
+    public async UniTaskVoid BossMapGenerate(Vector3 PlayerPos, Vector3 BossPos)
+    {
+        var Chunks = new List<Chunk>() { GetChunk(PlayerPos), GetChunk(BossPos) };
+
+        foreach (var chunk in Chunks)
+        {
+
+        }
+    }
+
+    private void ConnectNeighborChunk(Vector2Int chunkCoord)
     {
         Vector2Int[] dirs = {
         Vector2Int.up, Vector2Int.down,
@@ -281,13 +332,13 @@ public class ChunkManager : MonoBehaviour
                     Generator.TryConnectChunks(
                         currentChunk.Bounds,
                         neighborChunk.Bounds,
-                        blockSIze,
+                        BlockSize,
                         currentChunk.ChunkObject.transform
                     );
-                    // ¼­·Î¿¡ ´ëÇØ¼­ Ã¼Å©
+                    // ì„œë¡œì— ëŒ€í•´ì„œ ì²´í¬
                     currentChunk.CheckDirection.Add(dir);
                     neighborChunk.CheckDirection.Add(-dir);
-                    // ³¡³­ ÈÄ, µÎ Ã»Å©ÀÇ ¸Ê ±¸Á¶´Â È®Á¤µÇ¾úÀ¸¹Ç·Î ¸Ş½¬ ÇÕÃÄ¼­ ÃÖÀûÈ­
+                    // ëë‚œ í›„, ë‘ ì²­í¬ì˜ ë§µ êµ¬ì¡°ëŠ” í™•ì •ë˜ì—ˆìœ¼ë¯€ë¡œ ë©”ì‰¬ í•©ì³ì„œ ìµœì í™”
                     StartCoroutine(CombineMesh(currentChunk));
                     StartCoroutine(CombineMesh(neighborChunk));
                 }
@@ -297,17 +348,19 @@ public class ChunkManager : MonoBehaviour
 
     private IEnumerator CombineMesh(Chunk chunk)
     {
-        // ÀÌ¹Ì ¼öÇàÇß°Å³ª ¼öÇàÁßÀÌ¸é ÇÔ¼ö ¸®ÅÏ
+        // ì´ë¯¸ ìˆ˜í–‰í–ˆê±°ë‚˜ ìˆ˜í–‰ì¤‘ì´ë©´ í•¨ìˆ˜ ë¦¬í„´
         if (chunk.IsCombineMesh || chunk.CheckDirection.Count != 4) yield break;
         chunk.IsCombineMesh = true;
         yield return null;
 
         MeshFilter[] meshFilters = chunk.ChunkObject.GetComponentsInChildren<MeshFilter>();
 
-        List<string> list = new List<string>()
+        List<string> list = new();
+
+        for (int i = 0; i < (int)TileType.Size; i++)
         {
-            "Floor","Wall","Pillar","Ceiling", "Gate"
-        };
+            list.Add(((TileType)i).ToString());
+        }
 
         foreach(var item in list)
         {
@@ -322,7 +375,7 @@ public class ChunkManager : MonoBehaviour
             {
                 var filter = meshFilters[i];
 
-                // ÀÚ±â ÀÚ½ÅÀÌ¸é or °°Àº ·¹ÀÌ¾î ¾Æ´Ï¸é Á¦¿Ü
+                // ìê¸° ìì‹ ì´ë©´ or ê°™ì€ ë ˆì´ì–´ ì•„ë‹ˆë©´ ì œì™¸
                 if (filter.transform == chunk.ChunkObject.transform || filter.gameObject.layer != layer) continue;
                 if (filter.sharedMesh == null) continue;
 
@@ -341,7 +394,7 @@ public class ChunkManager : MonoBehaviour
                         mat = renderer.sharedMaterial;
                     }
                 }
-                // ±âÁ¸ ¸Ş½¬´Â ºñÈ°¼ºÈ­
+                // ê¸°ì¡´ ë©”ì‰¬ëŠ” ë¹„í™œì„±í™”
                 filter.mesh = null;
             }
 
@@ -354,7 +407,7 @@ public class ChunkManager : MonoBehaviour
                 var renderer = createObject.AddComponent<MeshRenderer>();
 
                 filter.mesh = mesh;
-                renderer.sharedMaterial = mat; // ÇÊ¿äÇÑ ¸ÓÆ¼¸®¾ó ÇÒ´ç
+                renderer.sharedMaterial = mat; // í•„ìš”í•œ ë¨¸í‹°ë¦¬ì–¼ í• ë‹¹
 
                 createObject.layer = layer;
 

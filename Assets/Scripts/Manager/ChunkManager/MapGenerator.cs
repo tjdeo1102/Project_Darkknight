@@ -1,21 +1,34 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
+using Random = UnityEngine.Random;
 
 
 public class MapGenerator: MonoBehaviour
 {
-    public GameObject FloorPrefab;
-    public GameObject WallPrefab;
-    public GameObject PillarPrefab;
-    public GameObject CeilingPrefab;
-    public GameObject GatePrefab;
+    [Serializable]
+    public struct TileSst
+    {
+        public TileType type;
+        public ObjectPool<Transform> pool;
+        public Vector3 offset;
+    }
+    public List<TileSst> Tiles;
 
-    public Vector3 WallOffset;
-    public Vector3 PillarOffset;
-    public Vector3 CeilingOffset;
-    public Vector3 GateOffset;
+    private Dictionary<TileType, TileSst> m_tiles;
+
+
+    private void Awake()
+    {
+        m_tiles = new();
+        foreach (var t in Tiles)
+        {
+            t.pool.Init();
+            m_tiles[t.type] = t;
+            StartCoroutine(t.pool.AutoCreateObjectPerFrame());
+        }
+    }
 
     public void GenerateChunk(RectInt bounds, Transform parent, int minRoomSize, Vector3Int blockSize, out List<Vector3> floorPosData)
     {
@@ -29,7 +42,7 @@ public class MapGenerator: MonoBehaviour
 
         List<RectInt> rooms = root.GetRooms();
 
-        // ¹æ »ı¼º
+        // ë°© ìƒì„±
         foreach (var room in rooms)
         {
             for (int x = room.xMin + 1; x < room.xMax - 1; x++)
@@ -41,11 +54,11 @@ public class MapGenerator: MonoBehaviour
             }
         }
 
-        // º¹µµ ¿¬°á
+        // ë³µë„ ì—°ê²°
         ConnectRooms(root, mapData);
 
 
-        // ¹Ù´Ú »ı¼º
+        // ë°”ë‹¥ ìƒì„±
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -53,17 +66,24 @@ public class MapGenerator: MonoBehaviour
                 if (mapData[x, y] == TileType.Floor)
                 {
                     Vector3 pos = new Vector3(bounds.x + (x*blockSize.x), 0, bounds.y + (y*blockSize.z));
-                    if (FloorPrefab != null)
+                    if (m_tiles.TryGetValue(TileType.Floor, out var floor))
                     {
-                        Transform floor = GameObject.Instantiate(FloorPrefab, pos, Quaternion.identity, parent).transform;
-                        floorPosData.Add(floor.position);
+                        Transform obj = floor.pool.GetObject();
+                        obj.parent = parent;
+                        obj.position = pos;
+                        floorPosData.Add(pos);
                     }
-                    if (CeilingPrefab != null) GameObject.Instantiate(CeilingPrefab, pos + CeilingOffset, Quaternion.identity, parent);
+                    if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
+                    {
+                        var obj = ceiling.pool.GetObject();
+                        obj.position = pos + ceiling.offset;
+                        obj.parent = parent;
+                    }
                 }
             }
         }
 
-        // ºñ¾îÀÖ´Â ±¸¿ªÀº ÀÓÀÇÀÇ º®À¸·Î ¸Ş¿ì±â
+        // ë¹„ì–´ìˆëŠ” êµ¬ì—­ì€ ì„ì˜ì˜ ë²½ìœ¼ë¡œ ë©”ìš°ê¸°
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -71,9 +91,11 @@ public class MapGenerator: MonoBehaviour
                 if (mapData[x, y] == TileType.Empty)
                 {
                     Vector3 pos = new Vector3(bounds.x + (x * blockSize.x), 0, bounds.y + (y * blockSize.z));
-                    if (WallPrefab != null)
+                    if (m_tiles.TryGetValue(TileType.Wall, out var wall))
                     {
-                        GameObject.Instantiate(WallPrefab, pos + WallOffset, Quaternion.identity, parent);
+                        var obj = wall.pool.GetObject();
+                        obj.position = pos + wall.offset;
+                        obj.parent = parent;
                     }
                     mapData[x, y] = TileType.Wall;
                 }
@@ -93,12 +115,12 @@ public class MapGenerator: MonoBehaviour
 
     private void CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
     {
-        // 1x1ºÎÅÍ ÁÂ»ó´Ü 4°³ÀÇ ºí·°À» °Ë»çÇÏµµ·Ï
+        // 1x1ë¶€í„° ì¢Œìƒë‹¨ 4ê°œì˜ ë¸”ëŸ­ì„ ê²€ì‚¬í•˜ë„ë¡
         if (x < 1 || y > map.GetLength(1) - 2) return;
 
-        // ±ÔÄ¢: [ÁÂ,»ó,ÁÂ»ó] , [»ó], [ÁÂ]¿¡ ºí·°ÀÌ ÀÖ´Â °æ¿ì¸¦ Á¦¿ÜÇÏ¸é ÁÂ»ó´Ü ¸ğ¼­¸®¿¡ ±âµÕ ÇÊ¿ä
-        // ¿¹¿Ü: x,y¿¡ º®ÀÌ ¾ø´Â °æ¿ì´Â À§ÀÇ °æ¿ì¿¡¼­ ±âµÕ ÇÊ¿ä
-        // ¿¹¿Ü2: ÁÂ»ó´Ü¸¸ º®ÀÌ ÀÖ´Â °æ¿ì, x,yÀÇ º® À¯¹«¿Í »ó°ü¾øÀÌ ±âµÕ ÇÊ¿ä
+        // ê·œì¹™: [ì¢Œ,ìƒ,ì¢Œìƒ] , [ìƒ], [ì¢Œ]ì— ë¸”ëŸ­ì´ ìˆëŠ” ê²½ìš°ë¥¼ ì œì™¸í•˜ë©´ ì¢Œìƒë‹¨ ëª¨ì„œë¦¬ì— ê¸°ë‘¥ í•„ìš”
+        // ì˜ˆì™¸: x,yì— ë²½ì´ ì—†ëŠ” ê²½ìš°ëŠ” ìœ„ì˜ ê²½ìš°ì—ì„œ ê¸°ë‘¥ í•„ìš”
+        // ì˜ˆì™¸2: ì¢Œìƒë‹¨ë§Œ ë²½ì´ ìˆëŠ” ê²½ìš°, x,yì˜ ë²½ ìœ ë¬´ì™€ ìƒê´€ì—†ì´ ê¸°ë‘¥ í•„ìš”
         bool left = map[x-1, y] == TileType.Wall;
         bool up = map[x, y + 1] == TileType.Wall;
         bool leftUp = map[x - 1, y + 1] == TileType.Wall;
@@ -107,10 +129,11 @@ public class MapGenerator: MonoBehaviour
 
         bool res = exceptions ^ (map[x, y] == TileType.Wall);
         res |= exceptions2;
-        if (res && PillarPrefab != null)
+        if (res && m_tiles.TryGetValue(TileType.Pillar, out var pillar))
         {
-            var pillarPos = wallPos + PillarOffset;
-            GameObject.Instantiate(PillarPrefab, pillarPos, Quaternion.identity, parent);
+            var obj = pillar.pool.GetObject();
+            obj.position = wallPos + pillar.offset;
+            obj.parent = parent;
         }
     }
 
@@ -143,28 +166,28 @@ public class MapGenerator: MonoBehaviour
     public bool TryConnectChunks(RectInt a, RectInt b,Vector3Int blockSize, Transform parent)
     {
         var res = false;
-        // ÀÌ¹Ì µé¾î¿À´Â ÀÎÀÚ´Â ÀÎÁ¢ÇÑ Ã»Å©ÀÓÀ» º¸Àå
+        // ì´ë¯¸ ë“¤ì–´ì˜¤ëŠ” ì¸ìëŠ” ì¸ì ‘í•œ ì²­í¬ì„ì„ ë³´ì¥
 
-        // °¡ÀåÀÚ¸® Áß °¡±î¿î À§Ä¡¸¦ ¹İÈ¯, blockSize °í·Á ÁÂÇ¥·Î Àç°è»ê
-        // ¿À¸¥ÂÊ
+        // ê°€ì¥ìë¦¬ ì¤‘ ê°€ê¹Œìš´ ìœ„ì¹˜ë¥¼ ë°˜í™˜, blockSize ê³ ë ¤ ì¢Œí‘œë¡œ ì¬ê³„ì‚°
+        // ì˜¤ë¥¸ìª½
         if (a.xMin + blockSize.x * a.width == b.xMin)
         {
             int z = (int)Mathf.Clamp(b.center.y, a.yMin + 1, a.yMax - 2) * blockSize.z;
             return TryBreakSlimWall(new Vector2Int((a.xMax - 1) * blockSize.x, z), Vector2Int.right, blockSize, 2, a.height, parent);
         }
-        // ¿ŞÂÊ
+        // ì™¼ìª½
         if (a.xMin == b.xMin + blockSize.x * b.width)
         {
             int z = (int)Mathf.Clamp(b.center.y, a.yMin + 1, a.yMax - 2) * blockSize.z;
             return TryBreakSlimWall(new Vector2Int(a.xMin, z), Vector2Int.left, blockSize, 2, a.height, parent);
         }
-        // À§ÂÊ
+        // ìœ„ìª½
         if (a.yMin + blockSize.z * a.height == b.yMin)
         {
             int x = (int)Mathf.Clamp(b.center.x, a.xMin + 1, a.xMax - 2) * blockSize.x;
             return TryBreakSlimWall(new Vector2Int(x, (a.yMax - 1) * blockSize.z), Vector2Int.up, blockSize, 2, a.width, parent);
         }
-        // ¾Æ·¡ÂÊ
+        // ì•„ë˜ìª½
         if (a.yMin == b.yMin + blockSize.z * b.height)
         {
             int x = (int)Mathf.Clamp(b.center.x, a.xMin + 1, a.xMax - 2) * blockSize.x;
@@ -173,7 +196,7 @@ public class MapGenerator: MonoBehaviour
 
         if (res == false)
         {
-            print($"½ÇÆĞ {a} {b} {blockSize}");
+            print($"ì‹¤íŒ¨ {a} {b} {blockSize}");
         }
         return res;
     }
@@ -199,63 +222,74 @@ public class MapGenerator: MonoBehaviour
         List<int> turnelList = Enumerable.Range(0, (int) maxLength / 2).ToList();
         turnelList = turnelList.OrderBy(x => Random.value).ToList();
 
-        // ·£´ıÀ¸·Î º® °¡ÀåÀÚ¸®¸¦ µû¶ó Á¶°Ç¿¡ ºÎÇÕÇÏ´Â °¡ÀåÀÚ¸® ÁÂÇ¥ È®ÀÎ
-        // ÀÏÁ¤ ¿ÀÇÁ¼Â µÚ¿¡¼­ ÅÍ³Î ¶Õ´Â ¹æÇâÀ¸·Î RaycastAll·Î º®ÀÇ °³¼ö °Ë»ç
+        // ëœë¤ìœ¼ë¡œ ë²½ ê°€ì¥ìë¦¬ë¥¼ ë”°ë¼ ì¡°ê±´ì— ë¶€í•©í•˜ëŠ” ê°€ì¥ìë¦¬ ì¢Œí‘œ í™•ì¸
+        // ì¼ì • ì˜¤í”„ì…‹ ë’¤ì—ì„œ í„°ë„ ëš«ëŠ” ë°©í–¥ìœ¼ë¡œ RaycastAllë¡œ ë²½ì˜ ê°œìˆ˜ ê²€ì‚¬
         foreach (var item in turnelList)
         {
-            // Cast½ÃÀÛÇÒ ÁÂÇ¥ (Áß¾Ó¿¡¼­ ºÎÅÍ ¸Ö¾îÁö´Â ¹æÇâÀ¸·Î Å½»ö)
+            // Castì‹œì‘í•  ì¢Œí‘œ (ì¤‘ì•™ì—ì„œ ë¶€í„° ë©€ì–´ì§€ëŠ” ë°©í–¥ìœ¼ë¡œ íƒìƒ‰)
             for (int j = 0; j < 2; j++)
             {
                 var a = edge - offset * offsetSize * turnelDir + item * wallSize * wallDir * (int)Mathf.Pow(-1,j);
-                // TODO: ºí·° »çÀÌÁî º¯¼ö °í·ÁÇÑ À§Ä¡ Ãß°¡
+                // TODO: ë¸”ëŸ­ ì‚¬ì´ì¦ˆ ë³€ìˆ˜ ê³ ë ¤í•œ ìœ„ì¹˜ ì¶”ê°€
                 var startPos = new Vector3(a.x, 1, a.y);
                 var rayDir = new Vector3(turnelDir.x, 0, turnelDir.y);
                 var res = Physics.RaycastAll(startPos, rayDir, (offset * 2 + 1) * offsetSize, 1 << LayerMask.NameToLayer("Wall"));
-                // º®ÀÌ 2°³ÀÎ °æ¿ì¿¡¸¸ ÅÍ³Î ¶Õ±â
+                // ë²½ì´ 2ê°œì¸ ê²½ìš°ì—ë§Œ í„°ë„ ëš«ê¸°
                 if (res.Length == 2)
                 {
                     //Debug.DrawRay(startPos, new Vector3(turnelDir.x, 0, turnelDir.y) * (offset * 2 + 1) * offsetSize, Color.red, 3000f);
 
                     foreach (var obj in res)
                     {
-                        var pos = new Vector3(obj.transform.position.x, 0 , obj.transform.position.z) ;
-                        if (CeilingPrefab != null)
+                        var pos = new Vector3(obj.transform.position.x, 0 , obj.transform.position.z);
+                        if (m_tiles.TryGetValue(TileType.Floor, out var floor))
                         {
-                            GameObject.Instantiate(CeilingPrefab, pos+ CeilingOffset, Quaternion.identity, parent);
+                            var obj2 = floor.pool.GetObject();
+                            obj2.position = pos;
+                            obj2.parent = parent;
                         }
-                        if (FloorPrefab != null)
+                        if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
                         {
-                            GameObject.Instantiate(FloorPrefab, pos, Quaternion.identity, parent);
+                            var obj2 = ceiling.pool.GetObject();
+                            obj2.position = pos + ceiling.offset;
+                            obj2.parent = parent;
                         }
                         Destroy(obj.collider.gameObject);
-
                     }
-                    // ¾ø¾îÁø ÀÚ¸®¿¡´Â ¾ÆÄ¡Çü ¹® »ı¼º
-                    // È¸Àü ¹× Ãà º¸Á¤
+                    // ì—†ì–´ì§„ ìë¦¬ì—ëŠ” ì•„ì¹˜í˜• ë¬¸ ìƒì„±
+                    // íšŒì „ ë° ì¶• ë³´ì •
                     Quaternion rotation = Quaternion.LookRotation(rayDir);
                     Vector3 forward = rayDir;
                     Vector3 right = Vector3.Cross(Vector3.up, forward);
                     Vector3 up = Vector3.up;
 
-                    // forward°¢ÀÌ ¼­·Î 90Â÷ÀÌ³ª´Â °æ¿ì, rightÀÇ ¹æÇâÀ» ¼­·Î µÚÁı¾î¾ß ÇÔ
-                    // ´Ù¸¥ ±×·¸Áö ¾ÊÀº °æ¿ì¿¡ ¼­·Î x ¿ÀÇÁ¼Â ¹æÇâ ¹İ´ë·Î ÀÛ¿ë
+                    // forwardê°ì´ ì„œë¡œ 90ì°¨ì´ë‚˜ëŠ” ê²½ìš°, rightì˜ ë°©í–¥ì„ ì„œë¡œ ë’¤ì§‘ì–´ì•¼ í•¨
+                    // ë‹¤ë¥¸ ê·¸ë ‡ì§€ ì•Šì€ ê²½ìš°ì— ì„œë¡œ x ì˜¤í”„ì…‹ ë°©í–¥ ë°˜ëŒ€ë¡œ ì‘ìš©
                     if (Mathf.Abs(forward.x) > 0.5f && Mathf.Abs(forward.z) < 0.5f)
                     {
                         right = -right;
                     }
 
-                    Vector3 rotatedPos = startPos
-                                       + GateOffset.z * forward
-                                       + GateOffset.x * right
-                                       + GateOffset.y * up;
-
-                    if (GatePrefab != null)
+                    if (m_tiles.TryGetValue(TileType.Gate, out var gate))
                     {
-                        GameObject.Instantiate(GatePrefab, rotatedPos, rotation,parent);
-                        GameObject.Instantiate(GatePrefab, rotatedPos + 2 * offsetSize * rayDir, rotation, parent);
+                        var GateOffset = gate.offset;
+                        Vector3 rotatedPos = startPos
+                                           + GateOffset.z * forward
+                                           + GateOffset.x * right
+                                           + GateOffset.y * up;
+
+                        var gate1 = gate.pool.GetObject();
+                        gate1.position = rotatedPos;
+                        gate1.rotation = rotation;
+                        gate1.parent = parent;
+
+                        var gate2 = gate.pool.GetObject();
+                        gate1.position = rotatedPos + 2 * offsetSize * rayDir;
+                        gate1.rotation = rotation;
+                        gate1.parent = parent;
                     }
                     //Debug.DrawRay(rotatedPos, forward * 2f, Color.red, 1000f);
-                    //Debug.DrawRay(rotatedPos, right * 2f, Color.green, 1000f);   // x¹æÇâ
+                    //Debug.DrawRay(rotatedPos, right * 2f, Color.green, 1000f);   // xë°©í–¥
                     return true;
                 }
             }

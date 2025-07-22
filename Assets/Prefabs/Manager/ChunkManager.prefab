@@ -47,12 +47,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ChunkSize: 16
-  ViewRadius: 2
+  ViewRadius: 1.5
   MinRoomSize: 8
   BlockSize: {x: 3, y: 3, z: 3}
   Player: {fileID: 0}
   PlayerSpawnOffset: {x: 0, y: 1, z: 0}
   Generator: {fileID: 4396002118566375720}
+  GameLoop: {fileID: 0}
   m_surface: {fileID: 4209115120403413011}
 --- !u!114 &4396002118566375720
 MonoBehaviour:
@@ -66,20 +67,42 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2b8a98eca4fac44ea80c7dbfc9bfd7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  FloorPrefab: {fileID: 601994546481454675, guid: 52f84feec0a19494da1e8d6fe2941cfc,
-    type: 3}
-  WallPrefab: {fileID: 2525660121652627747, guid: 4aa90d525cc6b774895a12d260ac948a,
-    type: 3}
-  PillarPrefab: {fileID: 848839227153326384, guid: e84f1e1a993de16488fb499f58a60c4c,
-    type: 3}
-  CeilingPrefab: {fileID: 7131319216825598803, guid: a0da255decad2d24aa02b199973eb540,
-    type: 3}
-  GatePrefab: {fileID: 4330297898824315860, guid: 453b81b5451a01745b94cb034b043a38,
-    type: 3}
-  WallOffset: {x: 0, y: 2, z: 0}
-  PillarOffset: {x: -1.5, y: 0.5, z: 1.5}
-  CeilingOffset: {x: 0, y: 3.5, z: 0}
-  GateOffset: {x: 0, y: -0.5, z: 4.5}
+  Tiles:
+  - type: 1
+    pool:
+      poolObj: {fileID: 2551029217869919335, guid: 52f84feec0a19494da1e8d6fe2941cfc,
+        type: 3}
+      parent: {fileID: 7325166333014499354}
+      InitSize: 1000
+    offset: {x: 0, y: 0, z: 0}
+  - type: 2
+    pool:
+      poolObj: {fileID: 2898822429667943410, guid: 4aa90d525cc6b774895a12d260ac948a,
+        type: 3}
+      parent: {fileID: 7325166333014499354}
+      InitSize: 500
+    offset: {x: 0, y: 2, z: 0}
+  - type: 3
+    pool:
+      poolObj: {fileID: 4410118082500222322, guid: e84f1e1a993de16488fb499f58a60c4c,
+        type: 3}
+      parent: {fileID: 7325166333014499354}
+      InitSize: 250
+    offset: {x: -1.5, y: 0.5, z: 1.5}
+  - type: 4
+    pool:
+      poolObj: {fileID: 4573520336882880566, guid: a0da255decad2d24aa02b199973eb540,
+        type: 3}
+      parent: {fileID: 7325166333014499354}
+      InitSize: 1000
+    offset: {x: 0, y: 3.5, z: 0}
+  - type: 5
+    pool:
+      poolObj: {fileID: 6639366012777260794, guid: 453b81b5451a01745b94cb034b043a38,
+        type: 3}
+      parent: {fileID: 7325166333014499354}
+      InitSize: 100
+    offset: {x: 0, y: -0.5, z: 4.5}
 --- !u!114 &4209115120403413011
 MonoBehaviour:
   m_ObjectHideFlags: 0

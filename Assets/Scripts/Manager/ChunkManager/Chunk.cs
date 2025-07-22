@@ -12,6 +12,7 @@ public class Chunk
     public GameObject ChunkObject;
     public bool IsLoaded = false;
     public bool IsGenerate = false;
+    public bool IsGenerateMonster = false;
     public bool IsCombineMesh = false;
     public HashSet<Vector2> CheckDirection = new HashSet<Vector2>();
     public RectInt Bounds;
@@ -27,6 +28,12 @@ public class Chunk
             size, size);
         ChunkObject = new GameObject($"Chunk_{coord.x}_{coord.y}");
         ChunkObject.transform.parent = parent;
+
+        ChunkObject.transform.position = new Vector3(
+            coord.x * size * blockSize.x,
+            0f,
+            coord.y * size * blockSize.z);
+
         ChunkObject.SetActive(false);
     }
 
