@@ -16,11 +16,7 @@ public class AreaSkill: SkillBase
     {
         yield return base.Active(player);
 
-        if (isBreak)
-        {
-            isBreak = false;
-            yield break;
-        }
+        if (isFailSkill) yield break;
 
         if (player.combat.CurType != RequireWeapon) yield break;
 

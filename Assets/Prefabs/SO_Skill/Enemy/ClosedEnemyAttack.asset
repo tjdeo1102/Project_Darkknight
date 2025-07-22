@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2828308db30200418275d7930c90807, type: 3}
+  m_Name: ClosedEnemyAttack
+  m_EditorClassIdentifier: 
+  ID: -100
+  OriginSO: '{}'
+  SkillName: 
+  Description: 
+  Cooldown: -1
+  CostMP: -1
+  EnforceBaseCost: 0
+  EnforceCostFactor: 0
+  EnforceLevel: 0
+  CanActive: 0
+  CanUnlock: 0
+  SkillStats: []
+  Icon: {fileID: 0}
+  SkillType: 0
+  RequireWeapon: 0
+  RequireSkill: []
+  StartOffset: {x: 0, y: 1, z: 1}
+  ActiveDelay: 1.5
+  EffectDelay: 0
+  HitOffset: {x: 0, y: 0, z: 0}
+  Range: {x: 1, y: 1, z: 1}
+  KnockBackForce: 0.3
+  TargetLayer:
+    serializedVersion: 2
+    m_Bits: 8388608

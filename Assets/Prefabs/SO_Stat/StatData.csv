@@ -1,0 +1,8 @@
+ID,StatType0,StatModifierFixed0,StatType1,StatModifierFixed1,StatType2,StatModifierFixed2,StatType3,StatModifierFixed3,StatType4,StatModifierFixed4,StatType5,StatModifierFixed5,StatType6,StatModifierFixed6,StatType7,StatModifierFixed7
+0,Health,300,Mana,100,AttackPower,20,Defense,0,Speed,5,RunSpeed,7,LifeSteel,0,Money,0
+1,Health,100,Mana,0,AttackPower,10,Defense,0,Speed,5,RunSpeed,5,LifeSteel,0,Money,8
+2,Health,250,Mana,0,AttackPower,25,Defense,5,Speed,5,RunSpeed,5,LifeSteel,0,Money,20
+3,Health,500,Mana,0,AttackPower,50,Defense,15,Speed,6,RunSpeed,6,LifeSteel,0,Money,50
+4,Health,80,Mana,0,AttackPower,8,Defense,0,Speed,4,RunSpeed,4,LifeSteel,0,Money,10
+5,Health,200,Mana,0,AttackPower,20,Defense,5,Speed,4,RunSpeed,4,LifeSteel,0,Money,22
+6,Health,400,Mana,0,AttackPower,40,Defense,10,Speed,5,RunSpeed,5,LifeSteel,0,Money,60

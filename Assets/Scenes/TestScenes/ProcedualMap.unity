@@ -972,6 +972,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MinDist: 2
+  SpawnDelay: 5
   SpawnOffset: {x: 0, y: 1, z: 0}
   EnemyPref: {fileID: 8814213711082660225, guid: 5a3544086b936c349b0823b2d9b620ed,
     type: 3}
@@ -1134,6 +1135,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: ChunkManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 4209115120403413011, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
+        type: 3}
+      propertyPath: m_VoxelSize
+      value: 0.16666667
+      objectReference: {fileID: 0}
+    - target: {fileID: 4209115120403413011, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
+        type: 3}
+      propertyPath: m_OverrideVoxelSize
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5976454779582439307, guid: 3db57513004b8ad4b8ba8cdfd8af02f6,
         type: 3}
