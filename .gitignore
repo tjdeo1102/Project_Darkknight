@@ -73,3 +73,5 @@ crashlytics-build.properties
 /Assets/ExternalAssets
 /Assets/Editor
 Assets/Editor.meta
+/Assets/Plugins
+/Assets
