@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3080afc9a51ede34ea016d3007a3c76e, type: 3}
+  m_Name: Item8
+  m_EditorClassIdentifier: 
+  ID: 78
+  OriginSO: '{}'
+  Name: "\uAD74\uC808\uB41C \uC5B4\uAE68\uBCF4\uD638\uAD6C 8\uB2E8\uACC4"
+  Description: "\uAD74\uC808\uB41C \uC5B4\uAE68\uBCF4\uD638\uAD6C"
+  Price: 1250
+  ItemType: 2
+  Icon: {fileID: 21300000, guid: d8562397fd7dd16489c1aa65ecd5e66d, type: 3}
+  ModifierStats:
+  - StatType: 3
+    StatModifier:
+      FixedValue: 90
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 0
+    EnforceStatFactor: 0
+  - StatType: 1
+    StatModifier:
+      FixedValue: 160
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 0
+    EnforceStatFactor: 0
