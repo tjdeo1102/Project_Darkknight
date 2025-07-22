@@ -1,15 +1,12 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-using UnityEngine.Splines;
 using System.Reflection;
 using System.Text;
-using UnityEngine.Rendering;
 using System;
-using static StatSkill;
-using static UnityEngine.Rendering.DebugUI;
 
 public class CSVImporter : EditorWindow
 {
@@ -19,16 +16,23 @@ public class CSVImporter : EditorWindow
     private DefaultAsset m_soFolder;
     private string m_soFolderPath;
 
-    [MenuItem("Tools/Import SkillData from CSV")]
+    private string m_encoding = "euc-kr";
+    private CSVImportType m_type;
+    private Dictionary<string, int> m_headDic;
+    private Dictionary<string, string[]> m_csvDic;
+
+    [MenuItem("Tools/Import Data from CSV")]
     public static void ShowWindow()
     {
-        GetWindow<CSVImporter>("SkillData CSV Importer");
+        GetWindow<CSVImporter>("CSV Data Importer");
     }
 
     void OnGUI()
     {
         m_csvFile = EditorGUILayout.ObjectField("csv파일 선택",m_csvFile, typeof(TextAsset), false, GUILayout.Height(EditorGUIUtility.singleLineHeight)) as TextAsset;
+        m_encoding = EditorGUILayout.TextField("CSV인코딩",m_encoding);
         m_soFolder = EditorGUILayout.ObjectField("스킬SO폴더 선택",m_soFolder, typeof(DefaultAsset), false, GUILayout.Height(EditorGUIUtility.singleLineHeight)) as DefaultAsset;
+        m_type = (CSVImportType)EditorGUILayout.EnumPopup("Type",m_type);
 
         if (m_csvFile != null)
         {
@@ -53,138 +57,27 @@ public class CSVImporter : EditorWindow
 
     void Import()
     {
-        var lines = File.ReadAllLines(m_csvPath, Encoding.GetEncoding("euc-kr"));
-        if (lines.Length < 2)
+        if (TryParseCSV() == false)
         {
             Debug.LogWarning("No CSV Data");
             return;
         }
-        var headers = lines[0].Split(',');
-        Dictionary<string, int> headDic = new();
-        for (int i = 0; i < headers.Length; i++)
-        {
-            headDic.Add(headers[i],i);
-        }
-
-        Dictionary<string, string[]> csvDict = new();
-        for (int i = 1; i < lines.Length; i++)
-        {
-            // 텍스트에 , 예외처리 미구현 (사용시 주의)
-            var row = lines[i].Split(',');
-            var filename = row[0].Trim(); 
-            csvDict[filename] = row;
-        }
-
-        var soGUIDs = AssetDatabase.FindAssets("t:SkillBase", new[] { m_soFolderPath });
+        string[] soGUIDs = LoadSOPaths();
         foreach (var guid in soGUIDs)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            SkillBase data = AssetDatabase.LoadAssetAtPath<SkillBase>(path);;
+            CSVScriptableObject data = LoadSO(path);
+            if (data == null) continue;
+
             string fileName = Path.GetFileNameWithoutExtension(path);
 
-            if (csvDict.TryGetValue(data.ID, out var row))
+            if (m_csvDic.TryGetValue(data.ID, out string[] row))
             {
-                // 리플렉션으로 자동화 (런타임 시, 작동하는 로직이 아니므로 효율 상관 x)
                 var fields = data.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance)
                     .Where(a => a.IsDefined(typeof(CSVField), false))
-                    .ToArray();
+                    .ToList();
 
-                foreach (var field in fields)
-                {
-                    var att = field.GetCustomAttribute<CSVField>();
-                    if (att != null && att.HeaderType == CSVFIledType.None)
-                    {
-                        // 매핑되는 헤더의 index를 통해 해당 값을 불러오기
-                        if (headDic.TryGetValue(field.Name, out var idx) == false) continue;
-                        
-                        string stringValue = row[idx];
-                        if (field.FieldType == typeof(string))
-                        {
-                            field.SetValue(data, stringValue);
-                        }
-                        else if (field.FieldType == typeof(int) && int.TryParse(stringValue, out int intValue))
-                        {
-                            field.SetValue(data, intValue);
-                        }
-                        else if (field.FieldType == typeof(float) && float.TryParse(stringValue, out float floatValue))
-                        {
-                            field.SetValue(data, floatValue);
-                        }
-                        else if (field.FieldType == typeof(bool) && bool.TryParse(stringValue, out bool boolValue))
-                        {
-                            field.SetValue(data, boolValue);
-                        }
-                    }
-                    // 딕셔너리의 경우: (ex. 스탯 스킬의 스탯 딕셔너리)
-                    else
-                    {
-                        if (att.HeaderType == CSVFIledType.StatArr)
-                        {
-                            // csvDict의 row에서 StatType ~ EnforceFactor까지의 그룹을 여러개 추출해서 Arr로 저장
-                            int groupCount = typeof(StatChange).GetFields(BindingFlags.Public | BindingFlags.Instance).Length;
-                            var arr = field.GetValue(data) as StatChange[];
-                            var arrLen = arr.Length;
-                            // 처음 field 이름
-                            string firstField = "StatType0";
-                            if (headDic.TryGetValue(firstField, out int firstIdx) == false) continue;
-                            int iterCount = (headDic.Count - firstIdx) / groupCount;
-                            arr = new StatChange[iterCount];
-
-                            for (int i = 0; i < iterCount; i++)
-                            {
-                                var sc = new StatChange();
-
-                                string keyStatType = $"StatType{i}";
-                                string keyModifier = $"StatModifier{i}";
-                                string keyMinNeeded = $"MinNeeded{i}";
-                                string keyDuration = $"Duration{i}";
-                                string keyEnforceFac = $"EnforceFactor{i}";
-
-                                // 키가 존재할 경우에만 처리
-                                if (headDic.ContainsKey(keyStatType) &&
-                                    Enum.TryParse(row[headDic[keyStatType]], out StatType statType))
-                                {
-                                    sc.StatType = statType;
-                                }
-
-                                if (headDic.ContainsKey(keyModifier))
-                                {
-                                    var value = row[headDic[keyModifier]];
-                                    var parts = value.Split(',');
-                                    float m1 = 0f, m2 = 0f;
-                                    if (parts.Length >= 2)
-                                    {
-                                        float.TryParse(parts[0], out m1);
-                                        float.TryParse(parts[1], out m2);
-                                    }
-                                    sc.StatModifier = new StatModifier(m1, m2);
-                                }
-
-                                if (headDic.ContainsKey(keyMinNeeded) &&
-                                    float.TryParse(row[headDic[keyMinNeeded]], out float min))
-                                {
-                                    sc.MinNeeded = min;
-                                }
-
-                                if (headDic.ContainsKey(keyDuration) &&
-                                    float.TryParse(row[headDic[keyDuration]], out float dur))
-                                {
-                                    sc.Duration = dur;
-                                }
-
-                                if (headDic.ContainsKey(keyEnforceFac) &&
-                                    float.TryParse(row[headDic[keyEnforceFac]], out float factor))
-                                {
-                                    sc.EnforceStatFactor = factor;
-                                }
-
-                                arr[i] = sc;
-                            }
-
-                            field.SetValue(data, arr);
-                        }
-                    }
-                }
+                UpdateField(data, row);
 
                 EditorUtility.SetDirty(data);
                 Debug.Log($"Updated {fileName}");
@@ -199,4 +92,146 @@ public class CSVImporter : EditorWindow
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
     }
+
+    private bool TryParseCSV()
+    {
+        var lines = File.ReadAllLines(m_csvPath, Encoding.GetEncoding(m_encoding));
+        if (lines.Length < 2) return false;
+        var headers = lines[0].Split(',');
+        m_headDic = new();
+        for (int i = 0; i < headers.Length; i++)
+            m_headDic[headers[i]] = i;
+
+        m_csvDic = new();
+        for (int i = 1; i < lines.Length; i++)
+        {
+            // 텍스트에 , 예외처리 미구현 (사용시 주의)
+            var row = lines[i].Split(',');
+            m_csvDic[row[0].Trim()] = row;
+        }
+
+        return true;
+    }
+
+    private string[] LoadSOPaths()
+    {
+        if (Enum.IsDefined(typeof(CSVImportType), m_type))
+        {
+            return AssetDatabase.FindAssets($"t:{m_type.ToString()}", new[] { m_soFolderPath });
+        }
+        else
+            return Array.Empty<string>();
+    }
+
+    private CSVScriptableObject LoadSO(string path)
+    {
+        if (m_type == CSVImportType.SkillBase)
+        {
+            return AssetDatabase.LoadAssetAtPath<SkillBase>(path);
+        }
+        else if (m_type == CSVImportType.InventroyItem)
+        {
+            return AssetDatabase.LoadAssetAtPath<InventoryItem>(path);
+        }
+        else if (m_type == CSVImportType.StatBaseSO)
+        {
+            return AssetDatabase.LoadAssetAtPath<StatBaseSO>(path);
+        }
+        else return null;
+    }
+
+    private void UpdateField(CSVScriptableObject data, string[] row)
+    {
+        // 리플렉션으로 자동화 (런타임 시, 작동하는 로직이 아니므로 효율 상관 x)
+        var fields = data.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance)
+            .Where(f => f.IsDefined(typeof(CSVField), false)).ToList();
+
+        foreach (var field in fields)
+        {
+            var attr = field.GetCustomAttribute<CSVField>();
+            if (attr.HeaderType == CSVFIledType.None)
+                UpdatePrimitiveField(field, data, row);
+            else if (attr.HeaderType == CSVFIledType.StatArr)
+                UpdateStatArrayField(field, data, row);
+        }
+    }
+
+    private void UpdatePrimitiveField(FieldInfo field, CSVScriptableObject data, string[] row)
+    {
+        if (!m_headDic.TryGetValue(field.Name, out int idx)) return;
+        string value = row[idx];
+
+        if (field.FieldType == typeof(string))
+            field.SetValue(data, value);
+        else if (field.FieldType == typeof(int) && int.TryParse(value, out int i))
+            field.SetValue(data, i);
+        else if (field.FieldType == typeof(float) && float.TryParse(value, out float f))
+            field.SetValue(data, f);
+        else if (field.FieldType == typeof(bool) && bool.TryParse(value, out bool b))
+            field.SetValue(data, b);
+        else if (field.FieldType.IsEnum && Enum.TryParse(field.FieldType, value, out object e))
+            field.SetValue(data, e);
+    }
+
+    private void UpdateStatArrayField(FieldInfo field, CSVScriptableObject data, string[] row)
+    {
+        List<StatChange> list = new();
+
+        for (int i = 0; m_headDic.TryGetValue($"StatType{i}" ,out var col0); i++)
+        {
+            var sc = new StatChange();
+
+            if (Enum.TryParse(row[col0], out StatType statType))
+            {
+                sc.StatType = statType;
+            }
+            else continue;
+            string keyModifierFixed = $"StatModifierFixed{i}";
+            string keyModifierPercent = $"StatModifierPercent{i}";
+            string keyMinNeeded = $"MinNeeded{i}";
+            string keyDuration = $"Duration{i}";
+            string keyEnforceFac = $"EnforceFactor{i}";
+            sc.StatModifier = new StatModifier();
+            if (m_headDic.TryGetValue(keyModifierFixed, out var col1))
+            {
+                var value = row[col1];
+                if (float.TryParse(value, out var res))
+                {
+                    sc.StatModifier.FixedValue = res;
+                }
+            }
+
+            if (m_headDic.TryGetValue(keyModifierPercent, out var col2))
+            {
+                var value = row[col2];
+                if (float.TryParse(value, out var res))
+                {
+                    sc.StatModifier.PercentValue = res;
+                }
+            }
+
+            if (m_headDic.TryGetValue(keyMinNeeded, out var col3) &&
+                float.TryParse(row[col3], out float min))
+            {
+                sc.MinNeeded = min;
+            }
+
+            if (m_headDic.TryGetValue(keyDuration, out var col4) &&
+                float.TryParse(row[col4], out float dur))
+            {
+                sc.Duration = dur;
+            }
+
+            if (m_headDic.TryGetValue(keyEnforceFac, out var col5) &&
+                float.TryParse(row[col5], out float factor))
+            {
+                sc.EnforceStatFactor = factor;
+            }
+            list.Add(sc);
+        }
+
+        field.SetValue(data, list.ToArray());
+    }
+
 }
+#endif
