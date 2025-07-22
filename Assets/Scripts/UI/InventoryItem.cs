@@ -6,17 +6,18 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [CreateAssetMenu(fileName = "InventoryItem", menuName = "Scriptable Objects/Item")]
-public class InventoryItem : ScriptableObject
+public class InventoryItem : CSVScriptableObject
 {
+    [CSVField(CSVFIledType.None)]
+    public string Name;
+    [CSVField(CSVFIledType.None)]
     public string Description;
+    [CSVField(CSVFIledType.None)]
+    public int Price;
+    [CSVField(CSVFIledType.None)]
     public ItemType ItemType;
     public Sprite Icon;
 
-    [Serializable]
-    public struct ModifyStats
-    {
-        public StatType type;
-        [SerializeField] public StatModifier modifier;
-    }
-    public ModifyStats[] ModifierStats;
+    [CSVField(CSVFIledType.StatArr)]
+    public StatChange[] ModifierStats;
 }
