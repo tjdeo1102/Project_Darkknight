@@ -9,13 +9,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bea75f1f8677c244eb723f4506990347, type: 3}
-  m_Name: RangeEnemyAttack
+  m_Script: {fileID: 11500000, guid: c2828308db30200418275d7930c90807, type: 3}
+  m_Name: ClosedEnemyAttack
   m_EditorClassIdentifier: 
-  ID: -101
+  ID: -100
   OriginSO: '{}'
-  SkillName: "\uC6D0\uAC70\uB9AC\uC801 \uAE30\uBCF8\uACF5\uACA9"
-  Description: "\uC6D0\uAC70\uB9AC\uC801 \uAE30\uBCF8 \uACF5\uACA9"
+  SkillName: 
+  Description: 
   Cooldown: -1
   CostMP: -1
   EnforceBaseCost: 0
@@ -28,10 +28,12 @@ MonoBehaviour:
   SkillType: 0
   RequireWeapon: 0
   RequireSkill: []
-  StartOffset: {x: 0, y: 1.5, z: 1}
-  ActiveDelay: 0
+  StartOffset: {x: 0, y: 1, z: 1}
+  ActiveDelay: 1.5
   EffectDelay: 0
-  ProjectileType: 1
-  Speed: 10
-  LifeTime: 3
+  HitOffset: {x: 0, y: 0, z: 0}
+  Range: {x: 1, y: 1, z: 1}
   KnockBackForce: 0.3
+  TargetLayer:
+    serializedVersion: 2
+    m_Bits: 8388608
