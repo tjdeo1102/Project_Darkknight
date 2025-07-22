@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: NPC Group
+  m_EditorClassIdentifier: 
+  m_GroupName: NPC Group
+  m_GUID: edbf6b750f9e5324cb4d752f7414f130
+  m_SerializeEntries:
+  - m_GUID: 6a78167c7b356e543a69603d3e4151cb
+    m_Address: Assets/Prefabs/NPC/NPC4.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - NPC
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a94075e08fdff7147b59e2bfe63da346
+    m_Address: Assets/Prefabs/NPC/NPC2.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - NPC
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c9b3d07ad57389e4ab814fb2b73fed37
+    m_Address: Assets/Prefabs/NPC/NPC3.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - NPC
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d5bf4219200d0ef40ba5d9a1f85f4c51
+    m_Address: Assets/Prefabs/NPC/NPC.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - NPC
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: c8793af35a835154c9e3310d895cae10, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 991d468584e6cf34e9aed88b05d21bbe, type: 2}
+    - {fileID: 11400000, guid: 94791b8765d9cec4795f1c683195ff8e, type: 2}

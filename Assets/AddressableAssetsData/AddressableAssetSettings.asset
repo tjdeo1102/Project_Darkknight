@@ -24,11 +24,11 @@ MonoBehaviour:
   m_InternalBundleIdMode: 1
   m_AssetLoadMode: 0
   m_BundledAssetProviderType:
-    m_AssemblyName: 
-    m_ClassName: 
+    m_AssemblyName: Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    m_ClassName: UnityEngine.ResourceManagement.ResourceProviders.BundledAssetProvider
   m_AssetBundleProviderType:
-    m_AssemblyName: 
-    m_ClassName: 
+    m_AssemblyName: Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    m_ClassName: UnityEngine.ResourceManagement.ResourceProviders.AssetBundleProvider
   m_IgnoreUnsupportedFilesInBuild: 0
   m_UniqueBundleIds: 0
   m_EnableJsonCatalog: 0
@@ -59,8 +59,11 @@ MonoBehaviour:
   m_BuildAddressablesWithPlayerBuild: 0
   m_overridePlayerVersion: '[UnityEditor.PlayerSettings.bundleVersion]'
   m_GroupAssets:
+  - {fileID: 11400000, guid: cb6e87815eddf304fbb989a752c70868, type: 2}
   - {fileID: 11400000, guid: 4e197af4723494f4c951e77aebc73380, type: 2}
   - {fileID: 11400000, guid: 9b9cbbfea4d0b1340a31fafb2ddb762b, type: 2}
+  - {fileID: 11400000, guid: a464a3c52423daf46addd0380134b388, type: 2}
+  - {fileID: 11400000, guid: 0a7d4e4fe309f054681e8f195e938b9e, type: 2}
   m_BuildSettings:
     m_LogResourceManagerExceptions: 1
     m_BundleBuildPath: Temp/com.unity.addressables/AssetBundles
@@ -101,6 +104,9 @@ MonoBehaviour:
     m_LabelNames:
     - default
     - SOManager
+    - InventoryItem
+    - NPC
+    - Enemy
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 959b943163f2e8144b54249350a0ff45, type: 2}
