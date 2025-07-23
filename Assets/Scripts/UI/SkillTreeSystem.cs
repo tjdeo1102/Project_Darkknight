@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class SkillTreeSystem : MonoBehaviour, IUIElements
+public class SkillTreeSystem : UIElementBase
 {
     public GameObject DescriptionWindow;
     public TextMeshProUGUI DescriptionText;
@@ -18,11 +19,9 @@ public class SkillTreeSystem : MonoBehaviour, IUIElements
     public Button EnforceBtn;
     public TextMeshProUGUI EnforceBtnText;
 
-    // key: º±«‡Ω∫≈≥ value: º±«‡Ω∫≈≥¿ª ø‰±∏«œ¥¬ Ω∫≈≥µÈ
+    // key: ÏÑ†ÌñâÏä§ÌÇ¨ value: ÏÑ†ÌñâÏä§ÌÇ¨ÏùÑ ÏöîÍµ¨ÌïòÎäî Ïä§ÌÇ¨Îì§ 
     public Dictionary<SkillBase, List<SkillBase>> preRequireSkillDic;
     private SkillTreeSlot m_clickedSkillSlot;
-
-    public UIController Controller { get; set; }
 
     private void Start()
     {
@@ -45,19 +44,18 @@ public class SkillTreeSystem : MonoBehaviour, IUIElements
         Controller.ChangeState(UIState.SkillTree);
         EquipBtn.onClick.AddListener(EquipSkill);
         EnforceBtn.onClick.AddListener(EnforceSkill);
-        Controller.Player.input.actions["SkillEquip"].performed += OnSkillEquip;
+        Controller.Player.input.actions["Skill"].performed += OnSkillEquip;
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
         if (Controller.Player.IsDestroyed() == false)
         {
-            Controller.Player.input.actions["SkillEquip"].performed -= OnSkillEquip;
+            Controller.Player.input.actions["Skill"].performed -= OnSkillEquip;
         }
         EquipBtn.onClick.RemoveListener(EquipSkill);
         EnforceBtn.onClick.RemoveListener(EnforceSkill);
-        Controller.ChangeState(UIState.None);
-
+        base.OnDisable();
     }
     public void ClickDescriptionWindow (SkillTreeSlot slot, bool isActive)
     {
@@ -71,56 +69,75 @@ public class SkillTreeSystem : MonoBehaviour, IUIElements
         }
         if (isActive)
         {
-            DescriptionText.text = skill.Description;
-            DescriptionImage.sprite = skill.Icon;
-            EnforceBtnText.text = (skill.EnforceBaseCost * (skill.EnforceLevel + 1) * skill.EnforceCostFactor).ToString();
             m_clickedSkillSlot = slot;
-            // ¬¯øÎ ui¥¬ ∫Ò»∞º∫»≠
+            UpdateDescription();
+            RefreshEnforceText();
+            // Ï∞©Ïö© uiÎäî ÎπÑÌôúÏÑ±Ìôî
             SkillSlots.gameObject.SetActive(false);
         }
         else m_clickedSkillSlot = null;
         DescriptionWindow.SetActive(isActive);
     }
 
+
+    private void UpdateDescription()
+    {
+        var skill = m_clickedSkillSlot.SlotSkill;
+        if (DescriptionImage == null || DescriptionText == null || skill == null) return;
+        StringBuilder sb = new();
+        sb.AppendLine($"<color=#D0E8F2>[{skill.SkillName}]</color>");
+        sb.AppendLine(skill.Description);
+        sb.AppendLine();
+        foreach (var stat in skill.SkillStats)
+        {
+            sb.AppendLine($"{stat.StatType.ToString()}:");
+            sb.AppendLine($"  + Flat: {stat.StatModifier.FixedValue:F1}");
+            sb.AppendLine($"  + Percent: {stat.StatModifier.PercentValue:F1}");
+            sb.AppendLine($"  + Duration: {stat.Duration:F1}");
+        }
+        DescriptionText.text = sb.ToString();
+        DescriptionImage.sprite = skill.Icon;
+    }
     public void EnforceSkill()
     {
-        // ∫Ò»∞º∫»≠ ø©∫Œø° µ˚∂Û / 1. »∞º∫»≠ / 2. ∞≠»≠
+        // ÎπÑÌôúÏÑ±Ìôî Ïó¨Î∂ÄÏóê Îî∞Îùº / 1. ÌôúÏÑ±Ìôî / 2. Í∞ïÌôî
         var skill = m_clickedSkillSlot.SlotSkill;
         if (skill == null || skill.CanUnlock == false) return;
 
         var money = Controller.Player.model.Money;
-        var cost = skill.EnforceBaseCost * (skill.EnforceLevel + 1) * skill.EnforceCostFactor;
+        var cost = skill.EnforceBaseCost * (1 + skill.EnforceLevel * skill.EnforceCostFactor);
         if (money.TotalValue - cost < 0f) return;
 
         if (skill.CanActive == false)
         {
-            // µ∑¿Ã ¿÷¥¬ ∞ÊøÏ ∫ÒøÎ ¡ˆ∫“∞˙ µøΩ√ø° »∞º∫»≠
+            // ÎèàÏù¥ ÏûàÎäî Í≤ΩÏö∞ ÎπÑÏö© ÏßÄÎ∂àÍ≥º ÎèôÏãúÏóê ÌôúÏÑ±Ìôî
             skill.CanActive = true;
             skill.EnforceLevel = 1;
             m_clickedSkillSlot.SlotIcon.color = Color.white;
-            money.AddModifier(new StatModifier(-cost, 0), StatModifyType.Perment);
+            money.AddModifier(new StatModifier(-cost, 0), StatModifyType.Permanent);
 
-            // º±«‡Ω∫≈≥∑Œ µÓ∑œµ» Ω∫≈≥µÈ ∞ÀªÁ
+            // ÏÑ†ÌñâÏä§ÌÇ¨Î°ú Îì±Î°ùÎêú Ïä§ÌÇ¨Îì§ Í≤ÄÏÇ¨
             if (preRequireSkillDic.TryGetValue(skill,out var items))
             {
-                // ∏ÆΩ∫∆Æ ≥ª Ω∫≈≥µÈ¿« ∞¢∞¢¿« º±«‡Ω∫≈≥¿ª ∞ÀªÁ«œø©, Unlockø©∫Œ ∞ªΩ≈
+                // Î¶¨Ïä§Ìä∏ ÎÇ¥ Ïä§ÌÇ¨Îì§Ïùò Í∞ÅÍ∞ÅÏùò ÏÑ†ÌñâÏä§ÌÇ¨ÏùÑ Í≤ÄÏÇ¨ÌïòÏó¨, UnlockÏó¨Î∂Ä Í∞±Ïã†
                 foreach (var item in items)
                 {
                     item.UnlockRequireSkill(skill);
                 }
             }
 
-            // ∏µÁ ∞ÀªÁ∞° ≥°≥™∏È ΩΩ∑‘ æ˜µ•¿Ã∆Æ
+            // Î™®Îì† Í≤ÄÏÇ¨Í∞Ä ÎÅùÎÇòÎ©¥ Ïä¨Î°Ø ÏóÖÎç∞Ïù¥Ìä∏
             foreach (var item in SkillTreeSlots)
             {
                 item.RefreshSlot();
             }
-
-            EnforceBtnText.text = (skill.EnforceBaseCost * (skill.EnforceLevel + 1) * skill.EnforceCostFactor).ToString();
+            RefreshEnforceText();
         }
         else
         {
+            if (skill.EnforceCostFactor < 0) return;
             skill.EnforceLevel++;
+            RefreshEnforceText();
         }
     }
 
@@ -134,23 +151,30 @@ public class SkillTreeSystem : MonoBehaviour, IUIElements
     public void OnSkillEquip(InputAction.CallbackContext context)
     {
         var player = Controller.Player;
+        var size = (int)InputSkill.Size;
+        int bindingIndex = context.action.GetBindingIndexForControl(context.control);
+        if (bindingIndex < 0 || bindingIndex >= size || SkillSlots.gameObject.activeSelf == false) return;
 
-        if (player.InputSkillDic.ContainsKey(context.control.name) == false
-            || SkillSlots.gameObject.activeSelf == false) return;
-
-        int skillNum = (int)player.InputSkillDic[context.control.name];
-        int targetCount = player.InputSkillDic.Count;
         int currentCount = player.combat.skills.Count;
-
-        if (currentCount < targetCount)
+        // Î∂ÄÏ°±Ìïú ÎßåÌÅº nullÍ∞í Ï∂îÍ∞ÄÌïòÏó¨ Î¶¨Ïä§Ìä∏ ÌÅ¨Í∏∞ ÎßûÏ∂îÍ∏∞
+        if (currentCount < size)
         {
-            int diff = targetCount - currentCount;
+            int diff = (int)InputSkill.Size - currentCount;
             player.combat.skills.AddRange(Enumerable.Repeat<SkillBase>(null, diff));
         }
-        player.combat.skills[skillNum] = m_clickedSkillSlot.SlotSkill;
+        player.combat.skills[bindingIndex] = m_clickedSkillSlot.SlotSkill;
         
-        SkillSlots.RefreshSkillSlot(m_clickedSkillSlot.SlotSkill, skillNum);
+        SkillSlots.RefreshSkillSlot(m_clickedSkillSlot.SlotSkill, bindingIndex);
         SkillSlots.gameObject.SetActive(false);
 
+    }
+    public void RefreshEnforceText()
+    {
+        if (m_clickedSkillSlot == null) return;
+        var skill = m_clickedSkillSlot.SlotSkill;
+        if (EnforceBtnText == null || skill == null) return;
+        // Ìï¥Í∏àÎêòÏóàÏúºÎ©¥ÏÑú Í∞ïÌôî ÎπÑÏö© ÏóÜÎäî Í≤ΩÏö∞ Max
+        if (skill.CanActive && skill.EnforceCostFactor < 0) EnforceBtnText.text = "Max";
+        else EnforceBtnText.text = (skill.EnforceBaseCost * (1 + skill.EnforceLevel * skill.EnforceCostFactor)).ToString();
     }
 }
