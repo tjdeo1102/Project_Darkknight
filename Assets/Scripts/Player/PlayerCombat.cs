@@ -6,29 +6,34 @@ using UnityEngine.InputSystem;
 
 public class PlayerCombat : MonoBehaviour
 {
+    [Header("Require Setting")]
     public PlayerController ctrl;
+    public WeaponType CurType;
+    public List<SkillBase> skills;
+
+    private WeaponBase curWeapon;
+    private Dictionary<WeaponType, WeaponBase> weapons;
+
+    private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
+    private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
+
     private void Start()
     {
         ctrl.input.actions["Skill"].performed += OnSkill;
         ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
+        ctrl.input.actions["Attack"].performed += OnAttack;
     }
 
     private void OnDisable()
     {
         ctrl.input.actions["Skill"].performed -= OnSkill;
         ctrl.input.actions["SwapWeapon"].performed -= OnSwapWeapon;
+        ctrl.input.actions["Attack"].performed -= OnAttack;
+
     }
 
 
     #region Weapon & General Attack
-    public WeaponType CurType;
-
-    private IWeapon curWeapon;
-    private Dictionary<WeaponType, IWeapon> weapons;
-    private bool attackLocked = false;
-
-    private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
-    private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
 
     public void ChangeWeapon(WeaponType type)
     {
@@ -47,7 +52,7 @@ public class PlayerCombat : MonoBehaviour
         curWeapon = weapons[CurType];
     }
 
-    public void RegisterWeapon(WeaponType type, IWeapon weapon)
+    public void RegisterWeapon(WeaponType type, WeaponBase weapon)
     {
         if (!weapons.ContainsKey(type))
         {
@@ -67,23 +72,12 @@ public class PlayerCombat : MonoBehaviour
         }
     }
 
-    public void OnAttack(InputValue value)
+    public void OnAttack(InputAction.CallbackContext context)
     {
-        bool isPressed = value.isPressed;
-
-        if (isPressed && ctrl.machine.CanOtherAction())
+        if (ctrl.machine.CanOtherAction() && curWeapon != null)
         {
-            if (attackLocked) return;
-            attackLocked = true;
-            if (curWeapon != null)
-            {
-                curWeapon.Attack();
-                ctrl.machine.ChangeState(StateType.Attack);
-            }
-        }
-        else
-        {
-            attackLocked = false;
+            curWeapon.Attack();
+            ctrl.machine.ChangeState(StateType.Attack);
         }
     }
 
@@ -91,25 +85,24 @@ public class PlayerCombat : MonoBehaviour
     {
         if (ctrl.machine.CanOtherAction())
         {
+            curWeapon?.ActiveWeapon(false);
             int next = ((int)CurType + 1) % (int)WeaponType.Size;
-
             ChangeWeapon((WeaponType)next);
+            curWeapon?.ActiveWeapon(true);
         }
     }
     #endregion
 
     #region Skill
-
-    public List<SkillBase> skills;
-
     public void OnSkill(InputAction.CallbackContext context)
     {
-        if (ctrl.InputSkillDic.ContainsKey(context.control.name) == false) return;
+        var size = (int)InputSkill.Size;
+        int bindingIndex = context.action.GetBindingIndexForControl(context.control);
+        if (bindingIndex < 0 || bindingIndex >= size) return;
 
-        int skillNum = (int)ctrl.InputSkillDic[context.control.name];
-        if (ctrl.machine.CanOtherAction() && skills[skillNum] != null)
+        if (ctrl.machine.CanOtherAction() && skills[bindingIndex] != null)
         {
-            StartCoroutine(skills[skillNum].Active(ctrl));
+            StartCoroutine(skills[bindingIndex].Active(ctrl));
         }
     }
     #endregion
