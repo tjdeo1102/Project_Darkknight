@@ -228,7 +228,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Model: {fileID: 4338776923230950488}
   AI: {fileID: 8882735676012563656}
-  EnemyType: 4
+  EnemyType: 32
   Rigid: {fileID: 0}
   GameLoop: {fileID: 0}
   Target: {fileID: 0}
