@@ -13,28 +13,36 @@ MonoBehaviour:
   m_Name: VerticalSlash
   m_EditorClassIdentifier: 
   ID: 4
+  OriginSO: '{}'
   SkillName: "\uCC38\uACA9"
   Description: "\uBB34\uAE30\uB97C \uB192\uC774 \uCE58\uCF1C\uB4E4\uACE0 \uAC15\uD55C
     \uD798\uC73C\uB85C \uC815\uBA74\uC744 \uC138\uB85C \uBC29\uD5A5\uC73C\uB85C \uB0B4\uB824\uBCA0\uB294
     \uACF5\uACA9 "
-  Cooldown: 8
-  CostMP: 10
+  Cooldown: 6
+  CostMP: 8
   EnforceBaseCost: 100
   EnforceCostFactor: 0.2
   EnforceLevel: 0
   CanActive: 0
   CanUnlock: 1
+  SkillStats:
+  - StatType: 2
+    StatModifier:
+      FixedValue: 35
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 0
+    EnforceStatFactor: 1
   Icon: {fileID: 21300000, guid: c890dd06d4a350946ab11e4778bf47d8, type: 3}
   SkillType: 1
   RequireWeapon: 1
   RequireSkill: []
-  StartOffset: {x: 0, y: 1, z: 1}
+  StartOffset: {x: 0, y: 1.5, z: 3}
   ActiveDelay: 0.5
   EffectDelay: 0.5
   HitOffset: {x: 0, y: 0, z: 0}
-  Range: {x: 0, y: 0, z: 0}
-  Damage: 40
-  DamageFactor: 1
+  Range: {x: 2, y: 3, z: 6}
+  KnockBackForce: 1
   TargetLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
