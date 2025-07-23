@@ -7,6 +7,8 @@ public class CameraTarget : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
-        transform.position = new Vector3(target.position.x, transform.position.y, target.position.z);
+        var y = transform.position.y;
+        if (Mathf.Abs(target.position.y - y) > 1000f) y = target.position.y + 10f;
+        transform.position = new Vector3(target.position.x, y, target.position.z);
     }
 }
