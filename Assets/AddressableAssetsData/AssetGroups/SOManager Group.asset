@@ -1,0 +1,149 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: SOManager Group
+  m_EditorClassIdentifier: 
+  m_GroupName: SOManager Group
+  m_GUID: a599c14b5702c4b489680dde418c3174
+  m_SerializeEntries:
+  - m_GUID: 2012343fdd6f7534d9da6b7cb39030a2
+    m_Address: PactOfDeath_M
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23ad1da2bae82164b8ff7bcd4a39da22
+    m_Address: FireBreath
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2589adaf8a8c0dc4696ecfa5911d557a
+    m_Address: Heal_M
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 27da3ed25a2b13c47bdb57830dbd3c58
+    m_Address: Heal_S
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4874e45c53535b7458ea679223a18430
+    m_Address: ClosedEnemyStat2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4dc8ccf5789ba5c438b950871d1b8b7c
+    m_Address: PlayerStat
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 55c427fc7766c4043a042a75e4eb808e
+    m_Address: RangeEnemyAttack
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 71a4e251ccd338d4b97dfd4a3062f714
+    m_Address: SkyRipper
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 767bc9093c7773e45b764e02d961da08
+    m_Address: RangeEnemyStat1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7f155de8500431e4ba486f762853be6e
+    m_Address: ClosedEnemyAttack
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8081e38e0db7a2049a94f58e6f938919
+    m_Address: RangeEnemyStat3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d410a7ca6fef904ab258273c6dff0c9
+    m_Address: SpinSlash
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9c541325d8895004296f3c53bdd36364
+    m_Address: PactOfDeath_H
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0ba08691a073a2459083cb5e0c8f3de
+    m_Address: VerticalSlash
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a18b4fa559e420c478c97df574c3aaba
+    m_Address: Heal_H
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a9a83e9dac7494a4aa2b01d68a5a9781
+    m_Address: ClosedEnemyStat3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bec8db26cfaabde40b8dbc63caaac997
+    m_Address: HorizontalSlash
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d67e267f4a7a36749a78d294e33b262c
+    m_Address: ClosedEnemyStat1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e935214e7a95c574684427f658850ad9
+    m_Address: Smash
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eab2fb159301a52468a5643408b9f478
+    m_Address: RangeEnemyStat2
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f821e7103d727e542917e427302639c0
+    m_Address: PactOfDeath_S
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SOManager
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: c8793af35a835154c9e3310d895cae10, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 517623079736d9b4aa170f0ffa0d6419, type: 2}
+    - {fileID: 11400000, guid: c5abc1642a032f7449884fa9570a61c8, type: 2}
