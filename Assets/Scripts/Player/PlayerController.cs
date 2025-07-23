@@ -1,17 +1,21 @@
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Require Setting")]
     public PlayerInput input;
     public PlayerStateMachine machine;
     public PlayerModel model;
     public PlayerCombat combat;
-
     public Animator animator;
     public Transform body;
-    public Rigidbody rigid;
+    public Rigidbody Rigid;
+    public CinemachineImpulseSource Impulse;
+    public Volume hitScreenVolume;
 
     private void LateUpdate()
     {
@@ -20,13 +24,10 @@ public class PlayerController : MonoBehaviour
         body.localPosition = Vector3.zero;
     }
 
-    #region PlayerKeySetting
-    public Dictionary<string, InputSkill> InputSkillDic = new()
+    public void SetActionMap(InputActionMap mode)
     {
-        { "q", InputSkill.SkillQ },
-        { "w", InputSkill.SkillW },
-        { "e", InputSkill.SkillE },
-    };
+        if (input != null && input.enabled)
+            input.SwitchCurrentActionMap(mode.ToString());
+    }
 
-    #endregion
 }

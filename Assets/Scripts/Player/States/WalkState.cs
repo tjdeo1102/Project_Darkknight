@@ -36,13 +36,13 @@ public class WalkState : State
         {
             anim.SetBool(runParam, true);
             anim.SetBool(walkParam, false);
-            ctrl.rigid.linearVelocity = ctrl.model.RunSpeed.TotalValue * new Vector3(dir.x, 0, dir.z);
+            ctrl.Rigid.linearVelocity = ctrl.model.RunSpeed.TotalValue * new Vector3(dir.x, 0, dir.z);
         }
         else
         {
             anim.SetBool(runParam, false);
             anim.SetBool(walkParam, true);
-            ctrl.rigid.linearVelocity = ctrl.model.Speed.TotalValue * new Vector3(dir.x, 0, dir.z);
+            ctrl.Rigid.linearVelocity = ctrl.model.Speed.TotalValue * new Vector3(dir.x, 0, dir.z);
         }
     }
 
@@ -51,6 +51,6 @@ public class WalkState : State
         base.Exit();
         anim.SetBool(walkParam, false);
         anim.SetBool(runParam, false);
-        ctrl.rigid.linearVelocity = new Vector3(0, ctrl.rigid.linearVelocity.y, 0);
+        ctrl.Rigid.linearVelocity = new Vector3(0, ctrl.Rigid.linearVelocity.y, 0);
     }
 }

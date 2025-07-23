@@ -4,13 +4,13 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-public class RadialMenu : MonoBehaviour, IUIElements
+public class RadialMenu : UIElementBase
 {
     [Serializable]
     public struct MenuContent
     {
         public RectTransform Icon;
-        public UnityEvent OnExecute;
+        public UIState ChangeState;
     }
 
     public MenuContent[] contents;
@@ -21,8 +21,6 @@ public class RadialMenu : MonoBehaviour, IUIElements
     private int m_lastSelect;
     private Vector2 m_lastIconOriginScale;
 
-    public UIController Controller { get; set; }
-
     void OnEnable()
     {
         m_lastSelect = -1;
@@ -31,8 +29,10 @@ public class RadialMenu : MonoBehaviour, IUIElements
         m_center = RectTransformUtility.WorldToScreenPoint(null, pos);
     }
 
-    void OnDisable()
+    protected override void OnDisable()
     {
+        if (m_lastSelect >= contents.Length || m_lastSelect < 0) return;
+
         contents[m_lastSelect].Icon.localScale = m_lastIconOriginScale;
         Text.text = "";
     }
@@ -59,7 +59,7 @@ public class RadialMenu : MonoBehaviour, IUIElements
             && m_lastSelect > -1
             && contents != null)
         {
-            contents[m_lastSelect].OnExecute?.Invoke();
+            Controller.ChangeState(contents[m_lastSelect].ChangeState);
             gameObject.SetActive(false);
         }
     }

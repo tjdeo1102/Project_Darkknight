@@ -13,16 +13,32 @@ MonoBehaviour:
   m_Name: Heal_H
   m_EditorClassIdentifier: 
   ID: 9
+  OriginSO: '{}'
   SkillName: "\uAD73\uAC74\uD55C \uC758\uC9C0"
   Description: "\uC77C\uC2DC\uC801\uC73C\uB85C \uC2A4\uD53C\uB4DC\uAC00 \uB290\uB824\uC9C0\uACE0
     \uBC29\uC5B4\uB825\uC774 \uC62C\uB77C\uAC11\uB2C8\uB2E4."
   Cooldown: 20
   CostMP: 20
   EnforceBaseCost: 200
-  EnforceCostFactor: 0.25
+  EnforceCostFactor: -999
   EnforceLevel: 0
   CanActive: 0
   CanUnlock: 0
+  SkillStats:
+  - StatType: 4
+    StatModifier:
+      FixedValue: -2
+      PercentValue: 0
+    MinNeeded: 3
+    Duration: 5
+    EnforceStatFactor: 0
+  - StatType: 3
+    StatModifier:
+      FixedValue: 40
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 5
+    EnforceStatFactor: 0
   Icon: {fileID: 21300000, guid: c3aab7237df394c4890e647a4ae580ea, type: 3}
   SkillType: 7
   RequireWeapon: 0
@@ -31,4 +47,3 @@ MonoBehaviour:
   StartOffset: {x: 0, y: 1, z: 0}
   ActiveDelay: 1
   EffectDelay: 0.5
-  Stats: []

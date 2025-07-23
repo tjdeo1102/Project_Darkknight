@@ -7,23 +7,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "StatSkill", menuName = "Scriptable Objects/Stat Skill")]
 public class StatSkill: SkillBase
 {
-    [Serializable]
-    public struct StatChange
-    {
-        [SerializeField] public StatType StatType;
-        [SerializeField] public StatModifier StatModifier;
-        [SerializeField] public float MinNeeded;
-        [SerializeField] public float Duration;
-        [SerializeField] public float EnforceStatFactor;
-    }
-
-    [CSVField(CSVFIledType.StatArr)]
-    public StatChange[] Stats;
-
     public override IEnumerator Active(PlayerController player)
     {
         // 요구 조건 만족 후, 스킬 사용
-        foreach (StatChange statChange in Stats)
+        foreach (StatChange statChange in SkillStats)
         {
             if (player.model.Stats[statChange.StatType].TotalValue < statChange.MinNeeded)
                 yield break;
@@ -35,7 +22,7 @@ public class StatSkill: SkillBase
 
         var maxDuration = 0f;
         // 스탯 관련 로직 적용
-        foreach (StatChange statChange in Stats)
+        foreach (StatChange statChange in SkillStats)
         {
             maxDuration = Mathf.Max(maxDuration, statChange.Duration);
             player.StartCoroutine(ApplyStatChange(player, statChange));
@@ -48,7 +35,8 @@ public class StatSkill: SkillBase
         StatType type = statChange.StatType;
 
         // 강화 레벨 * (스탯 증폭치 + 1) * 원래 수치
-        var stat = statChange.StatModifier * (statChange.EnforceStatFactor + 1) * EnforceLevel;
+        var factor = statChange.EnforceStatFactor < 0f ? 0f: statChange.EnforceStatFactor;
+        var stat = statChange.StatModifier * (factor + 1) * EnforceLevel;
 
         // 일시적 버프
         if (statChange.Duration > 0f)
@@ -58,6 +46,6 @@ public class StatSkill: SkillBase
             player.model.Stats[type].AddModifier(-stat, StatModifyType.Buff);
         }
         // 영구 버프
-        else player.model.Stats[type].AddModifier(stat, StatModifyType.Perment);
+        else player.model.Stats[type].AddModifier(stat, StatModifyType.Permanent);
     }
 }

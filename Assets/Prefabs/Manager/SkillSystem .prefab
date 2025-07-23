@@ -50,46 +50,58 @@ MonoBehaviour:
       poolObj: {fileID: 9145224083937929664, guid: 8bfa008b628703b4da5e834b50f8c8bb,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 2
     Pool:
       poolObj: {fileID: 1461921824905443788, guid: 1c52cd0131f6bb04ebdc351959d6578e,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 3
     Pool:
       poolObj: {fileID: 4598140872700327850, guid: b22c368f79861004b8c65238dfcedf92,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 4
     Pool:
       poolObj: {fileID: 198393960337124616, guid: a496d90c00e9e0c47a04fcbb4b58013a,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 5
     Pool:
       poolObj: {fileID: 4523017090211163188, guid: 831ad5506d1fb8d4f918b99d83449be9,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 6
     Pool:
       poolObj: {fileID: 6435306557864783679, guid: 3a52b80c39398b942bd8ae17a40c6632,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 7
     Pool:
       poolObj: {fileID: 4785922281457660653, guid: b0661de25e993c64ea6e4573a205a096,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
   - SkillType: 8
     Pool:
       poolObj: {fileID: 4766188471300750561, guid: 8ba77a1ea10ddb747a68c44b083c2384,
         type: 3}
       parent: {fileID: 6057975645124855148}
-      initSize: 10
+      InitSize: 0
+  - SkillType: 9
+    Pool:
+      poolObj: {fileID: 8015451558350430190, guid: 14dfb3c7113f4064ea20a26c835a979f,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      InitSize: 0
+  - SkillType: 10
+    Pool:
+      poolObj: {fileID: 8495381109212154705, guid: 62e97ed880d19d4489c706fae53b7f42,
+        type: 3}
+      parent: {fileID: 6057975645124855148}
+      InitSize: 0

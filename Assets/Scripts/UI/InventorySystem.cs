@@ -7,7 +7,7 @@ using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class InventorySystem : MonoBehaviour, IUIElements
+public class InventorySystem : UIElementBase
 {
     public List<ItemSlot> EquipSlots;
     public List<ItemSlot> UnequipSlots;
@@ -20,8 +20,6 @@ public class InventorySystem : MonoBehaviour, IUIElements
     private Dictionary<StatType, Action> listeners = new();
 
     private Dictionary<StatType, string> statTexts = new();
-
-    public UIController Controller { get; set; }
 
     private void OnEnable()
     {
@@ -39,7 +37,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
         }
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
         var model = Controller.Player.model;
         if (model != null)
@@ -51,7 +49,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
                 listeners.Remove(stat.Key);
             }
         }
-        Controller.ChangeState(UIState.None);
+        base.OnDisable();
     }
 
     private void Start()
@@ -70,7 +68,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
 
     public void UpdateStat(StatType type ,Stat newStat)
     {
-        statTexts[type] = $"{type.ToString()} : {newStat.TotalValue:F1} <color=green>(+{newStat.addValue:F1})</color>";
+        statTexts[type] = $"{type.ToString()} : {newStat.TotalValue:F1} <color=green>(+{newStat.GetTotalModifier(StatModifyType.Equipment):F1})</color>";
 
         StringBuilder sb = new StringBuilder();
         foreach (var item in statTexts)
@@ -90,8 +88,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
         }
         if (isActive)
         {
-            DescriptionText.text = item.Description;
-            DescriptionImage.sprite = item.Icon;
+            UpdateDescription(item);
         }
         DescriptionWindow.GetComponent<RectTransform>().position = hoverPos;
         DescriptionWindow.SetActive(isActive);
@@ -104,7 +101,8 @@ public class InventorySystem : MonoBehaviour, IUIElements
         if (from.SlotType == ItemType.None)
         {
             // 같은 아이템 타입의 Equip 슬롯과 Swap (타입 별 Equip 슬롯은 하나)
-            if (equipDic.ContainsKey(from.SlotItem.ItemType))
+
+            if (from.SlotItem!= null && equipDic.ContainsKey(from.SlotItem.ItemType))
             {
                 var equipSlot = equipDic[from.SlotItem.ItemType];
                 // 스탯 갱신
@@ -113,7 +111,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
                     foreach (var modifyStat in equipSlot.SlotItem.ModifierStats)
                     {
                         // 기존 장착된 무기의 스탯의 값은 빼기
-                        model.Stats[modifyStat.type].AddModifier(-modifyStat.modifier, StatModifyType.Equipment);
+                        model.Stats[modifyStat.StatType].AddModifier(-modifyStat.StatModifier, StatModifyType.Equipment);
                     }
                 }
                 if (from.SlotItem != null)
@@ -121,11 +119,10 @@ public class InventorySystem : MonoBehaviour, IUIElements
                     foreach (var modifyStat in from.SlotItem.ModifierStats)
                     {
                         // 새로 장착할 무기의 스탯의 값은 더하기
-                        model.Stats[modifyStat.type].AddModifier(modifyStat.modifier, StatModifyType.Equipment);
+                        model.Stats[modifyStat.StatType].AddModifier(modifyStat.StatModifier, StatModifyType.Equipment);
                     }
 
                 }
-
                 // 스왑
                 (from.SlotItem, equipSlot.SlotItem) = (equipSlot.SlotItem, from.SlotItem);
             }
@@ -141,7 +138,7 @@ public class InventorySystem : MonoBehaviour, IUIElements
                 foreach (var modifyStat in from.SlotItem.ModifierStats)
                 {
                     // 기존 장착된 무기의 스탯의 값은 빼기
-                    model.Stats[modifyStat.type].AddModifier(-modifyStat.modifier, StatModifyType.Equipment);
+                    model.Stats[modifyStat.StatType].AddModifier(-modifyStat.StatModifier, StatModifyType.Equipment);
                 }
             }
 
@@ -171,5 +168,22 @@ public class InventorySystem : MonoBehaviour, IUIElements
             }
         }
         return false;
+    }
+
+    private void UpdateDescription(InventoryItem item)
+    {
+        if (DescriptionImage ==null || DescriptionText ==null) return;
+        StringBuilder sb = new();
+        sb.AppendLine($"<color=#D0E8F2>[{item.ItemType.ToString()}]</color>");
+        sb.AppendLine(item.Description);
+        sb.AppendLine();
+        foreach (var stat in item.ModifierStats)
+        {
+            sb.AppendLine($"{stat.StatType.ToString()}:");
+            sb.AppendLine($"  + Flat: {stat.StatModifier.FixedValue:F1}");
+            sb.AppendLine($"  + Percent: {stat.StatModifier.PercentValue:F1}");
+        }
+        DescriptionText.text = sb.ToString();
+        DescriptionImage.sprite = item.Icon;
     }
 }
