@@ -25,7 +25,7 @@ public class EnemyController : MonoBehaviour
     {
         Rigid = GetComponent<Rigidbody>();
         Rigid.useGravity = false;
-        AI.enabled = false;
+        if (AI != null) AI.enabled = false;
     }
 
     private void OnEnable()
@@ -47,14 +47,14 @@ public class EnemyController : MonoBehaviour
         if (m_chunkManager == null) return;
 
         var chunk = m_chunkManager.GetChunk(transform.position);
-        // Ã»Å©¿Í ÇÔ²² °ü¸®
+        // ì²­í¬ì™€ í•¨ê»˜ ê´€ë¦¬
         if (chunk != null)
         {
             transform.parent = chunk.ChunkObject.transform;
             Rigid.useGravity = true;
             AI.enabled = true;
         }
-        // Á¤ÇØÁø Ã»Å© À§Ä¡¿¡ ¾ø´Â ÀûÀº ´Ù½Ã ¹İÈ¯
+        // ì •í•´ì§„ ì²­í¬ ìœ„ì¹˜ì— ì—†ëŠ” ì ì€ ë‹¤ì‹œ ë°˜í™˜
         else
         {
             GameLoop.EnemySpawner.DestroyEnemy(this);
