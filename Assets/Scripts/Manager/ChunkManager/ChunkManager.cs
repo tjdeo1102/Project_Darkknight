@@ -301,16 +301,6 @@ public class ChunkManager : ManagerBase<ChunkManager>
         return m_chunks.TryGetValue(currentChunk, out var res) ? res : null;
     }
 
-    public async UniTaskVoid BossMapGenerate(Vector3 PlayerPos, Vector3 BossPos)
-    {
-        var Chunks = new List<Chunk>() { GetChunk(PlayerPos), GetChunk(BossPos) };
-
-        foreach (var chunk in Chunks)
-        {
-
-        }
-    }
-
     private void ConnectNeighborChunk(Vector2Int chunkCoord)
     {
         Vector2Int[] dirs = {
