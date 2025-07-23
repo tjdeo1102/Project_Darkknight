@@ -1,9 +1,18 @@
+using DG.Tweening;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 
 public class PlayerModel : MonoBehaviour
 {
+    [Header("Require Setting")]
+    public PlayerController Ctrl;
+    public StatBaseSO InitStat;
+    [Header("Hit Setting")]
+    public bool CanHitEffect = true;
+    public float HitEffectLength = 0.2f;
+    [Header("Stats")]
     public Stat Health = new();
     public Stat Mana = new();
     public Stat AttackPower = new();
@@ -15,6 +24,7 @@ public class PlayerModel : MonoBehaviour
 
     public Dictionary<StatType, Stat> Stats;
 
+    private bool isPlayEffect = false;
     private void Start()
     {
         Stats = new Dictionary<StatType, Stat>()
@@ -28,10 +38,38 @@ public class PlayerModel : MonoBehaviour
             { StatType.LifeSteel, LifeSteel},
             { StatType.Money, Money},
         };
-        foreach (var item in Stats)
+        InitStat.SetStat(ref Stats);
+    }
+
+    public void ApplyDamage(float damage, Vector3 attackerPos, float force)
+    {
+        if (Stats.TryGetValue(StatType.Health, out var value))
         {
-            item.Value.UpdateTotalValue();
-            item.Value.OnChangeStat?.Invoke();
+            value.AddModifier(new StatModifier(-damage), StatModifyType.Damage);
+
+            if (value.TotalValue < 0.0001f && InGameLoop.Instance != null)
+            {
+                InGameLoop.Instance.DiePlayer();
+            }
+
+            if (CanHitEffect)
+            {
+                Ctrl.Impulse.GenerateImpulse(force);
+                if (isPlayEffect == false)
+                {
+                    isPlayEffect = true;
+
+                    Sequence seq = DOTween.Sequence();
+
+                    seq.Append(DOTween.To(() => Ctrl.hitScreenVolume.weight, x => Ctrl.hitScreenVolume.weight = x, 0.3f, HitEffectLength / 2))
+                       .Append(DOTween.To(() => Ctrl.hitScreenVolume.weight, x => Ctrl.hitScreenVolume.weight = x, 0f, HitEffectLength / 2))
+                       .OnComplete(() => isPlayEffect = false);
+
+                    seq.Play();
+                }
+
+            }
         }
     }
+
 }
