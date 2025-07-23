@@ -5,24 +5,25 @@ using UnityEngine;
 
 public class PlayerStateMachine : MonoBehaviour
 {
+    [Header("Require Setting")]
+    public PlayerController Ctrl;
     public StateType CurType;
 
     private Dictionary<StateType, State> states;
     private State curState;
-    public PlayerController ctrl;
 
     void Start()
     {
         states = new Dictionary<StateType, State>()
         {
-            { StateType.Idle,new IdleState(ctrl) },
-            { StateType.Walk,new WalkState(ctrl) },
-            { StateType.Attack,new AttackState(ctrl) },
-            { StateType.SwapWeapon,new SwapWeaponState(ctrl) },
-            { StateType.Skill,new SkillState(ctrl) },
+            { StateType.Idle,new IdleState(Ctrl) },
+            { StateType.Walk,new WalkState(Ctrl) },
+            { StateType.Attack,new AttackState(Ctrl) },
+            { StateType.SwapWeapon,new SwapWeaponState(Ctrl) },
+            { StateType.Skill,new SkillState(Ctrl) },
         };
 
-        // ½ÃÀÛ »óÅÂ ¼¼ÆÃ
+        // ì‹œì‘ ìƒíƒœ ì„¸íŒ…
         CurType = StateType.Idle;
         curState = states[CurType];
         curState.Enter();
@@ -35,7 +36,6 @@ public class PlayerStateMachine : MonoBehaviour
 
     public void ChangeState(StateType type)
     {
-        //print($"{CurType}¿¡¼­ {type}À¸·Î ÀüÈ¯");
         curState?.Exit();
         CurType = type;
         curState = states[CurType];
