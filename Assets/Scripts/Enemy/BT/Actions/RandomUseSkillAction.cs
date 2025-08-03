@@ -21,8 +21,8 @@ public partial class RandomUseSkillAction : Action
     {
         paramHash = Animator.StringToHash(SkillParameter.Value);
 
-        var sel = Random.Range(0, MaxCount.Value);
-        if (sel < SkillDelayList.Value.Count) SkillDelay.Value = SkillDelayList.Value[sel];
+        var sel = Random.Range(-4, MaxCount.Value);
+        if (sel > -1 && sel < SkillDelayList.Value.Count) SkillDelay.Value = SkillDelayList.Value[sel];
         else SkillDelay.Value = 0.2f;
 
         animator.Value.SetInteger(paramHash, sel);

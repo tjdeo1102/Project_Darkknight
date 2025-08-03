@@ -33,6 +33,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Enemy
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f288eff08c5ce5942901d54186f9fcb0
+    m_Address: Assets/Prefabs/Enemy/Boss2.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Enemy
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: c8793af35a835154c9e3310d895cae10, type: 2}
   m_SchemaSet:

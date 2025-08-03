@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2828308db30200418275d7930c90807, type: 3}
   m_Name: JumpSkill
   m_EditorClassIdentifier: 
-  ID: 
+  ID: 13
   OriginSO: 
   SkillName: "\uBCF4\uC2A41 \uB0B4\uB824\uCC0D\uAE30"
   Description: 
@@ -23,17 +23,24 @@ MonoBehaviour:
   EnforceLevel: 0
   CanActive: 0
   CanUnlock: 0
-  SkillStats: []
+  SkillStats:
+  - StatType: 2
+    StatModifier:
+      FixedValue: 20
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 0
+    EnforceStatFactor: 0
   Icon: {fileID: 0}
   SkillType: 10
   RequireWeapon: 0
   RequireSkill: []
   StartOffset: {x: 0, y: 0, z: 0}
-  ActiveDelay: 1
-  EffectDelay: 0.5
-  HitOffset: {x: 0, y: 0, z: 0}
-  Range: {x: 0, y: 0, z: 0}
+  ActiveDelay: 0
+  EffectDelay: 2
+  HitOffset: {x: 0, y: 1, z: 1}
+  Range: {x: 3, y: 2, z: 3}
   KnockBackForce: 1
   TargetLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 8388608

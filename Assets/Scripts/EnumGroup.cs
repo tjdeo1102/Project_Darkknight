@@ -10,7 +10,7 @@ public enum VFX
 
 public enum ProjectileType
 {
-    None, ClosedEnemyBullet
+    None, ClosedEnemyBullet, Boss1_ThrowBullet
 }
 
 public enum StatType
@@ -100,7 +100,7 @@ public enum ItemType
 
 public enum UIState
 {
-    None, RadialMenu ,Inventory, SkillTree, Dialog, Die, Setting
+    None, RadialMenu ,Inventory, SkillTree, Dialog, Die, Setting, MidBossClear, GameClear,
 }
 
 public enum InputActionMap

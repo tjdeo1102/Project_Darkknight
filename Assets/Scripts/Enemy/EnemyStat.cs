@@ -10,7 +10,6 @@ public class EnemyStat : MonoBehaviour
     public EnemyController Ctrl;
     public List<StatBaseSO> StatData;
     public bool CanKnockBack = true;
-    public bool IsFinishDieAnimation = false;
 
     [Header("Stat")]
     public Stat Health = new();
@@ -73,7 +72,12 @@ public class EnemyStat : MonoBehaviour
         if (Ctrl.GameLoop == null || Ctrl.GameLoop.EnemySpawner== null || Ctrl.Rigid == null) return;
 
         Ctrl.GameLoop.Player.model.Stats[StatType.Money].AddModifier(new StatModifier(StatDic[StatType.Money].TotalValue), StatModifyType.KillEnemy);
-        Ctrl.GameLoop.KillCount.Value++;
+        if (Ctrl.EnemyType == EnemyType.Boss_1 ||
+            Ctrl.EnemyType == EnemyType.Boss_2 || 
+            Ctrl.EnemyType == EnemyType.Boss_3)
+           Ctrl.GameLoop.ClearBoss();
+
+        else Ctrl.GameLoop.KillCount.Value++;
 
         StartCoroutine(DIeRoutine());
     }
@@ -81,9 +85,8 @@ public class EnemyStat : MonoBehaviour
     private IEnumerator DIeRoutine()
     {
         Ctrl.AI.BTAgent.SetVariableValue("CurrentType", EnemyStateType.Die);
-        Ctrl.AI.BTAgent.Restart();
 
-        // √Êµπ º≥¡§ ¡§∏Æ
+        // Ï∂©Îèå ÏÑ§Ï†ï Ï†ïÎ¶¨
         Ctrl.Rigid.linearVelocity = Vector3.zero;
         Ctrl.Rigid.useGravity = false;
         var cols = Ctrl.GetComponentsInChildren<Collider>();
@@ -92,34 +95,42 @@ public class EnemyStat : MonoBehaviour
             item.enabled = false;
         }
         yield return null;
-        // Ω∫≈» ¡§∏Æ
-        foreach (var item in StatDic.Values)
-        {
-            item.RemoveAllModifier();
-            yield return null;
-        }
-        yield return new WaitForSeconds(3f);
 
-        // ≈ı∏Ì»≠«ÿº≠ ¡¶∞≈
+        // Ìà¨Î™ÖÌôîÌï¥ÏÑú Ï†úÍ±∞
         var renderer = Ctrl.GetComponentInChildren<SkinnedMeshRenderer>();
         var originMat = renderer.material;
         var mat = new Material(originMat);
         renderer.material = mat;
         var col = mat.color;
 
-        yield return new WaitUntil(() => IsFinishDieAnimation);
+        yield return new WaitUntil(() =>
+        {
+            var anim = Ctrl.Anim;
+            if (anim == null) return false;
+
+            var stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+
+            return stateInfo.IsName("Die") && stateInfo.normalizedTime >= 1f;
+        });
 
         var tween = DOTween.To(() => mat.color.a, x =>
             { col.a = x; mat.color = col;}, 0f, 1f);
 
         yield return tween.WaitForCompletion();
 
-        // ¿Ã∫•∆Æ «ÿ¡¶
+        // Ïä§ÌÉØ Ï†ïÎ¶¨
+        foreach (var item in StatDic.Values)
+        {
+            item.RemoveAllModifier();
+            yield return null;
+        }
+
+        // Ïù¥Î≤§Ìä∏ Ìï¥Ï†ú
         Ctrl.GameLoop.StageLevel.OnValueChanged -= UpdateStat;
 
 
         Ctrl.GameLoop.EnemySpawner.DestroyEnemy(Ctrl);
-        // √ ±‚»≠
+        // Ï¥àÍ∏∞Ìôî
         Ctrl.Rigid.useGravity = true;
         foreach (var item in cols)
         {
