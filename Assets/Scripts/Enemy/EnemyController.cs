@@ -14,6 +14,7 @@ public class EnemyController : MonoBehaviour
     public EnemyType EnemyType;
     public Rigidbody Rigid;
     public InGameLoop GameLoop;
+    public Animator Anim;
 
     public GameObject Target;
 
@@ -25,7 +26,7 @@ public class EnemyController : MonoBehaviour
     {
         Rigid = GetComponent<Rigidbody>();
         Rigid.useGravity = false;
-        if (AI != null) AI.enabled = false;
+        Anim = GetComponentInChildren<Animator>();
     }
 
     private void OnEnable()
@@ -39,7 +40,6 @@ public class EnemyController : MonoBehaviour
 
     private void OnDisable()
     {
-        AI.enabled = false;
         Rigid.useGravity = false;
     }
     public void ChunkRefresh()

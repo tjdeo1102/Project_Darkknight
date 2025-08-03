@@ -319,12 +319,14 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 if (currentChunk.IsLoaded && neighborChunk.IsLoaded)
                 {
                     if (currentChunk.IsCheckClosedChunk(dir)) continue;
+                    
                     Generator.TryConnectChunks(
-                        currentChunk.Bounds,
-                        neighborChunk.Bounds,
+                        currentChunk,
+                        dir,
                         BlockSize,
                         currentChunk.ChunkObject.transform
                     );
+
                     // 서로에 대해서 체크
                     currentChunk.CheckDirection.Add(dir);
                     neighborChunk.CheckDirection.Add(-dir);
@@ -374,7 +376,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
                     mesh = filter.sharedMesh,
                     transform = filter.transform.localToWorldMatrix
                 };
-                var renderer = filter.GetComponent<MeshRenderer>();
+                var renderer = filter.GetComponentInChildren<MeshRenderer>();
                 renderer.enabled = false;
                 combineList.Add(ci);
                 if (mat == null)
@@ -384,8 +386,6 @@ public class ChunkManager : ManagerBase<ChunkManager>
                         mat = renderer.sharedMaterial;
                     }
                 }
-                // 기존 메쉬는 비활성화
-                filter.mesh = null;
             }
 
             if (combineList.Count > 0)
@@ -402,6 +402,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 createObject.layer = layer;
 
             }
+            yield return null;
+
         }
     }
 }

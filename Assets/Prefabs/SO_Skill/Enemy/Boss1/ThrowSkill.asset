@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bea75f1f8677c244eb723f4506990347, type: 3}
   m_Name: ThrowSkill
   m_EditorClassIdentifier: 
-  ID: 
+  ID: 14
   OriginSO: 
-  SkillName: "\uBCF4\uC2A41 \uD22C\uCC99 \uC2A4\uD0AC"
+  SkillName: "\uBCF4\uC2A41 \uD22C\uCC99\uC2A4\uD0AC"
   Description: 
   Cooldown: 0
   CostMP: 0
@@ -23,15 +23,22 @@ MonoBehaviour:
   EnforceLevel: 0
   CanActive: 0
   CanUnlock: 0
-  SkillStats: []
+  SkillStats:
+  - StatType: 2
+    StatModifier:
+      FixedValue: 30
+      PercentValue: 0
+    MinNeeded: 0
+    Duration: 0
+    EnforceStatFactor: 0
   Icon: {fileID: 0}
   SkillType: 9
   RequireWeapon: 0
   RequireSkill: []
   StartOffset: {x: 0, y: 0, z: 0}
-  ActiveDelay: 1
-  EffectDelay: 0.5
-  ProjectileType: 0
+  ActiveDelay: 0
+  EffectDelay: 1
+  ProjectileType: 2
   Speed: 0
   LifeTime: 0
   KnockBackForce: 1

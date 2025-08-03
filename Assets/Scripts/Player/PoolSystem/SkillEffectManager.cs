@@ -39,17 +39,16 @@ public class SkillEffectManager : MonoBehaviour
         }
     }
 
-    public void PlayVFX(VFX fx, Vector3 spawnPos, Quaternion rotation, float delay)
+    public void PlayVFX(VFX fx, Vector3 spawnPos, Quaternion rotation)
     {
         if (fx == VFX.None) return;
 
-        StartCoroutine(VFXRoutine(fx, spawnPos,rotation,delay));
+        StartCoroutine(VFXRoutine(fx, spawnPos,rotation));
     }
 
-    private IEnumerator VFXRoutine(VFX fx, Vector3 spawnPos, Quaternion rotation, float delay)
+    private IEnumerator VFXRoutine(VFX fx, Vector3 spawnPos, Quaternion rotation)
     {
         if (fx == VFX.None) yield break;
-        yield return new WaitForSeconds(delay);
 
         var ps = skillDic[fx].GetObject();
         ps.transform.position = spawnPos;

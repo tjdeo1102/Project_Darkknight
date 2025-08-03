@@ -9,12 +9,18 @@ public class Projectile : MonoBehaviour
     public TargetTag Tag;
     private WaitForSeconds m_LifeTIme;
     private ObjectPool<Projectile> m_pool;
+    private Rigidbody m_rigid;
+
+    private void Awake()
+    {
+        m_rigid = GetComponent<Rigidbody>();
+    }
 
     public void Init(float damage, float lifeTime, Vector3 velocity, float knockBackForce,TargetTag tag,ObjectPool<Projectile> pool)
     {
         Damage = damage;
         KnockBackForce = knockBackForce;
-        GetComponent<Rigidbody>().linearVelocity = velocity;
+        m_rigid.linearVelocity = velocity;
         m_LifeTIme = new WaitForSeconds(lifeTime);
         Tag = tag;
         m_pool = pool;
@@ -39,6 +45,7 @@ public class Projectile : MonoBehaviour
             {
                 other.GetComponentInParent<EnemyStat>().ApplyDamage(Damage, transform.position, KnockBackForce);
             }
+            if (m_pool != null) m_pool.ReturnObject(this);
         }
     }
 }

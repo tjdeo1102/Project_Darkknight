@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.AppUI.UI;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class NPCBase : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class NPCBase : MonoBehaviour
     public Vector3 SpawnOffset = Vector3.up;
     public float ChunkRefreshDelay = 2f;
     public List<string> DialogTexts;
+    public NavMeshAgent NavAgent;
     [Header("Max Count is 3")]
     public List<InventoryItem> SelectItems;
 
@@ -22,6 +24,11 @@ public class NPCBase : MonoBehaviour
     private ChunkManager m_chunkManager;
     private PlayerController m_player;
     private NPCDialog m_dialog;
+
+    private void Awake()
+    {
+        if (NavAgent != null) NavAgent.enabled = false;
+    }
     private void OnEnable()
     {
         m_isTouch = false;
@@ -51,6 +58,7 @@ public class NPCBase : MonoBehaviour
         {
             gameLoop.StageLevel.OnValueChanged -= DestroyThisNPC;
         }
+        if (NavAgent != null) NavAgent.enabled = false;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -77,7 +85,7 @@ public class NPCBase : MonoBehaviour
         if (m_isTouch == false) return;
         if (m_player != null && m_player.input.actions["Interact"].triggered)
         {
-            // ÇÃ·¹ÀÌ¾î ÇâÇØ È¸Àü
+            // í”Œë ˆì´ì–´ í–¥í•´ íšŒì „
             var target = m_player.transform.position;
             target.y = transform.position.y;
             transform.LookAt(target, Vector3.up);   
@@ -93,7 +101,7 @@ public class NPCBase : MonoBehaviour
 
     public void StartInteract()
     {
-        // Interact¸¸ µ¿ÀÛÇÏµµ·Ï ¼³Á¤
+        // Interactë§Œ ë™ì‘í•˜ë„ë¡ ì„¤ì •
         if (m_dialog == null || DialogTexts.Count < 1)
         {
             EndInteract();
@@ -101,7 +109,7 @@ public class NPCBase : MonoBehaviour
         else
         {
             m_textLine = 0;
-            // Dialog UI Á¦ÀÛÈÄ, ÄÁÆ®·Ñ·¯¿¡ µî·ÏÇÏ¸é, ÇØ´ç Dialog UI¸¦ È°¼ºÈ­
+            // Dialog UI ì œì‘í›„, ì»¨íŠ¸ë¡¤ëŸ¬ì— ë“±ë¡í•˜ë©´, í•´ë‹¹ Dialog UIë¥¼ í™œì„±í™”
 
             m_dialog.gameObject.SetActive(true);
             m_dialog.Init(this);
@@ -116,7 +124,7 @@ public class NPCBase : MonoBehaviour
     {
         if (m_dialog == null) return;
 
-        // DIalog UI¿¡¼­ ContinueDialog ¸Ş¼­µå¸¦ È£ÃâÇÏ¸ç ¼ø¼­´ë·Î ¸Ş¼¼Áö ¶ç¿ì±â
+        // DIalog UIì—ì„œ ContinueDialog ë©”ì„œë“œë¥¼ í˜¸ì¶œí•˜ë©° ìˆœì„œëŒ€ë¡œ ë©”ì„¸ì§€ ë„ìš°ê¸°
         if (m_textLine < DialogTexts.Count -1)
         {
             m_dialog.ContinueDialog(DialogTexts[m_textLine],false);
@@ -154,12 +162,12 @@ public class NPCBase : MonoBehaviour
         if (m_chunkManager == null) return;
 
         var chunk = m_chunkManager.GetChunk(transform.position);
-        // Ã»Å©¿Í ÇÔ²² °ü¸®
+        // ì²­í¬ì™€ í•¨ê»˜ ê´€ë¦¬
         if (chunk != null)
         {
             transform.parent = chunk.ChunkObject.transform;
         }
-        // Á¤ÇØÁø Ã»Å© À§Ä¡¿¡ ¾ø´Â ÀûÀº ´Ù½Ã ¹İÈ¯
+        // ì •í•´ì§„ ì²­í¬ ìœ„ì¹˜ì— ì—†ëŠ” ì ì€ ë‹¤ì‹œ ë°˜í™˜
         else
         {
             DestroyThisNPC(-1);

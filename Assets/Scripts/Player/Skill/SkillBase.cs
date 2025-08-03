@@ -109,7 +109,7 @@ public abstract class SkillBase : CSVScriptableObject
         }
     }
 
-    private void SkillEffect(Transform origin, PlayerController player = null)
+    private IEnumerator SkillEffect(Transform origin, PlayerController player = null)
     {
         if (SkillType != VFX.None)
         {
@@ -118,7 +118,9 @@ public abstract class SkillBase : CSVScriptableObject
                 player.animator.SetInteger(skillAnimationParam, (int)SkillType);
                 player.machine.ChangeState(StateType.Skill);
             }
-            SkillEffectManager.Instance.PlayVFX(SkillType, center, origin.rotation, EffectDelay);
+            yield return new WaitForSeconds(EffectDelay);
+            SetStartPos(origin.transform);
+            SkillEffectManager.Instance.PlayVFX(SkillType, center, origin.rotation);
         }
     }
 
@@ -127,8 +129,7 @@ public abstract class SkillBase : CSVScriptableObject
         if (player != null && player.model.Stats.TryGetValue(StatType.Mana, out var mp))
         {
             if (CanUseSkill(mp) == false) yield break;
-            SetStartPos(player.transform);
-            SkillEffect(player.transform,player);
+            yield return SkillEffect(player.transform,player);
         }
         yield return new WaitForSeconds(ActiveDelay);
     }
@@ -138,8 +139,7 @@ public abstract class SkillBase : CSVScriptableObject
         if (origin != null && stats.TryGetValue(StatType.Mana,out var mp))
         {
             if (CanUseSkill(mp) == false) yield break;
-            SetStartPos(origin);
-            SkillEffect(origin);
+            yield return SkillEffect(origin);
         }
 
         yield return new WaitForSeconds(ActiveDelay);

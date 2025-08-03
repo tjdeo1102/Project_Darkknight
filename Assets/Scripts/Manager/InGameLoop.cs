@@ -55,7 +55,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
     private List<IManager> m_managers;
     private InputActionMap m_originInputMap;
     private bool IsSpawnBoss;
-
+    private Vector3 m_lastPlayerPos;
     private async void Start()
     {
         await Init();
@@ -77,7 +77,6 @@ public class InGameLoop : ManagerBase<InGameLoop>
         KillCount.Value = 0;
 
         KillCount.OnValueChanged += OnUpdateKill;
-        StageLevel.OnValueChanged += OnUpdateKill;
 
         if (transform.parent != null)
         {
@@ -176,13 +175,6 @@ public class InGameLoop : ManagerBase<InGameLoop>
         }
     }
 
-    public void OnUpdateStage()
-    {
-        if (StageLevel.Value >= ExitStage)
-        {
-            EndGame();
-        }
-    }
 
     public void SpawnBoss()
     {
@@ -194,6 +186,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
         }
         if (Player != null)
         {
+            m_lastPlayerPos = Player.transform.position;
             Player.transform.position = PlayerTeleport.transform.position;
             var camCol = Player.GetComponentInChildren<CinemachineDecollider>();
             if (camCol != null)
@@ -228,7 +221,27 @@ public class InGameLoop : ManagerBase<InGameLoop>
     {
         KillCount.Value = 0;
         IsSpawnBoss = false;
+        if (StageLevel.Value >= ExitStage)
+            UI.ChangeState(UIState.GameClear);
+        else 
+            UI.ChangeState(UIState.MidBossClear);
+    }
+
+    public void NextStage()
+    {
         StageLevel.Value++;
+        if (Player != null)
+        {
+            Player.transform.position = m_lastPlayerPos;
+            var camCol = Player.GetComponentInChildren<CinemachineDecollider>();
+            if (camCol != null)
+            {
+                camCol.enabled = false;
+                Camera.main.transform.position = Player.transform.position;
+                camCol.enabled = true;
+            }
+        }
+        UI.ChangeState(UIState.None);
     }
 
     public void DiePlayer()

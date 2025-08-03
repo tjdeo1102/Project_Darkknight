@@ -44,10 +44,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c9b1233b176d5d428e4e54199b0308d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DontDestroyOnLoadCheck: 0
   Pools:
   - Type: 1
     Pool:
       poolObj: {fileID: 1161538730516424199, guid: 5c08a2a105f0457428d5f729944e992a,
+        type: 3}
+      parent: {fileID: 4724979040713123905}
+      InitSize: 20
+  - Type: 2
+    Pool:
+      poolObj: {fileID: 7439429620537619203, guid: 14dfb3c7113f4064ea20a26c835a979f,
         type: 3}
       parent: {fileID: 4724979040713123905}
       InitSize: 20

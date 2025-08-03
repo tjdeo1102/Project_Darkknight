@@ -163,139 +163,148 @@ public class MapGenerator: MonoBehaviour
         ConnectRooms(node.Right, mapData);
     }
 
-    public bool TryConnectChunks(RectInt a, RectInt b,Vector3Int blockSize, Transform parent)
+    public bool TryConnectChunks(Chunk a, Vector2Int aTobDir, Vector3Int blockSize, Transform parent)
     {
-        var res = false;
-        // 이미 들어오는 인자는 인접한 청크임을 보장
-
-        // 가장자리 중 가까운 위치를 반환, blockSize 고려 좌표로 재계산
-        // 오른쪽
-        if (a.xMin + blockSize.x * a.width == b.xMin)
+        // 이미 들어오는 인자는 인접한 청크임을 보장 + 인접한 면의 길이는 동일
+        var midEdge = GetMinEdge(a.Bounds, blockSize, aTobDir);
+        // 가장자리의 중심좌표를 미리 구해서 전달
+        if (aTobDir == Vector2Int.up || aTobDir == Vector2Int.down)
         {
-            int z = (int)Mathf.Clamp(b.center.y, a.yMin + 1, a.yMax - 2) * blockSize.z;
-            return TryBreakSlimWall(new Vector2Int((a.xMax - 1) * blockSize.x, z), Vector2Int.right, blockSize, 2, a.height, parent);
+            return TryBreakSlimWall(midEdge ,aTobDir, Vector3.right, blockSize, 2 , a.Bounds.width, parent);
         }
-        // 왼쪽
-        if (a.xMin == b.xMin + blockSize.x * b.width)
+        else if (aTobDir == Vector2Int.left || aTobDir == Vector2Int.right)
         {
-            int z = (int)Mathf.Clamp(b.center.y, a.yMin + 1, a.yMax - 2) * blockSize.z;
-            return TryBreakSlimWall(new Vector2Int(a.xMin, z), Vector2Int.left, blockSize, 2, a.height, parent);
-        }
-        // 위쪽
-        if (a.yMin + blockSize.z * a.height == b.yMin)
-        {
-            int x = (int)Mathf.Clamp(b.center.x, a.xMin + 1, a.xMax - 2) * blockSize.x;
-            return TryBreakSlimWall(new Vector2Int(x, (a.yMax - 1) * blockSize.z), Vector2Int.up, blockSize, 2, a.width, parent);
-        }
-        // 아래쪽
-        if (a.yMin == b.yMin + blockSize.z * b.height)
-        {
-            int x = (int)Mathf.Clamp(b.center.x, a.xMin + 1, a.xMax - 2) * blockSize.x;
-            return TryBreakSlimWall(new Vector2Int(x, a.yMin), Vector2Int.down, blockSize, 2, a.width, parent);
-        }
-
-        if (res == false)
-        {
-            print($"실패 {a} {b} {blockSize}");
-        }
-        return res;
-    }
-
-    private bool TryBreakSlimWall(Vector2Int edge, Vector2Int turnelDir,Vector3Int blockSize, int offset, int maxLength, Transform parent)
-    {
-        Vector2Int wallDir;
-        int wallSize;
-        int offsetSize;
-        if (turnelDir == Vector2Int.right || turnelDir == Vector2Int.left)
-        {
-            wallDir = Vector2Int.up;
-            wallSize = blockSize.z;
-            offsetSize = blockSize.x;
+            return TryBreakSlimWall(midEdge, aTobDir, Vector3.forward, blockSize, 2, a.Bounds.height, parent);
         }
         else
         {
-            wallDir = Vector2Int.right;
-            wallSize = blockSize.x;
-            offsetSize = blockSize.z;
+            return false;
         }
+    }
 
-        List<int> turnelList = Enumerable.Range(0, (int) maxLength / 2).ToList();
+    private Vector2 GetMinEdge(RectInt bound, Vector3Int blockSize ,Vector2Int turnelDir)
+    {
+        // 벽 방향은 Right or Up
+        if (turnelDir == Vector2Int.up)
+        {
+            return new Vector2(bound.xMin, bound.yMin * blockSize.x);
+        }
+        else if (turnelDir == Vector2Int.down)
+        {
+            return new Vector2(bound.xMin, bound.yMin);
+        }
+        else if (turnelDir == Vector2Int.left)
+        {
+            return new Vector2(bound.xMin, bound.yMin);
+        }
+        else if (turnelDir == Vector2Int.right)
+        {
+            return new Vector2(bound.xMin * blockSize.z , bound.yMin);
+        }
+        else
+        {
+            return Vector2Int.zero;
+        }
+    }
+
+    private bool TryBreakSlimWall(Vector2 minEdge,Vector2Int turnelDir, Vector3 wallDir, Vector3Int blockSize, int thickness, int maxLength,Transform parent)
+    {
+        List<int> turnelList = Enumerable.Range(0, maxLength).ToList();
         turnelList = turnelList.OrderBy(x => Random.value).ToList();
+
+        float blockFrontSize = 0;
+        float blockRightSize = 0;
+
+        if (wallDir == Vector3.right)
+        {
+            blockFrontSize = blockSize.z;
+            blockRightSize = blockSize.x;
+        }
+        else
+        {
+            blockFrontSize = blockSize.x;
+            blockRightSize = blockSize.z;
+        }
+        
+        var startXY = minEdge - turnelDir * thickness;
+        var startTurnelOffset = new Vector3(startXY.x, 0 ,startXY.y);
+        var rayDir = new Vector3(turnelDir.x, 0, turnelDir.y);
+        if (m_tiles.TryGetValue(TileType.Wall, out var wall))
+            startTurnelOffset += wall.offset.y * Vector3.up;
+
+        // 벽 위치에 맞게 시작위치 보정
+        if (Physics.Raycast(startTurnelOffset, rayDir, out var hit, (thickness * 2 + 1) * blockFrontSize, 1 << LayerMask.NameToLayer("Wall")))
+            startTurnelOffset = hit.transform.position - rayDir * thickness * blockFrontSize;
 
         // 랜덤으로 벽 가장자리를 따라 조건에 부합하는 가장자리 좌표 확인
         // 일정 오프셋 뒤에서 터널 뚫는 방향으로 RaycastAll로 벽의 개수 검사
-        foreach (var item in turnelList)
+        foreach (var wall_Idx in turnelList)
         {
-            // Cast시작할 좌표 (중앙에서 부터 멀어지는 방향으로 탐색)
-            for (int j = 0; j < 2; j++)
+            var startPos = startTurnelOffset + wallDir * blockRightSize * wall_Idx;
+            var res = Physics.RaycastAll(startPos, rayDir, (thickness * 2 + 1) * blockFrontSize, 1 << LayerMask.NameToLayer("Wall"));
+            // 벽이 일정두께 이하인 경우에만 터널 뚫기
+            if (res.Length <= thickness)
             {
-                var a = edge - offset * offsetSize * turnelDir + item * wallSize * wallDir * (int)Mathf.Pow(-1,j);
-                // TODO: 블럭 사이즈 변수 고려한 위치 추가
-                var startPos = new Vector3(a.x, 1, a.y);
-                var rayDir = new Vector3(turnelDir.x, 0, turnelDir.y);
-                var res = Physics.RaycastAll(startPos, rayDir, (offset * 2 + 1) * offsetSize, 1 << LayerMask.NameToLayer("Wall"));
-                // 벽이 2개인 경우에만 터널 뚫기
-                if (res.Length == 2)
-                {
-                    //Debug.DrawRay(startPos, new Vector3(turnelDir.x, 0, turnelDir.y) * (offset * 2 + 1) * offsetSize, Color.red, 3000f);
+                Debug.DrawRay(startPos, rayDir * (thickness * 2 + 1) * blockFrontSize, Color.red, 3000f);
 
-                    foreach (var obj in res)
+                foreach (var obj in res)
+                {
+                    var pos = new Vector3(obj.transform.position.x, 0 , obj.transform.position.z);
+                    if (m_tiles.TryGetValue(TileType.Floor, out var floor))
                     {
-                        var pos = new Vector3(obj.transform.position.x, 0 , obj.transform.position.z);
-                        if (m_tiles.TryGetValue(TileType.Floor, out var floor))
-                        {
-                            var obj2 = floor.pool.GetObject();
-                            obj2.position = pos;
-                            obj2.parent = parent;
-                        }
-                        if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
-                        {
-                            var obj2 = ceiling.pool.GetObject();
-                            obj2.position = pos + ceiling.offset;
-                            obj2.parent = parent;
-                        }
-                        Destroy(obj.collider.gameObject);
+                        var obj2 = floor.pool.GetObject();
+                        obj2.position = pos;
+                        obj2.parent = parent;
                     }
-                    // 없어진 자리에는 아치형 문 생성
-                    // 회전 및 축 보정
-                    Quaternion rotation = Quaternion.LookRotation(rayDir);
+                    if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
+                    {
+                        var obj2 = ceiling.pool.GetObject();
+                        obj2.position = pos + ceiling.offset;
+                        obj2.parent = parent;
+                    }
+                    Destroy(obj.collider.gameObject);
+                }
+                // 없어진 자리에는 아치형 문 생성
+                // 회전 및 축 보정
+                if (m_tiles.TryGetValue(TileType.Gate, out var gate))
+                {
                     Vector3 forward = rayDir;
                     Vector3 right = Vector3.Cross(Vector3.up, forward);
                     Vector3 up = Vector3.up;
 
-                    // forward각이 서로 90차이나는 경우, right의 방향을 서로 뒤집어야 함
-                    // 다른 그렇지 않은 경우에 서로 x 오프셋 방향 반대로 작용
-                    if (Mathf.Abs(forward.x) > 0.5f && Mathf.Abs(forward.z) < 0.5f)
-                    {
-                        right = -right;
-                    }
+                    //// forward각이 서로 90차이나는 경우, right의 방향을 서로 뒤집어야 함
+                    //// 다른 그렇지 않은 경우에 서로 x 오프셋 방향 반대로 작용
+                    //if (Mathf.Abs(forward.x) > 0.5f && Mathf.Abs(forward.z) < 0.5f)
+                    //{
+                    //    right = -right;
+                    //}
 
-                    if (m_tiles.TryGetValue(TileType.Gate, out var gate))
-                    {
-                        var GateOffset = gate.offset;
-                        Vector3 rotatedPos = startPos
-                                           + GateOffset.z * forward
-                                           + GateOffset.x * right
-                                           + GateOffset.y * up;
+                    var look = new Vector3(rayDir.x, startPos.y + gate.offset.y, rayDir.z);
+                    Quaternion rotation = Quaternion.LookRotation(rayDir);
 
-                        var gate1 = gate.pool.GetObject();
-                        gate1.position = rotatedPos;
-                        gate1.rotation = rotation;
-                        gate1.parent = parent;
+                    var GateOffset = gate.offset;
+                    Vector3 rotatedPos = startPos
+                                        + GateOffset.z * forward
+                                        + GateOffset.x * right
+                                        + GateOffset.y * up;
 
-                        var gate2 = gate.pool.GetObject();
-                        gate1.position = rotatedPos + 2 * offsetSize * rayDir;
-                        gate1.rotation = rotation;
-                        gate1.parent = parent;
-                    }
+                    var gate1 = gate.pool.GetObject();
+                    gate1.position = rotatedPos;
+                    gate1.rotation = rotation;
+                    gate1.parent = parent;
+
+                    var gate2 = gate.pool.GetObject();
+                    gate2.position = rotatedPos + res.Length * blockFrontSize * rayDir;
+                    gate2.rotation = rotation;
+                    gate2.parent = parent;
+
                     //Debug.DrawRay(rotatedPos, forward * 2f, Color.red, 1000f);
                     //Debug.DrawRay(rotatedPos, right * 2f, Color.green, 1000f);   // x방향
-                    return true;
                 }
+                
+                return true;
             }
         }
         return false;
     }
-
-
 }
