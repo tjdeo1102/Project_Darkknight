@@ -180,6 +180,7 @@ MonoBehaviour:
     \uC9C0\uD61C\uB97C \uB2F4\uC558\uB2E4\uB124"
   - "\uB108\uC758 \uC5EC\uC815\uC5D0 \uBE5B\uC744 \uBE44\uCD94\uC5B4 \uC904, \uC62C\uBC14\uB978
     \uC120\uD0DD\uC774 \uB418\uAE38 \uBC14\uB77C\uB124."
+  NavAgent: {fileID: -8549907790146903721}
   SelectItems: []
 --- !u!65 &3381426787081420263
 BoxCollider:

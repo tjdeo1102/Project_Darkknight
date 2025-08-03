@@ -60,6 +60,7 @@ MonoBehaviour:
   - "\uC774 \uBAB8\uB3C4, \uB354 \uC774\uC0C1 \uC7A5\uBE44\uB97C \uC4F8 \uC218 \uC5C6\uC73C\uB2C8..."
   - "\uB204\uAD70\uAC00 \uC774 \uC7A5\uBE44\uB97C \uC368\uC8FC\uBA74 \uC88B\uACA0\uAD70..."
   - "\uB300\uC2E0, \uC870\uAE08\uC758 \uB300\uAC00\uB294 \uD544\uC694\uD574..."
+  NavAgent: {fileID: -5477643577642013558}
   SelectItems: []
 --- !u!65 &5008735216212290759
 BoxCollider:
