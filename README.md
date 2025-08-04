@@ -27,7 +27,7 @@
 --- 
 ## 링크
 + [Notion](https://aromatic-beryllium-4ce.notion.site/1d0cce9c8a238007b523c36bd1ef43d8?source=copy_link)
-+ [Youtube](https://youtu.be/IJPJswneqoI)
++ [Youtube](https://youtu.be/Ce79yYLEzII)
 ---
 
 ## 버그 리포트
