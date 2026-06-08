@@ -166,6 +166,8 @@ GameObject:
   - component: {fileID: 7011997260191941622}
   - component: {fileID: 7821938396174120794}
   - component: {fileID: 8922335209050354534}
+  - component: {fileID: 8261659381882028332}
+  - component: {fileID: 8936064477509035398}
   m_Layer: 25
   m_Name: ClosedEnemy
   m_TagString: Enemy
@@ -230,7 +232,7 @@ MonoBehaviour:
   AI: {fileID: 8882735676012563656}
   EnemyType: 1
   Rigid: {fileID: 0}
-  GameLoop: {fileID: 0}
+  Anim: {fileID: 0}
   Target: {fileID: 0}
   SpawnOffset: {x: 0, y: 1, z: 0}
   ChunkRefreshDelay: 2
@@ -266,10 +268,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d67e267f4a7a36749a78d294e33b262c, type: 2}
   - {fileID: 11400000, guid: 4874e45c53535b7458ea679223a18430, type: 2}
   - {fileID: 11400000, guid: a9a83e9dac7494a4aa2b01d68a5a9781, type: 2}
+  HitEffect: {fileID: 8936064477509035398}
   CanKnockBack: 1
-  IsFinishDieAnimation: 0
   Health:
-    baseValue: 200
+    baseValue: 10000
     TotalValue: 0
     maxValue: 0
   Mana:
@@ -324,6 +326,7 @@ MonoBehaviour:
   - rid: 5345647559534969344
   - rid: 5345647578860487556
   - rid: 5345647692857737634
+  m_OriginalGraph: {fileID: 0}
   m_IsInitialised: 0
   m_IsStarted: 0
   references:
@@ -421,7 +424,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 729073087360274647}
-  m_Enabled: 0
+  m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5000001
   m_Speed: 3.5
@@ -463,6 +466,101 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 80
   m_CollisionDetection: 0
+--- !u!114 &8261659381882028332
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729073087360274647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 180ecf9b41d478f468eb3e9083753217, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ImpulseDefinition:
+    ImpulseChannel: 1
+    ImpulseShape: 1
+    CustomImpulseShape:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 136
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 0.03
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 136
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 0.12
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 136
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    ImpulseDuration: 0.2
+    ImpulseType: 0
+    DissipationRate: 0.25
+    RawSignal: {fileID: 0}
+    AmplitudeGain: 1
+    FrequencyGain: 1
+    RepeatMode: 0
+    Randomize: 1
+    TimeEnvelope:
+      AttackShape:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      DecayShape:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      AttackTime: 0
+      SustainTime: 0.2
+      DecayTime: 0.7
+      ScaleWithImpact: 1
+      HoldForever: 0
+    ImpactRadius: 100
+    DirectionMode: 0
+    DissipationMode: 2
+    DissipationDistance: 100
+    PropagationSpeed: 343
+  DefaultVelocity: {x: 0, y: -1, z: 0}
+--- !u!114 &8936064477509035398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729073087360274647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 309183743c313904e9864f5b9ccff7b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  FlashColor: {r: 1, g: 1, b: 1, a: 1}
+  FlashDuration: 0.1
+  targetRenderer: {fileID: 6838876122552100428}
 --- !u!1 &4922750753846207281
 GameObject:
   m_ObjectHideFlags: 0
@@ -809,6 +907,12 @@ Transform:
 --- !u!95 &4785711516117003807 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 1962148587991f442822a789d660f62d,
+    type: 3}
+  m_PrefabInstance: {fileID: 1369330601599357838}
+  m_PrefabAsset: {fileID: 0}
+--- !u!137 &6838876122552100428 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 5613815499662603714, guid: 1962148587991f442822a789d660f62d,
     type: 3}
   m_PrefabInstance: {fileID: 1369330601599357838}
   m_PrefabAsset: {fileID: 0}

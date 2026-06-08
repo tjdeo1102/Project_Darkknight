@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GraphOwnerName: Self
   m_AutoSaveLastSaveLocation: 1
-  m_SaveFolder: Scripts/Enemy/BT/Actions
+  m_SaveFolder: Scripts/Enemy/BT/Events
   m_UseSeparateSaveFolders: 0
   m_SaveFolderAction: 
   m_SaveFolderModifier: 
@@ -25,3 +25,4 @@ MonoBehaviour:
   m_AutoOpenNodeScriptsInExternalEditor: 1
   m_Namespace: 
   m_AllowDisabledAgentDebugging: 0
+  m_IgnoreMissingManagedReferencesInBuild: 0
