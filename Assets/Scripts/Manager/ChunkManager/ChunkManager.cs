@@ -21,11 +21,21 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     private Vector2Int m_playerChunk;
     private readonly Dictionary<Vector2Int, Chunk> m_chunks = new();
+    private readonly HashSet<Vector2Int> m_loadedCoords = new();
     private Vector2Int m_lastPlayerChunk;
+    private bool m_hasPlayerChunk;
     private bool m_hasLastPlayerChunk;
     private bool m_isUpdatingNavMesh;
     private bool m_pendingNavMeshUpdate;
+    private bool m_isNavMeshUpdateQueued;
     private readonly HashSet<Chunk> m_pendingSpawnChunks = new();
+    private static readonly Vector2Int[] NeighborDirs =
+    {
+        Vector2Int.up,
+        Vector2Int.down,
+        Vector2Int.left,
+        Vector2Int.right
+    };
 
     [SerializeField] private NavMeshSurface m_surface;
 
@@ -57,13 +67,14 @@ public class ChunkManager : ManagerBase<ChunkManager>
     {
         if (Player == null || Generator == null || ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) return;
 
-        m_playerChunk = new Vector2Int(
-            Mathf.FloorToInt(Player.position.x / (ChunkSize * BlockSize.x)),
-            Mathf.FloorToInt(Player.position.z / (ChunkSize * BlockSize.z))
-        );
+        var nextPlayerChunk = GetPlayerChunkCoord(Player.position);
+        if (init == false && m_hasPlayerChunk && nextPlayerChunk == m_playerChunk) return;
+
+        m_playerChunk = nextPlayerChunk;
+        m_hasPlayerChunk = true;
 
         var range = Mathf.CeilToInt(ViewRadius + 2);
-        var loadedCoords = new HashSet<Vector2Int>();
+        m_loadedCoords.Clear();
         for (var i = -range; i < range; i++)
         {
             for (var j = -range; j < range; j++)
@@ -75,7 +86,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 if (init == false && inView)
                 {
                     LoadOrGenerateChunk(coord);
-                    loadedCoords.Add(coord);
+                    m_loadedCoords.Add(coord);
                 }
                 else
                 {
@@ -99,7 +110,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
         foreach (var pair in m_chunks)
         {
-            if (loadedCoords.Contains(pair.Key) == false)
+            if (m_loadedCoords.Contains(pair.Key) == false)
             {
                 pair.Value.Unload();
             }
@@ -128,7 +139,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
         {
             chunk.IsGenerateMonster = true;
             m_pendingSpawnChunks.Add(chunk);
-            UpdateMapRoutine().Forget();
+            RequestNavMeshUpdate();
         }
     }
 
@@ -144,15 +155,38 @@ public class ChunkManager : ManagerBase<ChunkManager>
         return chunk;
     }
 
+    private Vector2Int GetPlayerChunkCoord(Vector3 position)
+    {
+        return new Vector2Int(
+            Mathf.FloorToInt(position.x / (ChunkSize * BlockSize.x)),
+            Mathf.FloorToInt(position.z / (ChunkSize * BlockSize.z))
+        );
+    }
+
     private void NavUpdate()
     {
         if (m_hasLastPlayerChunk == false || m_playerChunk != m_lastPlayerChunk)
         {
-            UpdateMapRoutine().Forget();
+            RequestNavMeshUpdate();
         }
 
         m_lastPlayerChunk = m_playerChunk;
         m_hasLastPlayerChunk = true;
+    }
+
+    private void RequestNavMeshUpdate()
+    {
+        if (m_isNavMeshUpdateQueued) return;
+
+        m_isNavMeshUpdateQueued = true;
+        RunQueuedNavMeshUpdate().Forget();
+    }
+
+    private async UniTaskVoid RunQueuedNavMeshUpdate()
+    {
+        await UniTask.Yield();
+        m_isNavMeshUpdateQueued = false;
+        UpdateMapRoutine().Forget();
     }
 
     public async UniTaskVoid UpdateMapRoutine()
@@ -259,7 +293,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
         m_isUpdatingNavMesh = false;
         if (m_pendingNavMeshUpdate)
         {
-            UpdateMapRoutine().Forget();
+            RequestNavMeshUpdate();
             return;
         }
 
@@ -323,7 +357,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
         {
             m_surface.BuildNavMesh();
             yield return new WaitForSeconds(3f);
-            UpdateMapRoutine().Forget();
+            RequestNavMeshUpdate();
         }
     }
 
@@ -384,15 +418,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     private void ConnectNeighborChunk(Vector2Int chunkCoord)
     {
-        Vector2Int[] dirs =
-        {
-            Vector2Int.up,
-            Vector2Int.down,
-            Vector2Int.left,
-            Vector2Int.right
-        };
-
-        foreach (var dir in dirs)
+        foreach (var dir in NeighborDirs)
         {
             var neighborCoord = chunkCoord + dir;
             if (m_chunks.ContainsKey(neighborCoord) == false) continue;

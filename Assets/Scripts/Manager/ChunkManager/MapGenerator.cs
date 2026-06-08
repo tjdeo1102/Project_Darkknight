@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -17,6 +16,7 @@ public class MapGenerator : MonoBehaviour
     public List<TileSst> Tiles;
 
     private Dictionary<TileType, TileSst> m_tiles;
+    private readonly Collider[] m_overlapBuffer = new Collider[64];
 
     private void Awake()
     {
@@ -237,27 +237,49 @@ public class MapGenerator : MonoBehaviour
     private Vector3 GetEdgeFloor(Chunk chunk, Vector2Int dir)
     {
         var floors = chunk.floorPosData;
+        var best = floors[0];
+        var selected = best;
+        var selectedCount = 1;
 
-        if (dir == Vector2Int.up)
+        for (var i = 1; i < floors.Count; i++)
         {
-            var maxZ = floors.Max(pos => pos.z);
-            return floors.Where(pos => Mathf.Approximately(pos.z, maxZ)).OrderBy(_ => Random.value).First();
+            var pos = floors[i];
+            if (IsCloserToEdge(pos, best, dir))
+            {
+                best = pos;
+                selected = pos;
+                selectedCount = 1;
+                continue;
+            }
+
+            if (IsSameEdge(pos, best, dir) == false) continue;
+
+            selectedCount++;
+            if (Random.Range(0, selectedCount) == 0)
+            {
+                selected = pos;
+            }
         }
 
-        if (dir == Vector2Int.down)
+        return selected;
+    }
+
+    private bool IsCloserToEdge(Vector3 candidate, Vector3 currentBest, Vector2Int dir)
+    {
+        if (dir == Vector2Int.up) return candidate.z > currentBest.z;
+        if (dir == Vector2Int.down) return candidate.z < currentBest.z;
+        if (dir == Vector2Int.right) return candidate.x > currentBest.x;
+        return candidate.x < currentBest.x;
+    }
+
+    private bool IsSameEdge(Vector3 candidate, Vector3 currentBest, Vector2Int dir)
+    {
+        if (dir == Vector2Int.up || dir == Vector2Int.down)
         {
-            var minZ = floors.Min(pos => pos.z);
-            return floors.Where(pos => Mathf.Approximately(pos.z, minZ)).OrderBy(_ => Random.value).First();
+            return Mathf.Approximately(candidate.z, currentBest.z);
         }
 
-        if (dir == Vector2Int.right)
-        {
-            var maxX = floors.Max(pos => pos.x);
-            return floors.Where(pos => Mathf.Approximately(pos.x, maxX)).OrderBy(_ => Random.value).First();
-        }
-
-        var minX = floors.Min(pos => pos.x);
-        return floors.Where(pos => Mathf.Approximately(pos.x, minX)).OrderBy(_ => Random.value).First();
+        return Mathf.Approximately(candidate.x, currentBest.x);
     }
 
     private void CarveGridTunnel(Chunk chunk, Chunk neighborChunk, Vector3 start, Vector3 end, Vector2Int dir, Vector3Int blockSize)
@@ -328,10 +350,23 @@ public class MapGenerator : MonoBehaviour
         }
 
         owner.floorPosData ??= new List<Vector3>();
-        if (owner.floorPosData.Any(floor => Vector3.SqrMagnitude(floor - pos) < 0.01f) == false)
+        if (HasFloorData(owner.floorPosData, pos) == false)
         {
             owner.floorPosData.Add(pos);
         }
+    }
+
+    private bool HasFloorData(List<Vector3> floors, Vector3 pos)
+    {
+        for (var i = 0; i < floors.Count; i++)
+        {
+            if (Vector3.SqrMagnitude(floors[i] - pos) < 0.01f)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool HasTileAt(Vector3 pos, TileType tileType, Vector3Int blockSize)
@@ -340,7 +375,7 @@ public class MapGenerator : MonoBehaviour
         if (layer < 0) return false;
 
         var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
-        return Physics.OverlapBox(pos + Vector3.up * 0.5f, halfExtents, Quaternion.identity, 1 << layer).Length > 0;
+        return Physics.OverlapBoxNonAlloc(pos + Vector3.up * 0.5f, halfExtents, m_overlapBuffer, Quaternion.identity, 1 << layer) > 0;
     }
 
     private bool ContainsWorldPosition(Chunk chunk, Vector3 pos, Vector3Int blockSize)
@@ -366,10 +401,10 @@ public class MapGenerator : MonoBehaviour
         if (mask == 0) mask = Physics.DefaultRaycastLayers;
 
         var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
-        var hits = Physics.OverlapBox(pos + Vector3.up * 0.5f, halfExtents, Quaternion.identity, mask);
-        foreach (var hit in hits)
+        var hitCount = Physics.OverlapBoxNonAlloc(pos + Vector3.up * 0.5f, halfExtents, m_overlapBuffer, Quaternion.identity, mask);
+        for (var i = 0; i < hitCount; i++)
         {
-            Destroy(hit.gameObject);
+            Destroy(m_overlapBuffer[i].gameObject);
         }
     }
 
@@ -392,7 +427,6 @@ public class MapGenerator : MonoBehaviour
     {
         InitTiles();
 
-        var tunnelList = Enumerable.Range(0, maxLength).OrderBy(_ => Random.value).ToList();
         var blockFrontSize = wallDir == Vector3.right ? blockSize.z : blockSize.x;
         var blockRightSize = wallDir == Vector3.right ? blockSize.x : blockSize.z;
         var rayDir = new Vector3(tunnelDir.x, 0, tunnelDir.y);
@@ -418,8 +452,10 @@ public class MapGenerator : MonoBehaviour
         Vector3 bestStartPos = Vector3.zero;
         RaycastHit[] bestHits = null;
 
-        foreach (var wallIndex in tunnelList)
+        var startIndex = Random.Range(0, maxLength);
+        for (var attempt = 0; attempt < maxLength; attempt++)
         {
+            var wallIndex = (startIndex + attempt) % maxLength;
             var startPos = startTunnelOffset + wallDir * blockRightSize * wallIndex;
             var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
             if (hits.Length == 0 || hits.Length > thickness) continue;
@@ -428,8 +464,9 @@ public class MapGenerator : MonoBehaviour
             return true;
         }
 
-        foreach (var wallIndex in tunnelList)
+        for (var attempt = 0; attempt < maxLength; attempt++)
         {
+            var wallIndex = (startIndex + attempt) % maxLength;
             var startPos = startTunnelOffset + wallDir * blockRightSize * wallIndex;
             var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
             if (hits.Length == 0) continue;
@@ -455,7 +492,8 @@ public class MapGenerator : MonoBehaviour
         Debug.DrawRay(startPos, rayDir * rayDistance, Color.red, 3000f);
 
         var tunnelLength = 0f;
-        foreach (var hitInfo in hits.OrderBy(hitInfo => hitInfo.distance))
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (var hitInfo in hits)
         {
             var pos = new Vector3(hitInfo.transform.position.x, 0, hitInfo.transform.position.z);
             CreateTunnelFloor(pos, parent);
