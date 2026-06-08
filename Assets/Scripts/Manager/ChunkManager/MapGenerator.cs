@@ -194,23 +194,183 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    public bool TryConnectChunks(Chunk chunk, Vector2Int chunkToNeighborDir, Vector3Int blockSize, Transform parent)
+    public bool TryConnectChunks(Chunk chunk, Chunk neighborChunk, Vector2Int chunkToNeighborDir, Vector3Int blockSize)
     {
-        if (chunk == null || parent == null || blockSize.x <= 0 || blockSize.z <= 0) return false;
+        if (chunk == null || neighborChunk == null || blockSize.x <= 0 || blockSize.z <= 0) return false;
 
         var edgeStart = GetChunkEdgeStart(chunk, blockSize, chunkToNeighborDir);
 
         if (chunkToNeighborDir == Vector2Int.up || chunkToNeighborDir == Vector2Int.down)
         {
-            return TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.right, blockSize, 2, chunk.Bounds.width, parent);
+            if (TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.right, blockSize, 2, chunk.Bounds.width, chunk.ChunkObject.transform))
+            {
+                return true;
+            }
+
+            return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
         }
 
         if (chunkToNeighborDir == Vector2Int.left || chunkToNeighborDir == Vector2Int.right)
         {
-            return TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.forward, blockSize, 2, chunk.Bounds.height, parent);
+            if (TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.forward, blockSize, 2, chunk.Bounds.height, chunk.ChunkObject.transform))
+            {
+                return true;
+            }
+
+            return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
         }
 
         return false;
+    }
+
+    private bool TryCarveFallbackTunnel(Chunk chunk, Chunk neighborChunk, Vector2Int dir, Vector3Int blockSize)
+    {
+        if (chunk.floorPosData == null || neighborChunk.floorPosData == null) return false;
+        if (chunk.floorPosData.Count == 0 || neighborChunk.floorPosData.Count == 0) return false;
+
+        var start = GetEdgeFloor(chunk, dir);
+        var end = GetEdgeFloor(neighborChunk, -dir);
+        CarveGridTunnel(chunk, neighborChunk, start, end, dir, blockSize);
+        return true;
+    }
+
+    private Vector3 GetEdgeFloor(Chunk chunk, Vector2Int dir)
+    {
+        var floors = chunk.floorPosData;
+
+        if (dir == Vector2Int.up)
+        {
+            var maxZ = floors.Max(pos => pos.z);
+            return floors.Where(pos => Mathf.Approximately(pos.z, maxZ)).OrderBy(_ => Random.value).First();
+        }
+
+        if (dir == Vector2Int.down)
+        {
+            var minZ = floors.Min(pos => pos.z);
+            return floors.Where(pos => Mathf.Approximately(pos.z, minZ)).OrderBy(_ => Random.value).First();
+        }
+
+        if (dir == Vector2Int.right)
+        {
+            var maxX = floors.Max(pos => pos.x);
+            return floors.Where(pos => Mathf.Approximately(pos.x, maxX)).OrderBy(_ => Random.value).First();
+        }
+
+        var minX = floors.Min(pos => pos.x);
+        return floors.Where(pos => Mathf.Approximately(pos.x, minX)).OrderBy(_ => Random.value).First();
+    }
+
+    private void CarveGridTunnel(Chunk chunk, Chunk neighborChunk, Vector3 start, Vector3 end, Vector2Int dir, Vector3Int blockSize)
+    {
+        var current = start;
+        var forwardStep = new Vector3(dir.x * blockSize.x, 0f, dir.y * blockSize.z);
+        var sideStep = dir.x == 0 ? new Vector3(Mathf.Sign(end.x - start.x) * blockSize.x, 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(end.z - start.z) * blockSize.z);
+
+        CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+
+        if (dir.x == 0)
+        {
+            while (Mathf.Approximately(current.z, end.z) == false)
+            {
+                current += forwardStep;
+                if ((dir.y > 0 && current.z > end.z) || (dir.y < 0 && current.z < end.z))
+                {
+                    current.z = end.z;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+
+            while (Mathf.Approximately(current.x, end.x) == false)
+            {
+                current += sideStep;
+                if ((sideStep.x > 0f && current.x > end.x) || (sideStep.x < 0f && current.x < end.x))
+                {
+                    current.x = end.x;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+        }
+        else
+        {
+            while (Mathf.Approximately(current.x, end.x) == false)
+            {
+                current += forwardStep;
+                if ((dir.x > 0 && current.x > end.x) || (dir.x < 0 && current.x < end.x))
+                {
+                    current.x = end.x;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+
+            while (Mathf.Approximately(current.z, end.z) == false)
+            {
+                current += sideStep;
+                if ((sideStep.z > 0f && current.z > end.z) || (sideStep.z < 0f && current.z < end.z))
+                {
+                    current.z = end.z;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+        }
+    }
+
+    private void CarveTunnelCell(Chunk chunk, Chunk neighborChunk, Vector3 pos, Vector3Int blockSize)
+    {
+        var owner = ContainsWorldPosition(chunk, pos, blockSize) ? chunk : neighborChunk;
+        RemoveBlockingTiles(pos, blockSize);
+        if (HasTileAt(pos, TileType.Floor, blockSize) == false)
+        {
+            CreateTunnelFloor(pos, owner.ChunkObject.transform);
+        }
+
+        owner.floorPosData ??= new List<Vector3>();
+        if (owner.floorPosData.Any(floor => Vector3.SqrMagnitude(floor - pos) < 0.01f) == false)
+        {
+            owner.floorPosData.Add(pos);
+        }
+    }
+
+    private bool HasTileAt(Vector3 pos, TileType tileType, Vector3Int blockSize)
+    {
+        var layer = LayerMask.NameToLayer(tileType.ToString());
+        if (layer < 0) return false;
+
+        var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
+        return Physics.OverlapBox(pos + Vector3.up * 0.5f, halfExtents, Quaternion.identity, 1 << layer).Length > 0;
+    }
+
+    private bool ContainsWorldPosition(Chunk chunk, Vector3 pos, Vector3Int blockSize)
+    {
+        var minX = chunk.Bounds.xMin;
+        var minZ = chunk.Bounds.yMin;
+        var maxX = chunk.Bounds.xMin + chunk.Bounds.width * blockSize.x;
+        var maxZ = chunk.Bounds.yMin + chunk.Bounds.height * blockSize.z;
+
+        return pos.x >= minX && pos.x < maxX && pos.z >= minZ && pos.z < maxZ;
+    }
+
+    private void RemoveBlockingTiles(Vector3 pos, Vector3Int blockSize)
+    {
+        var wallLayer = LayerMask.NameToLayer(TileType.Wall.ToString());
+        var pillarLayer = LayerMask.NameToLayer(TileType.Pillar.ToString());
+        var gateLayer = LayerMask.NameToLayer(TileType.Gate.ToString());
+        var mask = 0;
+
+        if (wallLayer >= 0) mask |= 1 << wallLayer;
+        if (pillarLayer >= 0) mask |= 1 << pillarLayer;
+        if (gateLayer >= 0) mask |= 1 << gateLayer;
+        if (mask == 0) mask = Physics.DefaultRaycastLayers;
+
+        var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
+        var hits = Physics.OverlapBox(pos + Vector3.up * 0.5f, halfExtents, Quaternion.identity, mask);
+        foreach (var hit in hits)
+        {
+            Destroy(hit.gameObject);
+        }
     }
 
     private Vector2 GetChunkEdgeStart(Chunk chunk, Vector3Int blockSize, Vector2Int tunnelDir)

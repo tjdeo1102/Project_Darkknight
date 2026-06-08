@@ -402,7 +402,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
             if (currentChunk.IsLoaded == false || neighborChunk.IsLoaded == false) continue;
             if (currentChunk.IsCheckClosedChunk(dir)) continue;
 
-            var isConnected = Generator.TryConnectChunks(currentChunk, dir, BlockSize, currentChunk.ChunkObject.transform);
+            var isConnected = Generator.TryConnectChunks(currentChunk, neighborChunk, dir, BlockSize);
             if (isConnected == false) continue;
 
             currentChunk.CheckDirection.Add(dir);
