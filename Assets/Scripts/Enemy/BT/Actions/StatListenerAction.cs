@@ -11,12 +11,35 @@ public partial class StatListenerAction : Action
     [SerializeReference] public BlackboardVariable<float> Speed;
     [SerializeReference] public BlackboardVariable<EnemyStat> Stat;
     [SerializeReference] public BlackboardVariable<EnemyStateType> CurrentType;
-    protected override Status OnStart()
+
+    protected override Status OnUpdate()
     {
-        Speed.Value = Stat.Value.StatDic[StatType.Speed].TotalValue;
-        if (Stat.Value.StatDic[StatType.Health].TotalValue < 0.1f)
-            CurrentType.Value = EnemyStateType.Die;
-        return Status.Running;
+        var stat = Stat.Value;
+        if (stat != null && stat.StatDic != null)
+        {
+            Speed.Value = stat.StatDic[StatType.Speed].TotalValue;
+
+            if (stat.ConsumePendingDeath())
+            {
+                CurrentType.Value = EnemyStateType.Die;
+                stat.Die();
+                return Status.Success;
+            }
+
+            if (stat.ConsumePendingHit(out var hitDirection, out var knockBackForce))
+            {
+                CurrentType.Value = EnemyStateType.KnockBack;
+                stat.ApplyBtHitReaction(hitDirection, knockBackForce);
+                return Status.Success;
+            }
+
+            if (stat.StatDic[StatType.Health].TotalValue < 0.1f)
+            {
+                CurrentType.Value = EnemyStateType.Die;
+            }
+        }
+
+        return Status.Success;
     }
 }
 

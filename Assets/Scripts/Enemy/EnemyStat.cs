@@ -1,15 +1,19 @@
-using DG.Tweening;
+﻿using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
-using System.Xml.Schema;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyStat : MonoBehaviour
 {
     [Header("Require Setting")]
     public EnemyController Ctrl;
     public List<StatBaseSO> StatData;
+    public HitEffect HitEffect;
     public bool CanKnockBack = true;
+    public float DeathAnimationMaxWait = 3f;
+    public float DeathFadeDuration = 1f;
+    public float DeathSinkDistance = 0.5f;
 
     [Header("Stat")]
     public Stat Health = new();
@@ -22,6 +26,29 @@ public class EnemyStat : MonoBehaviour
     public Stat Money = new();
 
     public Dictionary<StatType, Stat> StatDic;
+    private bool m_hasPendingHit;
+    private bool m_hasPendingDeath;
+    private bool m_isDead;
+    private Vector3 m_pendingHitDirection;
+    private float m_pendingKnockBackForce;
+    private Coroutine m_navRestoreRoutine;
+    private static readonly int KnockBackHash = Animator.StringToHash("KnockBack");
+    private static readonly int StateHash = Animator.StringToHash("State");
+
+    private void OnEnable()
+    {
+        m_hasPendingHit = false;
+        m_hasPendingDeath = false;
+        m_isDead = false;
+        m_navRestoreRoutine = null;
+
+        if (Ctrl != null && Ctrl.AI != null && Ctrl.AI.NavAgent != null)
+        {
+            Ctrl.AI.NavAgent.updatePosition = true;
+            if (Ctrl.AI.NavAgent.enabled && Ctrl.AI.NavAgent.isOnNavMesh)
+                Ctrl.AI.NavAgent.isStopped = false;
+        }
+    }
 
     private void Start()
     {
@@ -36,8 +63,13 @@ public class EnemyStat : MonoBehaviour
             { StatType.LifeSteel, LifeSteel},
             { StatType.Money, Money},
         };
-        Ctrl.GameLoop.StageLevel.OnValueChanged += UpdateStat;
-        UpdateStat(Ctrl.GameLoop.StageLevel.Value);
+
+        if (InGameLoop.Instance != null)
+        {
+            InGameLoop.Instance.StageLevel.OnValueChanged += UpdateStat;
+            UpdateStat(InGameLoop.Instance.StageLevel.Value);
+        }
+        else UpdateStat(1);
     }
 
     public void UpdateStat(int newLevel)
@@ -48,47 +80,179 @@ public class EnemyStat : MonoBehaviour
 
     public void ApplyDamage(float damage, Vector3 attackerPos, float force)
     {
+        if (m_isDead || StatDic == null) return;
+
         if (StatDic.TryGetValue(StatType.Health, out var value))
         {
             value.AddModifier(new StatModifier(-damage), StatModifyType.Damage);
 
             if (value.TotalValue < 0.001f)
             {
-                DIe();
+                m_hasPendingDeath = true;
+                m_hasPendingHit = false;
             }
             else if (CanKnockBack)
             {
-                var dir = (transform.position - attackerPos).normalized;
-                var rig = Ctrl.Rigid;
-                var delay = force / (rig.linearDamping * 2f);
-                Ctrl.AI.BTAgent.SetVariableValue("CurrentType", EnemyStateType.KnockBack);
-                rig.AddForce(dir * force * rig.mass, ForceMode.Impulse);
+                m_pendingHitDirection = (transform.position - attackerPos).normalized;
+                m_pendingKnockBackForce = force;
+                m_hasPendingHit = true;
             }
         }
     }
 
-    public void DIe()
+    public bool ConsumePendingHit(out Vector3 direction, out float force)
     {
-        if (Ctrl.GameLoop == null || Ctrl.GameLoop.EnemySpawner== null || Ctrl.Rigid == null) return;
+        direction = m_pendingHitDirection;
+        force = m_pendingKnockBackForce;
 
-        Ctrl.GameLoop.Player.model.Stats[StatType.Money].AddModifier(new StatModifier(StatDic[StatType.Money].TotalValue), StatModifyType.KillEnemy);
-        if (Ctrl.EnemyType == EnemyType.Boss_1 ||
-            Ctrl.EnemyType == EnemyType.Boss_2 || 
-            Ctrl.EnemyType == EnemyType.Boss_3)
-           Ctrl.GameLoop.ClearBoss();
+        if (!m_hasPendingHit || m_isDead)
+            return false;
 
-        else Ctrl.GameLoop.KillCount.Value++;
-
-        StartCoroutine(DIeRoutine());
+        m_hasPendingHit = false;
+        return true;
     }
 
-    private IEnumerator DIeRoutine()
+    public bool ConsumePendingDeath()
     {
-        Ctrl.AI.BTAgent.SetVariableValue("CurrentType", EnemyStateType.Die);
+        if (!m_hasPendingDeath || m_isDead)
+            return false;
 
-        // 충돌 설정 정리
+        m_hasPendingDeath = false;
+        return true;
+    }
+
+    public void ApplyBtHitReaction(Vector3 direction, float force)
+    {
+        if (m_isDead || Ctrl == null || Ctrl.Rigid == null) return;
+
+        if (direction.sqrMagnitude < 0.001f)
+            direction = -transform.forward;
+
+        HitEffect?.OnHit();
+        Ctrl.Anim?.SetTrigger(KnockBackHash);
+
+        if (Ctrl.AI != null && Ctrl.AI.NavAgent != null)
+        {
+            StopNavAgentForHit(Ctrl.AI.NavAgent);
+        }
+
+        Ctrl.Rigid.isKinematic = false;
+        Ctrl.Rigid.useGravity = true;
         Ctrl.Rigid.linearVelocity = Vector3.zero;
+        Ctrl.Rigid.AddForce(direction.normalized * force * Ctrl.Rigid.mass, ForceMode.Impulse);
+    }
+
+    private void StopNavAgentForHit(NavMeshAgent navAgent)
+    {
+        if (navAgent.enabled == false)
+        {
+            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas))
+            {
+                transform.position = hit.position;
+                navAgent.enabled = true;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        if (navAgent.isOnNavMesh == false) return;
+
+        navAgent.ResetPath();
+        navAgent.velocity = Vector3.zero;
+        navAgent.isStopped = true;
+        navAgent.updatePosition = false;
+        navAgent.Warp(transform.position);
+
+        if (m_navRestoreRoutine != null)
+            StopCoroutine(m_navRestoreRoutine);
+
+        m_navRestoreRoutine = StartCoroutine(RestoreNavAgentAfterHit(navAgent));
+    }
+
+    private IEnumerator RestoreNavAgentAfterHit(NavMeshAgent navAgent)
+    {
+        yield return new WaitForSeconds(0.15f);
+
+        if (m_isDead || navAgent == null)
+        {
+            m_navRestoreRoutine = null;
+            yield break;
+        }
+
+        if (navAgent.enabled == false)
+        {
+            m_navRestoreRoutine = null;
+            yield break;
+        }
+
+        if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas))
+        {
+            navAgent.Warp(hit.position);
+        }
+
+        if (Ctrl != null && Ctrl.Rigid != null)
+        {
+            if (Ctrl.Rigid.isKinematic == false)
+                Ctrl.Rigid.linearVelocity = Vector3.zero;
+            Ctrl.Rigid.useGravity = false;
+            Ctrl.Rigid.isKinematic = true;
+        }
+
+        navAgent.updatePosition = true;
+        if (navAgent.isOnNavMesh)
+            navAgent.isStopped = false;
+
+        m_navRestoreRoutine = null;
+    }
+
+    public void Die()
+    {
+        if (m_isDead || Ctrl == null || Ctrl.Rigid == null) return;
+
+        m_isDead = true;
+        m_hasPendingHit = false;
+        m_hasPendingDeath = false;
+        HitEffect?.OnHit();
+
+        if (m_navRestoreRoutine != null)
+        {
+            StopCoroutine(m_navRestoreRoutine);
+            m_navRestoreRoutine = null;
+        }
+        StopNavigationForDeath();
+
+        if (InGameLoop.Instance != null)
+        {
+            InGameLoop.Instance.Player.model.Stats[StatType.Money].AddModifier(new StatModifier(StatDic[StatType.Money].TotalValue), StatModifyType.KillEnemy);
+            if (Ctrl.EnemyType == EnemyType.Boss_1 ||
+                Ctrl.EnemyType == EnemyType.Boss_2 ||
+                Ctrl.EnemyType == EnemyType.Boss_3)
+                InGameLoop.Instance.ClearBoss();
+            else InGameLoop.Instance.KillCount.Value++;
+        }
+
+        StartCoroutine(DieRoutine());
+    }
+
+    private IEnumerator DieRoutine()
+    {
+        Ctrl.AI?.BTAgent?.SetVariableValue("CurrentType", EnemyStateType.Die);
+        Ctrl.Anim?.SetInteger(StateHash, (int)EnemyStateType.Die);
+
+        if (Ctrl.Rigid.isKinematic == false)
+            Ctrl.Rigid.linearVelocity = Vector3.zero;
         Ctrl.Rigid.useGravity = false;
+        Ctrl.Rigid.isKinematic = true;
+        if (Ctrl.AI != null && Ctrl.AI.NavAgent != null)
+        {
+            if (Ctrl.AI.BTAgent != null)
+                Ctrl.AI.BTAgent.enabled = false;
+
+            StopNavigationForDeath();
+        }
+
         var cols = Ctrl.GetComponentsInChildren<Collider>();
         foreach (var item in cols)
         {
@@ -96,49 +260,117 @@ public class EnemyStat : MonoBehaviour
         }
         yield return null;
 
-        // 투명화해서 제거
-        var renderer = Ctrl.GetComponentInChildren<SkinnedMeshRenderer>();
-        var originMat = renderer.material;
-        var mat = new Material(originMat);
-        renderer.material = mat;
-        var col = mat.color;
+        var renderers = Ctrl.GetComponentsInChildren<Renderer>();
+        var originMaterials = new Dictionary<Renderer, Material[]>();
+        var fadeMaterials = new List<Material>();
+        var originPosition = Ctrl.transform.position;
+        foreach (var renderer in renderers)
+        {
+            originMaterials[renderer] = renderer.sharedMaterials;
+            var materials = renderer.materials;
+            foreach (var mat in materials)
+            {
+                if (mat != null && mat.HasProperty("_Color"))
+                    fadeMaterials.Add(mat);
+            }
+        }
 
-        yield return new WaitUntil(() =>
+        var waitTime = 0f;
+        while (waitTime < DeathAnimationMaxWait)
         {
             var anim = Ctrl.Anim;
-            if (anim == null) return false;
+            if (anim == null) break;
 
             var stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+            if (stateInfo.IsName("Die") && stateInfo.normalizedTime >= 1f)
+                break;
 
-            return stateInfo.IsName("Die") && stateInfo.normalizedTime >= 1f;
-        });
-
-        var tween = DOTween.To(() => mat.color.a, x =>
-            { col.a = x; mat.color = col;}, 0f, 1f);
-
-        yield return tween.WaitForCompletion();
-
-        // 스탯 정리
-        foreach (var item in StatDic.Values)
-        {
-            item.RemoveAllModifier();
+            waitTime += Time.deltaTime;
             yield return null;
         }
 
-        // 이벤트 해제
-        Ctrl.GameLoop.StageLevel.OnValueChanged -= UpdateStat;
-
-
-        Ctrl.GameLoop.EnemySpawner.DestroyEnemy(Ctrl);
-        // 초기화
-        Ctrl.Rigid.useGravity = true;
-        foreach (var item in cols)
+        var sequence = DOTween.Sequence();
+        sequence.Join(Ctrl.transform.DOMoveY(originPosition.y - DeathSinkDistance, DeathFadeDuration));
+        if (fadeMaterials.Count > 0)
         {
-            item.enabled = true;
+            sequence.Join(DOTween.To(() => 1f, alpha =>
+            {
+                foreach (var mat in fadeMaterials)
+                {
+                    if (mat == null) continue;
+                    var col = mat.color;
+                    col.a = alpha;
+                    mat.color = col;
+                }
+            }, 0f, DeathFadeDuration));
         }
-        renderer.material = originMat;
 
-        yield break;
+        yield return sequence.WaitForCompletion();
+
+        CleanupAfterDeath(cols, originMaterials, originPosition);
     }
 
+    private void StopNavigationForDeath()
+    {
+        if (Ctrl == null || Ctrl.AI == null || Ctrl.AI.NavAgent == null) return;
+
+        if (Ctrl.AI.BTAgent != null)
+            Ctrl.AI.BTAgent.enabled = false;
+
+        var navAgent = Ctrl.AI.NavAgent;
+        if (navAgent.enabled == false)
+            navAgent.enabled = true;
+
+        if (navAgent.isOnNavMesh == false)
+        {
+            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas))
+            {
+                transform.position = hit.position;
+                navAgent.Warp(hit.position);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        navAgent.ResetPath();
+        navAgent.velocity = Vector3.zero;
+        navAgent.isStopped = true;
+        navAgent.updatePosition = false;
+        navAgent.Warp(transform.position);
+    }
+
+    private void CleanupAfterDeath(Collider[] cols, Dictionary<Renderer, Material[]> originMaterials, Vector3 originPosition)
+    {
+        foreach (var item in StatDic.Values)
+        {
+            item.RemoveAllModifier();
+        }
+
+        if (InGameLoop.Instance != null)
+        {
+            InGameLoop.Instance.StageLevel.OnValueChanged -= UpdateStat;
+        }
+
+        Ctrl.Rigid.useGravity = false;
+        Ctrl.Rigid.isKinematic = true;
+        Ctrl.transform.position = originPosition;
+        foreach (var item in cols)
+        {
+            if (item != null)
+                item.enabled = true;
+        }
+
+        foreach (var kvp in originMaterials)
+        {
+            if (kvp.Key != null)
+                kvp.Key.sharedMaterials = kvp.Value;
+        }
+
+        if (InGameLoop.Instance != null && InGameLoop.Instance.EnemySpawner != null)
+            InGameLoop.Instance.EnemySpawner.DestroyEnemy(Ctrl);
+        else
+            gameObject.SetActive(false);
+    }
 }
