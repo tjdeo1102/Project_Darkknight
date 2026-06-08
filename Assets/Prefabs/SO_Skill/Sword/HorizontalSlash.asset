@@ -40,7 +40,7 @@ MonoBehaviour:
   RequireSkill: []
   StartOffset: {x: 0, y: 1, z: 1}
   ActiveDelay: 0.5
-  EffectDelay: 0.5
+  EffectDelay: 3
   HitOffset: {x: 0, y: 0, z: 0}
   Range: {x: 5, y: 1, z: 5}
   KnockBackForce: 1
