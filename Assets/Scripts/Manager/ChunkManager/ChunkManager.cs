@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.AI.Navigation;
-using UnityEngine.AI;
-using UnityEngine;
-using Cysharp.Threading.Tasks;
 using System.Linq;
+using Cysharp.Threading.Tasks;
+using Unity.AI.Navigation;
+using UnityEngine;
+using UnityEngine.AI;
 
 public class ChunkManager : ManagerBase<ChunkManager>
 {
@@ -15,177 +15,220 @@ public class ChunkManager : ManagerBase<ChunkManager>
     public bool IsBlockUpdateMap = false;
 
     public Transform Player;
-    public Vector3 PlayerSpawnOffset = new Vector3(0 , 2 , 0);
+    public Vector3 PlayerSpawnOffset = new Vector3(0, 2, 0);
     public MapGenerator Generator;
     public InGameLoop GameLoop;
 
     private Vector2Int m_playerChunk;
-    private Dictionary<Vector2Int, Chunk> m_chunks = new Dictionary<Vector2Int, Chunk>();
+    private readonly Dictionary<Vector2Int, Chunk> m_chunks = new();
     private Vector2Int m_lastPlayerChunk;
+    private bool m_hasLastPlayerChunk;
+    private bool m_isUpdatingNavMesh;
+    private bool m_pendingNavMeshUpdate;
+
     [SerializeField] private NavMeshSurface m_surface;
 
     private void Start()
     {
+        GameLoop = InGameLoop.Instance;
+
         if (Player != null)
         {
             MapUpdate(true);
         }
-        GameLoop = InGameLoop.Instance;
+
         IsReady = true;
     }
-    void Update()
+
+    private void Update()
     {
-        if (GameLoop != null && GameLoop.IsStartGame)
+        if (GameLoop == null || GameLoop.IsStartGame == false) return;
+
+        if (IsBlockUpdateMap == false)
         {
-            if (IsBlockUpdateMap == false)
-                MapUpdate(false);
-            NavUpdate();
+            MapUpdate(false);
         }
+
+        NavUpdate();
     }
 
     private void MapUpdate(bool init)
     {
+        if (Player == null || Generator == null || ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) return;
+
         m_playerChunk = new Vector2Int(
             Mathf.FloorToInt(Player.position.x / (ChunkSize * BlockSize.x)),
             Mathf.FloorToInt(Player.position.z / (ChunkSize * BlockSize.z))
         );
 
         var range = Mathf.CeilToInt(ViewRadius + 2);
-        for (int i = -range; i < range; i++)
+        var loadedCoords = new HashSet<Vector2Int>();
+        for (var i = -range; i < range; i++)
         {
-            for (int j = -range; j < range; j++)
+            for (var j = -range; j < range; j++)
             {
                 var offset = new Vector2Int(i, j);
-                Vector2Int coord = m_playerChunk + offset;
-                bool inView = offset.sqrMagnitude < ViewRadius * ViewRadius;
+                var coord = m_playerChunk + offset;
+                var inView = offset.sqrMagnitude < ViewRadius * ViewRadius;
 
-                // 시야 내부인 경우, 청크 관리
                 if (init == false && inView)
                 {
-                    var chunk = m_chunks[coord];
-                    if (chunk.IsGenerate)
-                    {
-                        if (chunk.IsLoaded == false)
-                        {
-                            chunk.Load();
-                            ConnectNeighborChunk(coord);
-                        }
-                    }
-                    // 생성 안된 경우는 일단 생성
-                    else
-                    {
-                        chunk.Generate(MinRoomSize, BlockSize);
-                        // 필요한 스포너 같이 동작
-                        if (GameLoop != null
-                            && chunk.IsGenerateMonster == false)
-                        {
-                            chunk.IsGenerateMonster = true;
-                            GameLoop.EnemySpawner.RandomUnitSpawnPerChunk(chunk);
-                            GameLoop.NPCSpawner.RandomUnitSpawnPerChunk(chunk);
-                        }
-                    }
+                    LoadOrGenerateChunk(coord);
+                    loadedCoords.Add(coord);
                 }
-                // 시야 밖인 경우, 청크 생성 or Unload
                 else
                 {
                     if (m_chunks.TryGetValue(coord, out var chunk))
                     {
                         chunk.Unload();
                     }
-                    else
+                    else if (init)
                     {
-                        m_chunks[coord] = new Chunk(coord, ChunkSize, BlockSize, transform);
-                        if (init == true && offset == Vector2Int.zero)
+                        chunk = GetOrCreateChunk(coord);
+                        if (offset == Vector2Int.zero)
                         {
-                            m_chunks[coord].IsGenerateMonster = true;
+                            chunk.IsGenerateMonster = true;
                         }
                     }
                 }
             }
         }
+
+        if (init) return;
+
+        foreach (var pair in m_chunks)
+        {
+            if (loadedCoords.Contains(pair.Key) == false)
+            {
+                pair.Value.Unload();
+            }
+        }
+    }
+
+    private void LoadOrGenerateChunk(Vector2Int coord)
+    {
+        var chunk = GetOrCreateChunk(coord);
+        var didGenerate = false;
+
+        if (chunk.IsGenerate == false)
+        {
+            chunk.Generate(MinRoomSize, BlockSize);
+            didGenerate = true;
+        }
+
+        if (chunk.IsLoaded == false)
+        {
+            chunk.Load();
+        }
+
+        ConnectNeighborChunk(coord);
+
+        if (didGenerate && chunk.IsGenerateMonster == false)
+        {
+            chunk.IsGenerateMonster = true;
+            GameLoop?.EnemySpawner?.RandomUnitSpawnPerChunk(chunk);
+            GameLoop?.NPCSpawner?.RandomUnitSpawnPerChunk(chunk);
+        }
+    }
+
+    private Chunk GetOrCreateChunk(Vector2Int coord)
+    {
+        if (m_chunks.TryGetValue(coord, out var chunk))
+        {
+            return chunk;
+        }
+
+        chunk = new Chunk(coord, ChunkSize, BlockSize, transform);
+        m_chunks[coord] = chunk;
+        return chunk;
     }
 
     private void NavUpdate()
     {
-        if (m_playerChunk != m_lastPlayerChunk)
+        if (m_hasLastPlayerChunk == false || m_playerChunk != m_lastPlayerChunk)
         {
-            // 맵 업데이트
-            if (m_surface != null)
-            {
-                //m_surface.UpdateNavMesh(m_surface.navMeshData);
-                //StartCoroutine(UpdateMapRoutine());
-                UpdateMapRoutine().Forget();
-            }
+            UpdateMapRoutine().Forget();
         }
+
         m_lastPlayerChunk = m_playerChunk;
+        m_hasLastPlayerChunk = true;
     }
 
     public async UniTaskVoid UpdateMapRoutine()
     {
+        if (m_surface == null || m_surface.navMeshData == null) return;
+
+        if (m_isUpdatingNavMesh)
+        {
+            m_pendingNavMeshUpdate = true;
+            return;
+        }
+
+        m_isUpdatingNavMesh = true;
+        m_pendingNavMeshUpdate = false;
+
         var data = m_surface.navMeshData;
         var setting = m_surface.GetBuildSettings();
-        List<NavMeshBuildMarkup> markups = new();
-        int count = 0;
-        int batchSize = 50;
+        var markups = new List<NavMeshBuildMarkup>();
+        var count = 0;
+        const int batchSize = 50;
         var snap = m_chunks.ToArray();
+
         foreach (var chunk in snap)
         {
-            if (chunk.Value.IsLoaded)
-            {
-                var modifiers = chunk.Value.navMeshModifiers;
-                foreach (var mod in modifiers)
-                {
-                    if (mod == null) continue;
+            if (chunk.Value.IsLoaded == false) continue;
 
-                    var item = new NavMeshBuildMarkup
-                    {
-                        root = mod.transform,
-                        overrideArea = mod.overrideArea,
-                        area = mod.area,
-                        ignoreFromBuild = mod.ignoreFromBuild,
-                    };
-                    markups.Add(item);
-                    count++;
-                    if (count % batchSize == 0)
-                        await UniTask.Yield();
+            var modifiers = chunk.Value.navMeshModifiers;
+            if (modifiers == null) continue;
+
+            foreach (var mod in modifiers)
+            {
+                if (mod == null) continue;
+
+                markups.Add(new NavMeshBuildMarkup
+                {
+                    root = mod.transform,
+                    overrideArea = mod.overrideArea,
+                    area = mod.area,
+                    ignoreFromBuild = mod.ignoreFromBuild,
+                });
+
+                count++;
+                if (count % batchSize == 0)
+                {
+                    await UniTask.Yield();
                 }
             }
         }
+
+        var sources = new List<NavMeshBuildSource>();
+        NavMeshBuilder.CollectSources(transform, ~0, NavMeshCollectGeometry.PhysicsColliders, 0, markups, sources);
+        await UniTask.Yield();
+
+        var worldToLocal = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one).inverse;
+        var result = new Bounds();
         count = 0;
 
-        // modifier은 비활성화 한 채로, 수동으로 마크업 추가
-
-        List<NavMeshBuildSource> sources = new();
-        NavMeshBuilder.CollectSources(
-            transform, ~0, NavMeshCollectGeometry.PhysicsColliders, 0, markups, sources);
-        await UniTask.Yield();
-
-        Matrix4x4 worldToLocal = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
-        worldToLocal = worldToLocal.inverse;
-        await UniTask.Yield();
-
-        var result = new Bounds();
         foreach (var src in sources)
         {
             switch (src.shape)
             {
                 case NavMeshBuildSourceShape.Mesh:
+                    if (src.sourceObject is Mesh mesh)
                     {
-                        var m = src.sourceObject as Mesh;
-                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, m.bounds));
-                        break;
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, mesh.bounds));
                     }
+                    break;
                 case NavMeshBuildSourceShape.Terrain:
-                    {
 #if NMC_CAN_ACCESS_TERRAIN
-                        // Terrain pivot is lower/left corner - shift bounds accordingly
-                        var t = src.sourceObject as TerrainData;
-                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * t.size, t.size)));
-#else
-                        Debug.LogWarning("The NavMesh cannot be properly baked for the terrain because the necessary functionality is missing. Add the com.unity.modules.terrain package through the Package Manager.");
-#endif
-                        break;
+                    if (src.sourceObject is TerrainData terrain)
+                    {
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * terrain.size, terrain.size)));
                     }
+#else
+                    Debug.LogWarning("The NavMesh cannot be baked for terrain because the terrain module is unavailable.");
+#endif
+                    break;
                 case NavMeshBuildSourceShape.Box:
                 case NavMeshBuildSourceShape.Sphere:
                 case NavMeshBuildSourceShape.Capsule:
@@ -196,15 +239,23 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
             count++;
             if (count % batchSize == 0)
+            {
                 await UniTask.Yield();
+            }
         }
+
         result.Expand(0.1f);
-
         var process = NavMeshBuilder.UpdateNavMeshDataAsync(data, setting, sources, result);
-        //var process = m_surface.UpdateNavMesh(m_surface.navMeshData);
-        while (!process.isDone) await UniTask.Yield();
+        while (process.isDone == false)
+        {
+            await UniTask.Yield();
+        }
 
-        await UniTask.Yield();
+        m_isUpdatingNavMesh = false;
+        if (m_pendingNavMeshUpdate)
+        {
+            UpdateMapRoutine().Forget();
+        }
     }
 
     private Bounds GetWorldBounds(Matrix4x4 mat, Bounds bounds)
@@ -224,76 +275,72 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     public IEnumerator PlayerStartRoutine()
     {
-        while(true)
+        while (true)
         {
             if (m_chunks.ContainsKey(m_playerChunk) && m_chunks[m_playerChunk].IsLoaded) break;
             yield return null;
         }
+
         var floor = m_chunks[m_playerChunk].floorPosData;
-        Player.transform.position = floor[Random.Range(0, floor.Count)];
+        if (floor == null || floor.Count == 0) yield break;
+
+        Player.transform.position = floor[Random.Range(0, floor.Count)] + PlayerSpawnOffset;
         if (m_surface != null)
         {
-            // 먼저 로딩 후, 커스텀으로 네비 업데이트 (BuildNavMesh의 Time문제)
             m_surface.BuildNavMesh();
             yield return new WaitForSeconds(3f);
             UpdateMapRoutine().Forget();
         }
-
     }
-    public bool TryGetSpawnPointOnChunk(Vector3 pos, Vector3 spawnOffset,out Vector3 res)
+
+    public bool TryGetSpawnPointOnChunk(Vector3 pos, Vector3 spawnOffset, out Vector3 res)
     {
-        res = Vector3.zero;
-        var chunk = GetChunk(pos);
-        if (chunk != null)
-        {
-            var pickFloor = chunk.floorPosData;
-            if (pickFloor != null && pickFloor.Count > 0)
-            {
-                var pickNum = Random.Range(0, pickFloor.Count);
-                res = pickFloor[pickNum] + spawnOffset;
-            }
-            else return false;
-            return true;
-        }
-        else return false;
+        return TryGetSpawnPointOnChunk(GetChunk(pos), spawnOffset, out res);
     }
 
     public bool TryGetSpawnPointOnChunk(Chunk chunk, Vector3 spawnOffset, out Vector3 res)
     {
         res = Vector3.zero;
-        if (chunk != null)
+        if (chunk == null || chunk.floorPosData == null || chunk.floorPosData.Count == 0)
         {
-            var pickFloor = chunk.floorPosData;
-            if (pickFloor != null && pickFloor.Count > 0)
-            {
-                var pickNum = Random.Range(0, pickFloor.Count);
-                res = pickFloor[pickNum] + spawnOffset;
-            }
-            else return false;
-            return true;
+            return false;
         }
-        else return false;
+
+        const int maxAttempts = 12;
+        for (var i = 0; i < maxAttempts; i++)
+        {
+            var pickNum = Random.Range(0, chunk.floorPosData.Count);
+            var candidate = chunk.floorPosData[pickNum] + spawnOffset;
+
+            if (NavMesh.SamplePosition(candidate, out var hit, Mathf.Max(BlockSize.x, BlockSize.z) * 2f, NavMesh.AllAreas))
+            {
+                res = hit.position;
+                return true;
+            }
+
+            res = candidate;
+        }
+
+        return true;
     }
 
-
-    // RandomPoint.y has -999f 
-    public Vector3 GetRandomSpawnPoint(Vector3 center,float minDist,float maxDist)
+    public Vector3 GetRandomSpawnPoint(Vector3 center, float minDist, float maxDist)
     {
-        Vector3 res = Vector3.zero;
-        Vector2 dir = Random.insideUnitCircle.normalized;
+        var dir = Random.insideUnitCircle.normalized;
         var dist = Random.Range(minDist, maxDist);
-        Vector3 point = (Vector3)(dir * dist) + center;
-        res = new Vector3(point.x, -999f , point.z);
-        return res;
+        var point = (Vector3)(dir * dist) + center;
+        return new Vector3(point.x, -999f, point.z);
     }
 
     public Chunk GetChunk(Vector2Int pos)
     {
-        return m_chunks.TryGetValue(pos,out var res)? res: null;
+        return m_chunks.TryGetValue(pos, out var res) ? res : null;
     }
 
     public Chunk GetChunk(Vector3 pos)
     {
+        if (ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) return null;
+
         var currentChunk = new Vector2Int(
             Mathf.FloorToInt(pos.x / (ChunkSize * BlockSize.x)),
             Mathf.FloorToInt(pos.z / (ChunkSize * BlockSize.z))
@@ -303,107 +350,92 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     private void ConnectNeighborChunk(Vector2Int chunkCoord)
     {
-        Vector2Int[] dirs = {
-        Vector2Int.up, Vector2Int.down,
-        Vector2Int.left, Vector2Int.right
+        Vector2Int[] dirs =
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
         };
 
         foreach (var dir in dirs)
         {
-            Vector2Int neighborCoord = chunkCoord + dir;
-            if (m_chunks.ContainsKey(neighborCoord))
-            {
-                Chunk currentChunk = m_chunks[chunkCoord];
-                Chunk neighborChunk = m_chunks[neighborCoord];
+            var neighborCoord = chunkCoord + dir;
+            if (m_chunks.ContainsKey(neighborCoord) == false) continue;
 
-                if (currentChunk.IsLoaded && neighborChunk.IsLoaded)
-                {
-                    if (currentChunk.IsCheckClosedChunk(dir)) continue;
-                    
-                    Generator.TryConnectChunks(
-                        currentChunk,
-                        dir,
-                        BlockSize,
-                        currentChunk.ChunkObject.transform
-                    );
+            var currentChunk = m_chunks[chunkCoord];
+            var neighborChunk = m_chunks[neighborCoord];
+            if (currentChunk.IsLoaded == false || neighborChunk.IsLoaded == false) continue;
+            if (currentChunk.IsCheckClosedChunk(dir)) continue;
 
-                    // 서로에 대해서 체크
-                    currentChunk.CheckDirection.Add(dir);
-                    neighborChunk.CheckDirection.Add(-dir);
-                    // 끝난 후, 두 청크의 맵 구조는 확정되었으므로 메쉬 합쳐서 최적화
-                    StartCoroutine(CombineMesh(currentChunk));
-                    StartCoroutine(CombineMesh(neighborChunk));
-                }
-            }
+            var isConnected = Generator.TryConnectChunks(currentChunk, dir, BlockSize, currentChunk.ChunkObject.transform);
+            if (isConnected == false) continue;
+
+            currentChunk.CheckDirection.Add(dir);
+            neighborChunk.CheckDirection.Add(-dir);
+            currentChunk.RefreshNavMeshModifiers();
+            neighborChunk.RefreshNavMeshModifiers();
+            StartCoroutine(CombineMesh(currentChunk));
+            StartCoroutine(CombineMesh(neighborChunk));
         }
     }
 
     private IEnumerator CombineMesh(Chunk chunk)
     {
-        // 이미 수행했거나 수행중이면 함수 리턴
         if (chunk.IsCombineMesh || chunk.CheckDirection.Count != 4) yield break;
         chunk.IsCombineMesh = true;
         yield return null;
 
-        MeshFilter[] meshFilters = chunk.ChunkObject.GetComponentsInChildren<MeshFilter>();
+        var meshFilters = chunk.ChunkObject.GetComponentsInChildren<MeshFilter>();
+        var tileNames = new List<string>();
 
-        List<string> list = new();
-
-        for (int i = 0; i < (int)TileType.Size; i++)
+        for (var i = 0; i < (int)TileType.Size; i++)
         {
-            list.Add(((TileType)i).ToString());
+            tileNames.Add(((TileType)i).ToString());
         }
 
-        foreach(var item in list)
+        foreach (var tileName in tileNames)
         {
-            var createObject = new GameObject(item);
+            var createObject = new GameObject(tileName);
             createObject.transform.parent = chunk.ChunkObject.transform;
 
-            List<CombineInstance> combineList = new List<CombineInstance>();
-            var layer = LayerMask.NameToLayer(item);
+            var combineList = new List<CombineInstance>();
+            var layer = LayerMask.NameToLayer(tileName);
             Material mat = null;
 
-            for (int i = 0; i < meshFilters.Length; i++)
+            foreach (var filter in meshFilters)
             {
-                var filter = meshFilters[i];
-
-                // 자기 자신이면 or 같은 레이어 아니면 제외
                 if (filter.transform == chunk.ChunkObject.transform || filter.gameObject.layer != layer) continue;
                 if (filter.sharedMesh == null) continue;
 
-                CombineInstance ci = new CombineInstance
+                var renderer = filter.GetComponentInChildren<MeshRenderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = false;
+                    mat ??= renderer.sharedMaterial;
+                }
+
+                combineList.Add(new CombineInstance
                 {
                     mesh = filter.sharedMesh,
                     transform = filter.transform.localToWorldMatrix
-                };
-                var renderer = filter.GetComponentInChildren<MeshRenderer>();
-                renderer.enabled = false;
-                combineList.Add(ci);
-                if (mat == null)
-                {
-                    if (renderer != null)
-                    {
-                        mat = renderer.sharedMaterial;
-                    }
-                }
+                });
             }
 
             if (combineList.Count > 0)
             {
-                Mesh mesh = new Mesh();
+                var mesh = new Mesh();
                 mesh.CombineMeshes(combineList.ToArray(), true, true);
 
                 var filter = createObject.AddComponent<MeshFilter>();
                 var renderer = createObject.AddComponent<MeshRenderer>();
 
                 filter.mesh = mesh;
-                renderer.sharedMaterial = mat; // 필요한 머티리얼 할당
-
+                renderer.sharedMaterial = mat;
                 createObject.layer = layer;
-
             }
-            yield return null;
 
+            yield return null;
         }
     }
 }

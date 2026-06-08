@@ -2,9 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.AI.Navigation;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.AI;
 
 public class Chunk
 {
@@ -14,7 +12,7 @@ public class Chunk
     public bool IsGenerate = false;
     public bool IsGenerateMonster = false;
     public bool IsCombineMesh = false;
-    public HashSet<Vector2> CheckDirection = new HashSet<Vector2>();
+    public HashSet<Vector2Int> CheckDirection = new HashSet<Vector2Int>();
     public RectInt Bounds;
     public List<Vector3> floorPosData;
 
@@ -57,11 +55,16 @@ public class Chunk
         {
             IsGenerate = true;
             ChunkManager.Instance.Generator.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
-            navMeshModifiers = ChunkObject.transform.GetComponentsInChildren<NavMeshModifier>(true);
+            RefreshNavMeshModifiers();
         }
     }
 
-    public bool IsCheckClosedChunk(Vector2 dir)
+    public void RefreshNavMeshModifiers()
+    {
+        navMeshModifiers = ChunkObject.transform.GetComponentsInChildren<NavMeshModifier>(true);
+    }
+
+    public bool IsCheckClosedChunk(Vector2Int dir)
     {
         if (CheckDirection.Contains(dir) == false)
         {
