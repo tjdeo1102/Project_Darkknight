@@ -21,7 +21,10 @@ public class ProjectileSkill : SkillBase
 
         if (isFailSkill == false && stats.TryGetValue(StatType.AttackPower, out var atk) == true)
         {
+            if (Target == null) yield break;
+
             origin.LookAt(Target.transform);
+            SetStartPos(origin);
 
             var pool = ProjectileManager.Instance.ProjectileDic[ProjectileType];
             var bullet = pool.GetObject();
@@ -29,8 +32,6 @@ public class ProjectileSkill : SkillBase
             trans.position = center;
             trans.rotation = origin.rotation;
 
-            // 딜레이로 인한 foward 갱신 필요
-            SetStartPos(origin);
             var velocity = foward * Speed;
 
             var Damage = 0f;
