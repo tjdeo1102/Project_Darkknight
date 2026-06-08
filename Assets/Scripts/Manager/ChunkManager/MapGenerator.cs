@@ -248,10 +248,15 @@ public class MapGenerator : MonoBehaviour
         var wallMask = wallLayer >= 0 ? 1 << wallLayer : Physics.DefaultRaycastLayers;
         var rayDistance = (thickness * 2 + 1) * blockFrontSize;
 
+        Physics.SyncTransforms();
+
         if (Physics.Raycast(startTunnelOffset, rayDir, out var hit, rayDistance, wallMask))
         {
             startTunnelOffset = hit.transform.position - rayDir * thickness * blockFrontSize;
         }
+
+        Vector3 bestStartPos = Vector3.zero;
+        RaycastHit[] bestHits = null;
 
         foreach (var wallIndex in tunnelList)
         {
@@ -259,20 +264,46 @@ public class MapGenerator : MonoBehaviour
             var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
             if (hits.Length == 0 || hits.Length > thickness) continue;
 
-            Debug.DrawRay(startPos, rayDir * rayDistance, Color.red, 3000f);
+            CarveTunnel(startPos, rayDir, rayDistance, hits, parent);
+            return true;
+        }
 
-            foreach (var hitInfo in hits)
+        foreach (var wallIndex in tunnelList)
+        {
+            var startPos = startTunnelOffset + wallDir * blockRightSize * wallIndex;
+            var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
+            if (hits.Length == 0) continue;
+
+            if (bestHits == null || hits.Length < bestHits.Length)
             {
-                var pos = new Vector3(hitInfo.transform.position.x, 0, hitInfo.transform.position.z);
-                CreateTunnelFloor(pos, parent);
-                Destroy(hitInfo.collider.gameObject);
+                bestStartPos = startPos;
+                bestHits = hits;
             }
+        }
 
-            CreateTunnelGates(startPos, rayDir, hits.Length * blockFrontSize, parent);
+        if (bestHits != null)
+        {
+            CarveTunnel(bestStartPos, rayDir, rayDistance, bestHits, parent);
             return true;
         }
 
         return false;
+    }
+
+    private void CarveTunnel(Vector3 startPos, Vector3 rayDir, float rayDistance, RaycastHit[] hits, Transform parent)
+    {
+        Debug.DrawRay(startPos, rayDir * rayDistance, Color.red, 3000f);
+
+        var tunnelLength = 0f;
+        foreach (var hitInfo in hits.OrderBy(hitInfo => hitInfo.distance))
+        {
+            var pos = new Vector3(hitInfo.transform.position.x, 0, hitInfo.transform.position.z);
+            CreateTunnelFloor(pos, parent);
+            tunnelLength = Mathf.Max(tunnelLength, hitInfo.distance);
+            Destroy(hitInfo.collider.gameObject);
+        }
+
+        CreateTunnelGates(startPos, rayDir, tunnelLength, parent);
     }
 
     private void CreateTunnelFloor(Vector3 pos, Transform parent)
