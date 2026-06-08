@@ -8,6 +8,7 @@ public class UIElementBase : MonoBehaviour
 
     protected virtual void OnDisable()
     {
-        Controller.ChangeState(UIState.None);
+        if (Controller != null && Controller.CurrentState == Type)
+            Controller.ChangeState(UIState.None);
     }
 }

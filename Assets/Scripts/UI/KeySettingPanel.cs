@@ -15,6 +15,8 @@ public class KeySettingPanel : MonoBehaviour
 
     public PlayerController PlayerCtrl;
     private Dictionary<string, List<InputAction>> actionDic;
+    private InputAction m_rebindingAction;
+    private InputActionRebindingExtensions.RebindingOperation m_rebindOperation;
     private void Awake()
     {
         InputActions = PlayerCtrl.input.actions; 
@@ -38,7 +40,7 @@ public class KeySettingPanel : MonoBehaviour
             var actionText = Instantiate(SettingTextPref, Content);
             actionText.text = actionKV.Key;
             actionText.fontSize = 30;
-            // 같은 액션끼리 바인딩 개수는 같음
+            // Actions with the same name share the same binding count.
             if (actionKV.Value[0].bindings.Count < 2)
             {
                 var sameBindings = actionKV.Value
@@ -46,7 +48,7 @@ public class KeySettingPanel : MonoBehaviour
                             .ToList();
                 SetBindingContent(actionKV.Value[0], sameBindings, actionKV.Key);
             }
-            // 다수 바인딩으로 엮인 액션
+            // Actions with multiple bindings expose each binding separately.
             else
             {
                 var action = actionKV.Value[0];
@@ -56,13 +58,13 @@ public class KeySettingPanel : MonoBehaviour
                     var sameBindings = actionKV.Value
                             .Select(action => action.bindings[i])
                             .ToList();
-                    // Vector2와 같은 컴포사이트 바인딩은 고유 바인딩 이름으로 표현
+                    // Composite parts use their own binding names.
                     if (bindings[i].isComposite) continue;
                     else if (bindings[i].isPartOfComposite)
                     {
                         SetBindingContent(action, sameBindings, bindings[i].name);
                     }
-                    // 액션 + 인덱스 표현
+                    // Non-composite bindings are shown with an action index.
                     else
                     {
                         SetBindingContent(action, sameBindings, action.name + i);
@@ -78,7 +80,7 @@ public class KeySettingPanel : MonoBehaviour
         var texts = bindingText.GetComponentsInChildren<TextMeshProUGUI>();
         var btn = bindingText.GetComponentInChildren<Button>();
 
-        texts[0].text = "    ㄴ" + name;
+        texts[0].text = "    " + name;
         texts[0].fontSize = 25;
         texts[1].text = bindings[0].ToDisplayString();
         texts[1].fontSize = 25;
@@ -86,40 +88,73 @@ public class KeySettingPanel : MonoBehaviour
         btn.onClick.AddListener(() => RebindKey(action, bindings, texts[1]));
     }
 
-    private void RebindKey(InputAction action,List<InputBinding> bindings, TMP_Text viewText)
+    private void RebindKey(InputAction action, List<InputBinding> bindings, TMP_Text viewText)
     {
+        CancelRebind();
+
         var idx = action.bindings.IndexOf(x => x.id == bindings[0].id);
+        if (idx < 0) return;
 
         viewText.text = "Press Any Key...";
+        m_rebindingAction = action;
         action.Disable();
 
-        action.PerformInteractiveRebinding(idx)
-            .WithCancelingThrough("<Mouse>/leftButton")
+        m_rebindOperation = action.PerformInteractiveRebinding(idx)
             .WithCancelingThrough("<Keyboard>/Escape")
             .OnCancel(o =>
             {
-                o.Dispose();
-                action.Enable();
                 viewText.text = bindings[0].ToDisplayString();
+                FinishRebind(o);
             })
             .OnComplete(o =>
             {
                 string newPath = o.selectedControl?.path;
-                // 동시에 모든 같은 키 전부 변경 적용
-                foreach (var binding in bindings)
+                if (string.IsNullOrEmpty(newPath) == false)
                 {
-                    var index = action.bindings.IndexOf(y => y.id == binding.id);
-                    if (index != -1) action.ChangeBinding(index).WithPath(newPath);
+                    foreach (var binding in bindings)
+                    {
+                        var index = action.bindings.IndexOf(y => y.id == binding.id);
+                        if (index != -1) action.ChangeBinding(index).WithPath(newPath);
+                    }
                 }
-                o.Dispose();
-                action.Enable();
+
                 viewText.text = action.GetBindingDisplayString(idx);
-            })
-            .Start();
+                FinishRebind(o);
+            });
+
+        m_rebindOperation.Start();
+    }
+
+    private void FinishRebind(InputActionRebindingExtensions.RebindingOperation operation)
+    {
+        operation?.Dispose();
+
+        if (m_rebindingAction != null && m_rebindingAction.enabled == false)
+            m_rebindingAction.Enable();
+
+        if (m_rebindOperation == operation)
+            m_rebindOperation = null;
+
+        m_rebindingAction = null;
+    }
+
+    private void CancelRebind()
+    {
+        if (m_rebindOperation == null) return;
+
+        var operation = m_rebindOperation;
+        m_rebindOperation = null;
+        operation.Cancel();
+    }
+
+    private void OnDisable()
+    {
+        CancelRebind();
     }
 
     private void OnDestroy()
     {
+        CancelRebind();
         foreach (var btn in gameObject.GetComponentsInChildren<Button>())
         {
             btn.onClick.RemoveAllListeners(); 

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c5b0b0d9a0b4c7f9e2e3d1c8a6b5f02, type: 3}
+  m_Name: Attack_1
+  m_EditorClassIdentifier: 
+  EffectDelay: 0
+  ActiveDelay: 0.1
+  UseAnimationEvent: 1
+  AdditionalDamage: 0
+  KnockBackForce: 1
+  HitOffset: {x: 0, y: 0.4, z: 0}
+  Range: {x: 2.2, y: 1.3, z: 1.3}
+  MainVFXPrefab: {fileID: 8913455889422923577, guid: 114f6459bb96f6040a63260cb872924d,
+    type: 3}
+  HitVFXPrefab: {fileID: 1349223959906096762, guid: 6331d460645a2b54cbeaf0088a226969,
+    type: 3}
+  MainVFXOffset: {x: 0, y: 1.2, z: 1}
+  MainVFXEulerAngles: {x: -3.9106487e-13, y: -1.1317088e-13, z: 32.28}
+  HitVFXOffset: {x: 0, y: 0, z: 0}
+  HitVFXEulerAngles: {x: 0, y: 0, z: 0}

@@ -15,11 +15,6 @@ public partial class SetVariableInitAction : Action
     [SerializeReference] public BlackboardVariable<float> Speed;
     protected override Status OnStart()
     {
-        return Status.Running;
-    }
-
-    protected override Status OnUpdate()
-    {
         if (animator.Value == null)
         {
             animator.Value = Agent.Value.GetComponentInChildren<Animator>();
@@ -37,8 +32,5 @@ public partial class SetVariableInitAction : Action
         return Status.Success;
     }
 
-    protected override void OnEnd()
-    {
-    }
 }
 

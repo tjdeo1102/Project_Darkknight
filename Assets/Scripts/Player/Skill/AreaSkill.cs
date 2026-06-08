@@ -43,11 +43,12 @@ public class AreaSkill: SkillBase
     {
         SetStartPos(origin);
         var center = this.center + foward * HitOffset.z + right * HitOffset.x + up * HitOffset.y;
+        var rotation = Quaternion.LookRotation(foward);
         Vector3 halfExtents = Range * 0.5f;
 
-        Collider[] hits = Physics.OverlapBox(center, halfExtents, Quaternion.identity, TargetLayer);
+        Collider[] hits = Physics.OverlapBox(center, halfExtents, rotation, TargetLayer);
 
-        Tool.DrawOverlapBox(center, Range, Quaternion.LookRotation(foward), Color.green, 2f);
+        Tool.DrawOverlapBox(center, Range, rotation, Color.green, 2f);
 
         var atk = 0f;
         if (stats.TryGetValue(StatType.AttackPower, out var stat))

@@ -46,9 +46,6 @@ public partial class PatrolPathFinderAction : Action
     protected override void OnEnd()
     {
         base.OnEnd();
-
-        m_navAgent.enabled = false;
-        IsActiveNavAgent.Value = false;
     }
 
     private bool IsTimeOut()

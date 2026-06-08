@@ -40,7 +40,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a0ba08691a073a2459083cb5e0c8f3de, type: 2}
   StartOffset: {x: 0, y: 0, z: 1}
   ActiveDelay: 1
-  EffectDelay: 0.5
+  EffectDelay: 3
   HitOffset: {x: 0, y: 1.5, z: 4}
   Range: {x: 2, y: 2, z: 8}
   KnockBackForce: 1

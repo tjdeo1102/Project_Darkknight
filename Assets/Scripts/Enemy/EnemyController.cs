@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -13,51 +13,47 @@ public class EnemyController : MonoBehaviour
     public EnemyAI AI;
     public EnemyType EnemyType;
     public Rigidbody Rigid;
-    public InGameLoop GameLoop;
     public Animator Anim;
 
     public GameObject Target;
 
     public Vector3 SpawnOffset = Vector3.up;
     public float ChunkRefreshDelay = 2f;
-    private ChunkManager m_chunkManager;
 
     private void Awake()
     {
         Rigid = GetComponent<Rigidbody>();
         Rigid.useGravity = false;
+        Rigid.isKinematic = true;
         Anim = GetComponentInChildren<Animator>();
-    }
-
-    private void OnEnable()
-    {
-        if (InGameLoop.Instance != null)
-        {
-            GameLoop = InGameLoop.Instance;
-            m_chunkManager = GameLoop.ChunkManager;
-        }
     }
 
     private void OnDisable()
     {
         Rigid.useGravity = false;
+        Rigid.isKinematic = true;
     }
     public void ChunkRefresh()
     {
-        if (m_chunkManager == null) return;
+        if (InGameLoop.Instance == null || InGameLoop.Instance.ChunkManager == null) return;
 
-        var chunk = m_chunkManager.GetChunk(transform.position);
-        // 청크와 함께 관리
+        var chunk = InGameLoop.Instance.ChunkManager.GetChunk(transform.position);
+
+        // 泥?겕? ?④퍡 愿由?
         if (chunk != null)
         {
             transform.parent = chunk.ChunkObject.transform;
-            Rigid.useGravity = true;
+            if (Rigid.isKinematic == false)
+                Rigid.linearVelocity = Vector3.zero;
+            Rigid.useGravity = false;
+            Rigid.isKinematic = true;
             AI.enabled = true;
+            AI.EnsureNavAgentReady();
         }
-        // 정해진 청크 위치에 없는 적은 다시 반환
+        // ?뺥빐吏?泥?겕 ?꾩튂???녿뒗 ?곸? ?ㅼ떆 諛섑솚
         else
         {
-            GameLoop.EnemySpawner.DestroyEnemy(this);
+            InGameLoop.Instance.EnemySpawner.DestroyEnemy(this);
         }
     }
 }

@@ -1528,6 +1528,7 @@ MonoBehaviour:
   - 4
   - 5
   - 6
+  NavAgent: {fileID: 0}
   SelectItems:
   - {fileID: 11400000, guid: f9eb78650d4fa18419dc877326ba1b14, type: 2}
   - {fileID: 11400000, guid: f807f6c6f44caa84fa91120d4fec15e6, type: 2}

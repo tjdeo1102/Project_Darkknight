@@ -25,7 +25,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: KnifeWalk
-  m_Speed: 3
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 681349993592343545}
@@ -566,14 +566,13 @@ AnimatorState:
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
   m_Mirror: 0
-  m_SpeedParameterActive: 0
+  m_SpeedParameterActive: 1
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: f480c2eeb2d1f4241b1c5d125ef2baf4,
-    type: 3}
+  m_Motion: {fileID: 7400000, guid: faf90499b36944e4fa2f154ebaaab0d0, type: 2}
   m_Tag: Attack
-  m_SpeedParameter: 
+  m_SpeedParameter: AttackSpd
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
@@ -857,7 +856,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: SwordWalk
-  m_Speed: 3
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5065237709384662234}
@@ -1714,14 +1713,13 @@ AnimatorState:
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
   m_Mirror: 0
-  m_SpeedParameterActive: 0
+  m_SpeedParameterActive: 1
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 963da2b97d93c424583f17638e1f5243,
-    type: 3}
+  m_Motion: {fileID: 7400000, guid: f2f3edf7684c954478cf8cb403e3bfeb, type: 2}
   m_Tag: Attack
-  m_SpeedParameter: 
+  m_SpeedParameter: AttackSpd
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
@@ -2062,7 +2060,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Walk
-  m_Speed: 3
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3678565291081997041}
@@ -2103,8 +2101,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 9318dba563a1dcd4382a7a1f8d04f629,
-    type: 3}
+  m_Motion: {fileID: 7400000, guid: 3c1c9c205c886e145871ef250233955e, type: 2}
   m_Tag: Attack
   m_SpeedParameter: AttackSpd
   m_MirrorParameter: 

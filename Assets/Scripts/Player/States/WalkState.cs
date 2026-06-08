@@ -14,15 +14,15 @@ public class WalkState : State
     public override void Enter()
     {
         base.Enter();
-        m_cam = Camera.main.transform;
+        if (m_cam == null)
+            m_cam = Camera.main.transform;
     }
 
     public override void Update()
     {
         base.Update();
         var input = ctrl.input.actions[moveAction].ReadValue<Vector2>();
-        Vector3 move = new Vector3(input.x, 0, input.y);
-        float runInput = ctrl.input.actions[runAction].ReadValue<float>();
+        Vector3 move = new Vector3(input.x, 0, input.y).normalized;
             
         if (move.sqrMagnitude < 0.1f)
         {
@@ -32,18 +32,15 @@ public class WalkState : State
         var camDir = new Vector3(m_cam.forward.x, 0, m_cam.forward.z);
         var dir = Quaternion.LookRotation(camDir) * move;
         ctrl.transform.rotation = Quaternion.LookRotation(dir);
-        if (runInput > 0.1f)
-        {
-            anim.SetBool(runParam, true);
-            anim.SetBool(walkParam, false);
-            ctrl.Rigid.linearVelocity = ctrl.model.RunSpeed.TotalValue * new Vector3(dir.x, 0, dir.z);
-        }
-        else
-        {
-            anim.SetBool(runParam, false);
-            anim.SetBool(walkParam, true);
-            ctrl.Rigid.linearVelocity = ctrl.model.Speed.TotalValue * new Vector3(dir.x, 0, dir.z);
-        }
+
+        float runInput = ctrl.input.actions[runAction].ReadValue<float>();
+        var isRun = runInput > 0.1f;
+        var spd =  isRun ? ctrl.model.RunSpeed.TotalValue : ctrl.model.Speed.TotalValue;
+        
+        anim.SetBool(runParam, isRun);
+        anim.SetBool(walkParam, !isRun);
+
+        ctrl.Rigid.linearVelocity = new Vector3(dir.x * spd, ctrl.Rigid.linearVelocity.y, dir.z * spd);
     }
 
     public override void Exit() 
