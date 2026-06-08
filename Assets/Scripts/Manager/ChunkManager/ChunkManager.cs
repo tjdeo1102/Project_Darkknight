@@ -83,9 +83,10 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 var coord = m_playerChunk + offset;
                 var inView = offset.sqrMagnitude < ViewRadius * ViewRadius;
 
-                if (init == false && inView)
+                if (inView)
                 {
-                    LoadOrGenerateChunk(coord);
+                    var shouldQueueSpawn = init == false || offset != Vector2Int.zero;
+                    LoadOrGenerateChunk(coord, shouldQueueSpawn);
                     m_loadedCoords.Add(coord);
                 }
                 else
@@ -93,14 +94,6 @@ public class ChunkManager : ManagerBase<ChunkManager>
                     if (m_chunks.TryGetValue(coord, out var chunk))
                     {
                         chunk.Unload();
-                    }
-                    else if (init)
-                    {
-                        chunk = GetOrCreateChunk(coord);
-                        if (offset == Vector2Int.zero)
-                        {
-                            chunk.IsGenerateMonster = true;
-                        }
                     }
                 }
             }
@@ -117,7 +110,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
         }
     }
 
-    private void LoadOrGenerateChunk(Vector2Int coord)
+    private void LoadOrGenerateChunk(Vector2Int coord, bool queueSpawn)
     {
         var chunk = GetOrCreateChunk(coord);
         var didGenerate = false;
@@ -135,7 +128,12 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
         ConnectNeighborChunk(coord);
 
-        if (didGenerate && chunk.IsGenerateMonster == false)
+        if (didGenerate && queueSpawn == false)
+        {
+            chunk.IsGenerateMonster = true;
+        }
+
+        if (didGenerate && queueSpawn && chunk.IsGenerateMonster == false)
         {
             chunk.IsGenerateMonster = true;
             m_pendingSpawnChunks.Add(chunk);
@@ -303,6 +301,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private void ProcessPendingChunkSpawns()
     {
         if (m_pendingSpawnChunks.Count == 0) return;
+        if (GameLoop == null || GameLoop.IsStartGame == false) return;
 
         var chunks = m_pendingSpawnChunks.ToArray();
         foreach (var chunk in chunks)
