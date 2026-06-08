@@ -25,6 +25,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private bool m_hasLastPlayerChunk;
     private bool m_isUpdatingNavMesh;
     private bool m_pendingNavMeshUpdate;
+    private readonly HashSet<Chunk> m_pendingSpawnChunks = new();
 
     [SerializeField] private NavMeshSurface m_surface;
 
@@ -126,8 +127,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
         if (didGenerate && chunk.IsGenerateMonster == false)
         {
             chunk.IsGenerateMonster = true;
-            GameLoop?.EnemySpawner?.RandomUnitSpawnPerChunk(chunk);
-            GameLoop?.NPCSpawner?.RandomUnitSpawnPerChunk(chunk);
+            m_pendingSpawnChunks.Add(chunk);
+            UpdateMapRoutine().Forget();
         }
     }
 
@@ -156,7 +157,11 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     public async UniTaskVoid UpdateMapRoutine()
     {
-        if (m_surface == null || m_surface.navMeshData == null) return;
+        if (m_surface == null || m_surface.navMeshData == null)
+        {
+            ProcessPendingChunkSpawns();
+            return;
+        }
 
         if (m_isUpdatingNavMesh)
         {
@@ -255,7 +260,36 @@ public class ChunkManager : ManagerBase<ChunkManager>
         if (m_pendingNavMeshUpdate)
         {
             UpdateMapRoutine().Forget();
+            return;
         }
+
+        ProcessPendingChunkSpawns();
+    }
+
+    private void ProcessPendingChunkSpawns()
+    {
+        if (m_pendingSpawnChunks.Count == 0) return;
+
+        var chunks = m_pendingSpawnChunks.ToArray();
+        foreach (var chunk in chunks)
+        {
+            if (chunk == null || chunk.IsLoaded == false)
+            {
+                m_pendingSpawnChunks.Remove(chunk);
+                continue;
+            }
+
+            if (CanSpawnOnChunk(chunk) == false) continue;
+
+            GameLoop?.EnemySpawner?.RandomUnitSpawnPerChunk(chunk);
+            GameLoop?.NPCSpawner?.RandomUnitSpawnPerChunk(chunk);
+            m_pendingSpawnChunks.Remove(chunk);
+        }
+    }
+
+    private bool CanSpawnOnChunk(Chunk chunk)
+    {
+        return TryGetSpawnPointOnChunk(chunk, Vector3.up, out _);
     }
 
     private Bounds GetWorldBounds(Matrix4x4 mat, Bounds bounds)
@@ -321,7 +355,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
             res = candidate;
         }
 
-        return true;
+        return false;
     }
 
     public Vector3 GetRandomSpawnPoint(Vector3 center, float minDist, float maxDist)

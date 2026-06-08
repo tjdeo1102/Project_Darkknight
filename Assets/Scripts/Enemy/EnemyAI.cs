@@ -15,11 +15,18 @@ public class EnemyAI : MonoBehaviour
 
     private void OnEnable()
     {
-        EnsureNavAgentReady();
+        if (EnsureNavAgentReady() == false)
+        {
+            if (BTAgent != null) BTAgent.enabled = false;
+            return;
+        }
 
-        BTAgent.enabled = true;
-        BTAgent.Init();
-        BTAgent.Restart();
+        if (BTAgent != null)
+        {
+            BTAgent.enabled = true;
+            BTAgent.Init();
+            BTAgent.Restart();
+        }
 
         if (NavAgent != null)
             NavAgent.updateRotation = false;
@@ -27,7 +34,7 @@ public class EnemyAI : MonoBehaviour
 
     private void OnDisable()
     {
-        BTAgent.enabled = false;
+        if (BTAgent != null) BTAgent.enabled = false;
         if (NavAgent != null) NavAgent.enabled = false;
     }
 
@@ -37,10 +44,7 @@ public class EnemyAI : MonoBehaviour
 
         NavAgent.updateRotation = false;
 
-        if (NavAgent.enabled == false)
-            NavAgent.enabled = true;
-
-        if (NavAgent.isOnNavMesh)
+        if (NavAgent.enabled && NavAgent.isOnNavMesh)
         {
             NavAgent.isStopped = false;
             return true;
@@ -53,6 +57,9 @@ public class EnemyAI : MonoBehaviour
         }
 
         transform.position = hit.position;
+        if (NavAgent.enabled == false)
+            NavAgent.enabled = true;
+
         NavAgent.Warp(hit.position);
         NavAgent.isStopped = false;
         return true;
