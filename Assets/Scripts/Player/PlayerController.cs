@@ -26,8 +26,21 @@ public class PlayerController : MonoBehaviour
 
     public void SetActionMap(InputActionMap mode)
     {
-        if (input != null && input.enabled)
-            input.SwitchCurrentActionMap(mode.ToString());
+        if (input == null || input.actions == null) return;
+
+        if (input.enabled == false)
+            input.enabled = true;
+
+        var mapName = mode.ToString();
+        if (input.actions.FindActionMap(mapName, false) == null)
+        {
+            Debug.LogWarning($"Input action map not found: {mapName}");
+            return;
+        }
+
+        if (input.currentActionMap != null && input.currentActionMap.name == mapName) return;
+
+        input.SwitchCurrentActionMap(mapName);
     }
 
 }

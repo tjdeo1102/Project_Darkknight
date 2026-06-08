@@ -13,23 +13,46 @@ public class PlayerCombat : MonoBehaviour
 
     private WeaponBase curWeapon;
     private Dictionary<WeaponType, WeaponBase> weapons;
+    private bool m_isInputSubscribed;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
 
-    private void Start()
+    private void OnEnable()
     {
-        ctrl.input.actions["Skill"].performed += OnSkill;
-        ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
-        ctrl.input.actions["Attack"].performed += OnAttack;
+        SubscribeInput();
     }
 
     private void OnDisable()
     {
+        UnsubscribeInput();
+    }
+
+    private void SubscribeInput()
+    {
+        if (m_isInputSubscribed) return;
+        if (ctrl == null) ctrl = GetComponentInParent<PlayerController>();
+        if (ctrl == null || ctrl.input == null || ctrl.input.actions == null) return;
+
+        ctrl.input.actions["Skill"].performed += OnSkill;
+        ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
+        ctrl.input.actions["Attack"].performed += OnAttack;
+        m_isInputSubscribed = true;
+    }
+
+    private void UnsubscribeInput()
+    {
+        if (m_isInputSubscribed == false) return;
+        if (ctrl == null || ctrl.input == null || ctrl.input.actions == null)
+        {
+            m_isInputSubscribed = false;
+            return;
+        }
+
         ctrl.input.actions["Skill"].performed -= OnSkill;
         ctrl.input.actions["SwapWeapon"].performed -= OnSwapWeapon;
         ctrl.input.actions["Attack"].performed -= OnAttack;
-
+        m_isInputSubscribed = false;
     }
 
 
@@ -60,7 +83,7 @@ public class PlayerCombat : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"{type}ÀÇ Å¸ÀÔÀÇ ¹«±â´Â ÀÌ¹Ì Ãß°¡µÊ.");
+            Debug.LogWarning($"{type}ï¿½ï¿½ Å¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ ï¿½ß°ï¿½ï¿½ï¿½.");
         }
     }
 
@@ -119,5 +142,10 @@ public class PlayerCombat : MonoBehaviour
         {
             null, null, null,
         };
+    }
+
+    public WeaponBase GetCurWeapon()
+    {
+        return curWeapon;
     }
 }

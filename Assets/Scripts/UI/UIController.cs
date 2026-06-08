@@ -17,6 +17,7 @@ public class UIController : ManagerBase<UIController>
     public TextMeshProUGUI MoneyText;
 
     private UIState m_currentState;
+    public UIState CurrentState => m_currentState;
 
     private void Start()
     {
@@ -41,6 +42,8 @@ public class UIController : ManagerBase<UIController>
     public override void StartInit()
     {
         base.StartInit();
+        if (Player == null || Player.input == null || Player.input.actions == null || Player.model == null) return;
+
         Player.input.actions["RadialMenu"].performed += OnRadialMenu;
         Player.input.actions["RadialMenu"].canceled += OnRadialMenu;
         Player.input.actions["Exit"].performed += OnExitPanel;
@@ -50,7 +53,7 @@ public class UIController : ManagerBase<UIController>
     }
     private void OnDisable()
     {
-        if (Player.IsDestroyed() == false)
+        if (Player != null && Player.IsDestroyed() == false)
         {
             Player.input.actions["RadialMenu"].performed -= OnRadialMenu;
             Player.input.actions["RadialMenu"].canceled -= OnRadialMenu;
@@ -180,7 +183,7 @@ public class UIController : ManagerBase<UIController>
                 if (element.DependencyOnChangeState)
                     element.gameObject.SetActive(false);
             }
-            Player.SetActionMap(InputActionMap.Player);
+            Player?.SetActionMap(InputActionMap.Player);
         }
         else
         {
@@ -192,7 +195,7 @@ public class UIController : ManagerBase<UIController>
             }
             else ChangeState(UIState.None);
 
-            Player.SetActionMap(state == UIState.Dialog ? InputActionMap.Dialog : InputActionMap.UI);
+            Player?.SetActionMap(state == UIState.Dialog ? InputActionMap.Dialog : InputActionMap.UI);
         }
     }
 }
