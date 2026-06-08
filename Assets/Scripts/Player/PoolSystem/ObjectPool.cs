@@ -10,22 +10,39 @@ public class ObjectPool<T> where T : Component
     public Transform parent;
     public int InitSize;
     private Queue<T> pool;
+    private Transform m_inactiveRoot;
 
     public void Init(Transform parent = null)
     {
         pool = new Queue<T>();
         if (this.parent == null) this.parent = parent;
+        EnsureInactiveRoot();
         CreateObject(InitSize);
     }
 
     private void CreateObject(int size)
     {
+        EnsureInactiveRoot();
+
         for (int i = 0; i < size; i++)
         {
-            var obj = GameObject.Instantiate(poolObj, parent);
+            var obj = GameObject.Instantiate(poolObj, m_inactiveRoot);
             obj.gameObject.SetActive(false);
+            obj.transform.SetParent(parent, false);
             pool.Enqueue(obj);
         }
+    }
+
+    private void EnsureInactiveRoot()
+    {
+        if (m_inactiveRoot != null) return;
+
+        var root = new GameObject($"{typeof(T).Name} Pool Inactive Root");
+        root.SetActive(false);
+        m_inactiveRoot = root.transform;
+
+        if (parent != null)
+            m_inactiveRoot.SetParent(parent, false);
     }
 
     public T GetObject()
