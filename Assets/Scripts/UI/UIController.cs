@@ -50,6 +50,8 @@ public class UIController : ManagerBase<UIController>
         Player.model.Health.OnChangeStat += OnHPChanged;
         Player.model.Mana.OnChangeStat += OnMPChanged;
         Player.model.Money.OnChangeStat += OnMoneyChanged;
+
+        OnMoneyChanged();
     }
     private void OnDisable()
     {
@@ -101,6 +103,8 @@ public class UIController : ManagerBase<UIController>
     }
     public void OnMoneyChanged()
     {
+        if (Player == null || Player.model == null || MoneyText == null) return;
+
         var money = Player.model.Money;
         MoneyText.text = $"{money.TotalValue} $";
     }
@@ -118,7 +122,7 @@ public class UIController : ManagerBase<UIController>
             var texts = element.GetComponentsInChildren<TextMeshProUGUI>(true);
             var btns = element.GetComponentsInChildren<Button>(true);
 
-            // 원래 색상 저장 및 알파값 0으로 설정
+            // Store original colors and start fully transparent.
             Color[] imgsOriginalAlphas = new Color[imgs.Length];
             Color[] textsOriginalAlphas = new Color[texts.Length];
             float[] btnsOriginalAlphas = new float[btns.Length];
@@ -143,7 +147,7 @@ public class UIController : ManagerBase<UIController>
                 btns[i].interactable = false;
             }
 
-            // 모든 요소 duration동안 동시에 Fade
+            // Fade all elements together.
             DG.Tweening.Sequence seq = DOTween.Sequence();
             seq.SetUpdate(true);
 
@@ -156,7 +160,7 @@ public class UIController : ManagerBase<UIController>
                 seq.Join(texts[i].DOColor(textsOriginalAlphas[i], duration));
             }
 
-            // 완료후 버튼 활성화
+            // Enable buttons after the fade completes.
             seq.OnComplete(() =>
             {
                 for (int i = 0; i < btns.Length; i++)
@@ -173,7 +177,7 @@ public class UIController : ManagerBase<UIController>
     {
         m_currentState = state;
 
-        // 만약, ui전용 패널이 열릴 경우 ui키입력으로 상태 전환
+        // Switch input maps while a UI-only panel is open.
         
         if (state == UIState.None)
         {
