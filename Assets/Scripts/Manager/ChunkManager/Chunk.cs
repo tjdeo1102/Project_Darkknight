@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.AI.Navigation;
 using UnityEngine;
 
@@ -12,7 +10,10 @@ public class Chunk
     public bool IsGenerate = false;
     public bool IsGenerateMonster = false;
     public bool IsCombineMesh = false;
+    public bool IsCombiningMesh = false;
+    public bool NeedsMeshRebuild = false;
     public HashSet<Vector2Int> CheckDirection = new HashSet<Vector2Int>();
+    public List<GameObject> CombinedMeshObjects = new List<GameObject>();
     public RectInt Bounds;
     public List<Vector3> floorPosData;
 

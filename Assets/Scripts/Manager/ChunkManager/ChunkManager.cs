@@ -5,6 +5,7 @@ using Cysharp.Threading.Tasks;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 
 public class ChunkManager : ManagerBase<ChunkManager>
 {
@@ -127,6 +128,10 @@ public class ChunkManager : ManagerBase<ChunkManager>
         }
 
         ConnectNeighborChunk(coord);
+        if (chunk.IsCombineMesh == false && chunk.IsCombiningMesh == false)
+        {
+            RequestCombineMesh(chunk);
+        }
 
         if (didGenerate && queueSpawn == false)
         {
@@ -434,67 +439,112 @@ public class ChunkManager : ManagerBase<ChunkManager>
             neighborChunk.CheckDirection.Add(-dir);
             currentChunk.RefreshNavMeshModifiers();
             neighborChunk.RefreshNavMeshModifiers();
-            StartCoroutine(CombineMesh(currentChunk));
-            StartCoroutine(CombineMesh(neighborChunk));
+            RequestCombineMesh(currentChunk);
+            RequestCombineMesh(neighborChunk);
+        }
+    }
+
+    private void RequestCombineMesh(Chunk chunk)
+    {
+        if (chunk == null || chunk.IsLoaded == false) return;
+
+        chunk.NeedsMeshRebuild = true;
+        if (chunk.IsCombiningMesh == false)
+        {
+            StartCoroutine(CombineMesh(chunk));
         }
     }
 
     private IEnumerator CombineMesh(Chunk chunk)
     {
-        if (chunk.IsCombineMesh || chunk.CheckDirection.Count != 4) yield break;
-        chunk.IsCombineMesh = true;
-        yield return null;
+        if (chunk == null || chunk.IsCombiningMesh) yield break;
 
-        var meshFilters = chunk.ChunkObject.GetComponentsInChildren<MeshFilter>();
-        var tileNames = new List<string>();
-
-        for (var i = 0; i < (int)TileType.Size; i++)
+        chunk.IsCombiningMesh = true;
+        while (chunk.NeedsMeshRebuild)
         {
-            tileNames.Add(((TileType)i).ToString());
-        }
+            chunk.NeedsMeshRebuild = false;
+            yield return null;
 
-        foreach (var tileName in tileNames)
-        {
-            var createObject = new GameObject(tileName);
-            createObject.transform.parent = chunk.ChunkObject.transform;
-
-            var combineList = new List<CombineInstance>();
-            var layer = LayerMask.NameToLayer(tileName);
-            Material mat = null;
-
-            foreach (var filter in meshFilters)
+            var previousCombinedRoots = new HashSet<Transform>();
+            foreach (var combinedObject in chunk.CombinedMeshObjects)
             {
-                if (filter.transform == chunk.ChunkObject.transform || filter.gameObject.layer != layer) continue;
-                if (filter.sharedMesh == null) continue;
+                if (combinedObject == null) continue;
 
-                var renderer = filter.GetComponentInChildren<MeshRenderer>();
-                if (renderer != null)
+                previousCombinedRoots.Add(combinedObject.transform);
+                var combinedFilter = combinedObject.GetComponent<MeshFilter>();
+                if (combinedFilter != null && combinedFilter.sharedMesh != null)
                 {
-                    renderer.enabled = false;
-                    mat ??= renderer.sharedMaterial;
+                    Destroy(combinedFilter.sharedMesh);
+                }
+
+                Destroy(combinedObject);
+            }
+            chunk.CombinedMeshObjects.Clear();
+
+            var groupedMeshes = new Dictionary<(int layer, Material material), List<CombineInstance>>();
+            var meshFilters = chunk.ChunkObject.GetComponentsInChildren<MeshFilter>(true);
+            var worldToChunk = chunk.ChunkObject.transform.worldToLocalMatrix;
+
+            foreach (var sourceFilter in meshFilters)
+            {
+                if (sourceFilter == null || sourceFilter.sharedMesh == null) continue;
+                if (IsUnderCombinedRoot(sourceFilter.transform, previousCombinedRoots)) continue;
+
+                var sourceRenderer = sourceFilter.GetComponent<MeshRenderer>();
+                if (sourceRenderer == null || sourceRenderer.sharedMaterial == null) continue;
+
+                var key = (sourceFilter.gameObject.layer, sourceRenderer.sharedMaterial);
+                if (groupedMeshes.TryGetValue(key, out var combineList) == false)
+                {
+                    combineList = new List<CombineInstance>();
+                    groupedMeshes[key] = combineList;
                 }
 
                 combineList.Add(new CombineInstance
                 {
-                    mesh = filter.sharedMesh,
-                    transform = filter.transform.localToWorldMatrix
+                    mesh = sourceFilter.sharedMesh,
+                    transform = worldToChunk * sourceFilter.transform.localToWorldMatrix
                 });
+                sourceRenderer.enabled = false;
             }
 
-            if (combineList.Count > 0)
+            foreach (var group in groupedMeshes)
             {
+                if (group.Value.Count == 0) continue;
+
+                var createObject = new GameObject($"Combined_{group.Key.layer}_{group.Key.material.name}");
+                createObject.transform.SetParent(chunk.ChunkObject.transform, false);
+                createObject.layer = group.Key.layer;
+
                 var mesh = new Mesh();
-                mesh.CombineMeshes(combineList.ToArray(), true, true);
+                mesh.indexFormat = IndexFormat.UInt32;
+                mesh.CombineMeshes(group.Value.ToArray(), true, true);
+                mesh.RecalculateBounds();
 
                 var filter = createObject.AddComponent<MeshFilter>();
                 var renderer = createObject.AddComponent<MeshRenderer>();
 
-                filter.mesh = mesh;
-                renderer.sharedMaterial = mat;
-                createObject.layer = layer;
+                filter.sharedMesh = mesh;
+                renderer.sharedMaterial = group.Key.material;
+                chunk.CombinedMeshObjects.Add(createObject);
             }
 
             yield return null;
         }
+
+        chunk.IsCombineMesh = chunk.CombinedMeshObjects.Count > 0;
+        chunk.IsCombiningMesh = false;
+    }
+
+    private bool IsUnderCombinedRoot(Transform source, HashSet<Transform> combinedRoots)
+    {
+        var current = source;
+        while (current != null)
+        {
+            if (combinedRoots.Contains(current)) return true;
+            current = current.parent;
+        }
+
+        return false;
     }
 }
