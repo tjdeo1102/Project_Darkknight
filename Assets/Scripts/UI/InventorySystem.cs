@@ -161,6 +161,8 @@ public class InventorySystem : UIElementBase
 
     public bool TryAddItem(InventoryItem item)
     {
+        if (item == null) return false;
+
         foreach (var slot in UnequipSlots)
         {
             if (slot.SlotItem == null)
@@ -170,6 +172,11 @@ public class InventorySystem : UIElementBase
             }
         }
         return false;
+    }
+
+    public bool HasEmptySlot()
+    {
+        return UnequipSlots.Any(slot => slot != null && slot.SlotItem == null);
     }
 
     private void UpdateDescription(InventoryItem item)
