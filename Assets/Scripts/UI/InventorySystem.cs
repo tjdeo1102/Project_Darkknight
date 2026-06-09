@@ -129,7 +129,10 @@ public class InventorySystem : UIElementBase
         // Equip -> Unequip로 아이템 전송 (장착 해제)
         else
         {
-            var res = UnequipSlots.First(slot => slot.SlotItem == null);
+            if (from.SlotItem == null) return;
+
+            var res = UnequipSlots.FirstOrDefault(slot => slot.SlotItem == null);
+            if (res == null) return;
 
             // 스탯 갱신
             if (from.SlotItem.ModifierStats != null)
