@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponBase: MonoBehaviour
@@ -96,7 +97,7 @@ public class WeaponBase: MonoBehaviour
 
         Tool.DrawOverlapBox(center, range, rotation, Color.green, 2f);
 
-        EnemyStat stat = null;
+        var damagedTargets = new HashSet<EnemyStat>();
         m_lastHitSucceeded = false;
         m_lastHitPosition = Vector3.zero;
         var additionalDamage = action.AdditionalDamage;
@@ -105,8 +106,8 @@ public class WeaponBase: MonoBehaviour
         {
             if (hit.CompareTag(TagManager.GetTagString(TargetTag.Enemy)))
             {
-                stat = hit.GetComponentInParent<EnemyStat>();
-                if (stat != null)
+                var stat = hit.GetComponentInParent<EnemyStat>();
+                if (stat != null && damagedTargets.Add(stat))
                 {
                     stat.ApplyDamage(ctrl.model.AttackPower.TotalValue + additionalDamage, ctrl.transform.position , knockBackForce);
                     m_lastHitSucceeded = true;

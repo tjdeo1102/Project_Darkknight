@@ -59,6 +59,8 @@ public class AreaSkill: SkillBase
         if (stats.TryGetValue(StatType.AttackPower, out var stat))
             atk = stat.TotalValue;
 
+        var damagedPlayers = new HashSet<PlayerModel>();
+        var damagedEnemies = new HashSet<EnemyStat>();
         foreach (Collider hit in hits)
         {
             if (hit.CompareTag(TagManager.GetTagString(target)))
@@ -72,11 +74,19 @@ public class AreaSkill: SkillBase
                 }
                 if (target == TargetTag.Player)
                 {
-                    hit.GetComponentInParent<PlayerModel>().ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    var player = hit.GetComponentInParent<PlayerModel>();
+                    if (player != null && damagedPlayers.Add(player))
+                    {
+                        player.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    }
                 }
                 else if (target == TargetTag.Enemy)
                 {
-                    hit.GetComponentInParent<EnemyStat>().ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    var enemy = hit.GetComponentInParent<EnemyStat>();
+                    if (enemy != null && damagedEnemies.Add(enemy))
+                    {
+                        enemy.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    }
                 }
             }
         }
