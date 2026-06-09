@@ -1,11 +1,54 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering;
-using UnityEngine.Serialization;
+
+public sealed class SkillRuntimeState
+{
+    public bool IsActive;
+    public int EnforceLevel;
+    public float LastUseTime;
+
+    public SkillRuntimeState(SkillBase skill)
+    {
+        IsActive = skill.CanActive;
+        EnforceLevel = skill.EnforceLevel;
+        LastUseTime = -skill.Cooldown;
+    }
+}
+
+public sealed class SkillRuntimeStateStore : MonoBehaviour
+{
+    private readonly Dictionary<SkillBase, SkillRuntimeState> m_states = new();
+
+    public SkillRuntimeState GetState(SkillBase skill)
+    {
+        if (skill == null) return null;
+        if (m_states.TryGetValue(skill, out var state) == false)
+        {
+            state = new SkillRuntimeState(skill);
+            m_states.Add(skill, state);
+        }
+        return state;
+    }
+
+    public static SkillRuntimeStateStore GetOrCreate(Component owner)
+    {
+        if (owner == null) return null;
+        var store = owner.GetComponent<SkillRuntimeStateStore>();
+        return store != null ? store : owner.gameObject.AddComponent<SkillRuntimeStateStore>();
+    }
+}
+
+public sealed class SkillExecutionContext
+{
+    public SkillRuntimeState State;
+    public Vector3 Center;
+    public Vector3 Forward;
+    public Vector3 Right;
+    public Vector3 Up;
+    public bool Failed;
+}
 
 [CreateAssetMenu(fileName = "SkillBase", menuName = "Scriptable Objects/Skill Base")]
 public abstract class SkillBase : CSVScriptableObject
@@ -45,72 +88,76 @@ public abstract class SkillBase : CSVScriptableObject
     public float ActiveDelay = 1f;
     public float EffectDelay = 0.5f;
 
-    private HashSet<SkillBase> m_lockRequireSkills;
-    private float m_lastSkillUseTime;
-    protected Vector3 center;
-    protected Vector3 foward;
-    protected Vector3 right;
-    protected Vector3 up;
-
-    protected bool isFailSkill;
-
-
-    public virtual void OnEnable()
+    public float GetEnforceCost(SkillRuntimeState state)
     {
-        m_lastSkillUseTime = -Cooldown;
-        m_lockRequireSkills = new HashSet<SkillBase>();
-        foreach (SkillBase skill in RequireSkill)
-        {
-            m_lockRequireSkills.Add(skill);
-        }
-    }
-    public void UnlockRequireSkill(SkillBase skill)
-    {
-        if (m_lockRequireSkills.Contains(skill))
-        {
-            m_lockRequireSkills.Remove(skill);
-        }
-        if (m_lockRequireSkills.Count < 1) CanUnlock = true;
+        var level = state?.EnforceLevel ?? EnforceLevel;
+        return EnforceBaseCost * (1 + level * EnforceCostFactor);
     }
 
-    public bool CanUseSkill(Stat mp, bool currentUse = true)
+    public bool CanUseSkill(Component owner, Stat mp, bool currentUse = true)
     {
-        if (currentUse) isFailSkill = false;
-        if (mp ==  null) mp = new Stat();
+        var state = SkillRuntimeStateStore.GetOrCreate(owner)?.GetState(this);
+        if (state == null) return false;
 
-        if (Time.time - m_lastSkillUseTime < Cooldown
+        if (mp == null) mp = new Stat();
+
+        if (Time.time - state.LastUseTime < Cooldown
             || CostMP > mp.TotalValue)
         {
-            if (currentUse) isFailSkill = true;
             return false;
         }
 
         if (currentUse)
         {
             mp.AddModifier(new StatModifier(-CostMP, 0), StatModifyType.SkillUse);
-            m_lastSkillUseTime = Time.time;
+            state.LastUseTime = Time.time;
         }
 
         return true;
     }
 
-    protected void SetStartPos(Transform origin)
+    protected SkillExecutionContext CreateContext(Component owner, Transform origin)
     {
-        foward = origin.forward;
-        right = origin.right;
-        up = origin.up;
-        center = origin.position + foward * StartOffset.z + right * StartOffset.x + up * StartOffset.y;
+        var state = SkillRuntimeStateStore.GetOrCreate(owner)?.GetState(this);
+        var context = new SkillExecutionContext
+        {
+            State = state
+        };
+        UpdateStartPose(origin, context);
+        return context;
+    }
+
+    protected void UpdateStartPose(Transform origin, SkillExecutionContext context)
+    {
+        context.Forward = origin.forward;
+        context.Right = origin.right;
+        context.Up = origin.up;
+        context.Center = origin.position
+                         + context.Forward * StartOffset.z
+                         + context.Right * StartOffset.x
+                         + context.Up * StartOffset.y;
         var navAgent = origin.GetComponentInParent<NavMeshAgent>();
         if (navAgent != null)
         {
             navAgent.updateRotation = false;
-            origin.LookAt(center);
+            origin.LookAt(context.Center);
             navAgent.updateRotation = true;
         }
     }
 
-    private IEnumerator SkillEffect(Transform origin, PlayerController player = null)
+    protected IEnumerator BeginSkill(
+        Component owner,
+        Transform origin,
+        Stat mp,
+        SkillExecutionContext context,
+        PlayerController player = null)
     {
+        if (CanUseSkill(owner, mp) == false)
+        {
+            context.Failed = true;
+            yield break;
+        }
+
         if (SkillType != VFX.None)
         {
             if (player != null)
@@ -119,29 +166,27 @@ public abstract class SkillBase : CSVScriptableObject
                 player.machine.ChangeState(StateType.Skill);
             }
             yield return new WaitForSeconds(EffectDelay);
-            SetStartPos(origin.transform);
-            SkillEffectManager.Instance.PlayVFX(SkillType, center, origin.rotation);
+            UpdateStartPose(origin, context);
+            SkillEffectManager.Instance?.PlayVFX(SkillType, context.Center, origin.rotation);
         }
+
+        yield return new WaitForSeconds(ActiveDelay);
     }
 
     public virtual IEnumerator Active(PlayerController player)
     {
-        if (player != null && player.model.Stats.TryGetValue(StatType.Mana, out var mp))
-        {
-            if (CanUseSkill(mp) == false) yield break;
-            yield return SkillEffect(player.transform,player);
-        }
-        yield return new WaitForSeconds(ActiveDelay);
+        if (player == null || player.model.Stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
+
+        var context = CreateContext(player.combat, player.transform);
+        yield return BeginSkill(player.combat, player.transform, mp, context, player);
     }
 
     public virtual IEnumerator Active(Transform origin, Dictionary<StatType,Stat> stats, GameObject Target)
     {
-        if (origin != null && stats.TryGetValue(StatType.Mana,out var mp))
-        {
-            if (CanUseSkill(mp) == false) yield break;
-            yield return SkillEffect(origin);
-        }
+        if (origin == null || stats == null || stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
 
-        yield return new WaitForSeconds(ActiveDelay);
+        var owner = origin.GetComponentInParent<EnemyController>() as Component ?? origin;
+        var context = CreateContext(owner, origin);
+        yield return BeginSkill(owner, origin, mp, context);
     }
 }

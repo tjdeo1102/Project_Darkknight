@@ -14,6 +14,7 @@ public class PlayerCombat : MonoBehaviour
     private WeaponBase curWeapon;
     private Dictionary<WeaponType, WeaponBase> weapons;
     private bool m_isInputSubscribed;
+    private SkillRuntimeStateStore m_skillStates;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
@@ -123,7 +124,9 @@ public class PlayerCombat : MonoBehaviour
         int bindingIndex = context.action.GetBindingIndexForControl(context.control);
         if (bindingIndex < 0 || bindingIndex >= size) return;
 
-        if (ctrl.machine.CanOtherAction() && skills[bindingIndex] != null)
+        if (ctrl.machine.CanOtherAction() &&
+            bindingIndex < skills.Count &&
+            skills[bindingIndex] != null)
         {
             StartCoroutine(skills[bindingIndex].Active(ctrl));
         }
@@ -132,6 +135,7 @@ public class PlayerCombat : MonoBehaviour
 
     private void Awake()
     {
+        m_skillStates = SkillRuntimeStateStore.GetOrCreate(this);
         weapons = new()
         {
             {WeaponType.None, null},
@@ -147,5 +151,29 @@ public class PlayerCombat : MonoBehaviour
     public WeaponBase GetCurWeapon()
     {
         return curWeapon;
+    }
+
+    public SkillRuntimeState GetSkillState(SkillBase skill)
+    {
+        m_skillStates ??= SkillRuntimeStateStore.GetOrCreate(this);
+        return m_skillStates?.GetState(skill);
+    }
+
+    public bool IsSkillUnlocked(SkillBase skill)
+    {
+        if (skill == null) return false;
+        if (skill.CanUnlock) return true;
+        if (skill.RequireSkill == null || skill.RequireSkill.Length == 0) return false;
+
+        foreach (var requiredSkill in skill.RequireSkill)
+        {
+            var requiredState = GetSkillState(requiredSkill);
+            if (requiredSkill == null || requiredState == null || requiredState.IsActive == false)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

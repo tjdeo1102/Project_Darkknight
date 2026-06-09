@@ -16,30 +16,34 @@ public class ProjectileSkill : SkillBase
 
     public override IEnumerator Active(Transform origin, Dictionary<StatType, Stat> stats, GameObject Target)
     {
-        if (ProjectileManager.Instance == null || ProjectileType == ProjectileType.None) yield break;
-        yield return base.Active(origin, stats, Target);
+        if (ProjectileManager.Instance == null || ProjectileType == ProjectileType.None ||
+            origin == null || stats == null || stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
 
-        if (isFailSkill == false && stats.TryGetValue(StatType.AttackPower, out var atk) == true)
+        var owner = origin.GetComponentInParent<EnemyController>() as Component ?? origin;
+        var context = CreateContext(owner, origin);
+        yield return BeginSkill(owner, origin, mp, context);
+
+        if (context.Failed == false && stats.TryGetValue(StatType.AttackPower, out var atk))
         {
             if (Target == null) yield break;
 
             origin.LookAt(Target.transform);
-            SetStartPos(origin);
+            UpdateStartPose(origin, context);
 
             var pool = ProjectileManager.Instance.ProjectileDic[ProjectileType];
             var bullet = pool.GetObject();
             var trans = bullet.transform;
-            trans.position = center;
+            trans.position = context.Center;
             trans.rotation = origin.rotation;
 
-            var velocity = foward * Speed;
+            var velocity = context.Forward * Speed;
 
             var Damage = 0f;
             var atts = SkillStats.Where(skillStat => skillStat.StatType == StatType.AttackPower).ToArray();
             if (atts.Length > 0)
             {
                 var baseDamage = atts[0].StatModifier.FixedValue * (atts[0].StatModifier.PercentValue + 1);
-                Damage = atts[0].EnforceStatFactor * EnforceLevel + baseDamage;
+                Damage = atts[0].EnforceStatFactor * context.State.EnforceLevel + baseDamage;
             }
 
             bullet.Init(Damage + atk.TotalValue, LifeTime, velocity, KnockBackForce, TagManager.TryGetTargetTag(Target.tag), pool);

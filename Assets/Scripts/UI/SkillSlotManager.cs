@@ -17,7 +17,7 @@ public class SkillSlotManager : MonoBehaviour
 
     public void RefreshSkillSlot(SkillBase skill, int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex > (int)InputSkill.SkillE) return;
+        if (skill == null || slotIndex < 0 || slotIndex >= (int)InputSkill.Size) return;
 
         EquipSkillSlots[slotIndex].sprite = skill.Icon;
         var viewSlots = SlotView.slotContents;

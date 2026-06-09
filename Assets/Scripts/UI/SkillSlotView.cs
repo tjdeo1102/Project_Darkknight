@@ -43,7 +43,7 @@ public class SkillSlotView : MonoBehaviour
             var skills = Combat.skills;
             for (int i = 0; i < skills.Count; i++)
             {
-                if (skills[i] != null && skills[i].CanUseSkill(m_mana, false))
+                if (skills[i] != null && skills[i].CanUseSkill(Combat, m_mana, false))
                 {
                     slotContents[i].Animator?.SetBool(animParam, true);
                     slotContents[i].SlotImage.color = Color.white;
