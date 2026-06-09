@@ -32,6 +32,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
     public int ExitStage = 3;
     public int StageUpCount = 15;
     public float DeadDuration = 2f;
+    [Min(1f)] public float ManagerInitializationTimeout = 30f;
     public bool IsStartGame = false;
     public PlayerController Player;
     public UIController UI;
@@ -55,14 +56,23 @@ public class InGameLoop : ManagerBase<InGameLoop>
     private Vector3 m_lastPlayerPos;
     private async void Start()
     {
-        await Init();
+        try
+        {
+            await Init();
+        }
+        catch (Exception exception)
+        {
+            IsReady = false;
+            Debug.LogException(exception, this);
+        }
 
         StartCoroutine(GameStartRoutine());
     }
 
     private void OnDisable()
     {
-        KillCount.OnValueChanged -= OnUpdateKill;
+        if (KillCount != null)
+            KillCount.OnValueChanged -= OnUpdateKill;
     }
     private async Task Init()
     {
@@ -147,8 +157,22 @@ public class InGameLoop : ManagerBase<InGameLoop>
 
     IEnumerator GameStartRoutine()
     {
+        var startTime = Time.realtimeSinceStartup;
         while(m_managers != null && m_managers.Any(x => x.IsReady == false))
         {
+            if (Time.realtimeSinceStartup - startTime >= ManagerInitializationTimeout)
+            {
+                var pendingManagers = string.Join(
+                    ", ",
+                    m_managers.Where(manager => manager.IsReady == false)
+                        .Select(manager => manager.GetType().Name));
+                Debug.LogError(
+                    $"Game initialization timed out after {ManagerInitializationTimeout:F1}s. " +
+                    $"Pending managers: {pendingManagers}",
+                    this);
+                yield break;
+            }
+
             yield return null;
         }
         if (ChunkManager != null) StartCoroutine(ChunkManager.PlayerStartRoutine());
