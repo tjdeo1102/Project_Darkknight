@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEngine;
@@ -50,14 +51,18 @@ public class Chunk
         ChunkObject.SetActive(false);
     }
 
-    public void Generate(int minRoomSize, Vector3Int blockSize)
+    public IEnumerator GenerateRoutine(int minRoomSize, Vector3Int blockSize)
     {
-        if (!IsGenerate)
-        {
-            IsGenerate = true;
-            ChunkManager.Instance.Generator.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
-            RefreshNavMeshModifiers();
-        }
+        if (IsGenerate) yield break;
+
+        IsGenerate = true;
+        yield return ChunkManager.Instance.Generator.GenerateChunkRoutine(
+            Bounds,
+            ChunkObject.transform,
+            minRoomSize,
+            blockSize,
+            result => floorPosData = result);
+        RefreshNavMeshModifiers();
     }
 
     public void RefreshNavMeshModifiers()

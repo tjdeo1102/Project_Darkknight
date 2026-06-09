@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -12,12 +11,12 @@ public class ObjectPool<T> where T : Component
     private Queue<T> pool;
     private Transform m_inactiveRoot;
 
-    public void Init(Transform parent = null)
+    public void Init(Transform parent = null, int initialSize = -1)
     {
         pool = new Queue<T>();
         if (this.parent == null) this.parent = parent;
         EnsureInactiveRoot();
-        CreateObject(InitSize);
+        CreateObject(initialSize < 0 ? InitSize : initialSize);
     }
 
     private void CreateObject(int size)
@@ -28,7 +27,6 @@ public class ObjectPool<T> where T : Component
         {
             var obj = GameObject.Instantiate(poolObj, m_inactiveRoot);
             obj.gameObject.SetActive(false);
-            obj.transform.SetParent(parent, false);
             pool.Enqueue(obj);
         }
     }
@@ -55,6 +53,7 @@ public class ObjectPool<T> where T : Component
         }
 
         var obj = pool.Dequeue();
+        obj.transform.SetParent(parent, false);
         if (activate)
             obj.gameObject.SetActive(true);
         return obj;
@@ -65,6 +64,7 @@ public class ObjectPool<T> where T : Component
         if (pool == null) pool = new Queue<T>();
 
         obj.gameObject.SetActive(false);
+        obj.transform.SetParent(m_inactiveRoot, false);
         pool.Enqueue(obj);
     }
 
@@ -85,6 +85,17 @@ public class ObjectPool<T> where T : Component
             {
                 CreateObject(1);
             }
+            yield return null;
+        }
+    }
+
+    public IEnumerator Warmup(int maxCreatePerFrame)
+    {
+        maxCreatePerFrame = Mathf.Max(1, maxCreatePerFrame);
+
+        while (Count() < InitSize)
+        {
+            CreateObject(Mathf.Min(maxCreatePerFrame, InitSize - Count()));
             yield return null;
         }
     }

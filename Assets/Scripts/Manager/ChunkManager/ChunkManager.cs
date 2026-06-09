@@ -23,9 +23,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private Vector2Int m_playerChunk;
     private readonly Dictionary<Vector2Int, Chunk> m_chunks = new();
     private readonly HashSet<Vector2Int> m_loadedCoords = new();
-    private Vector2Int m_lastPlayerChunk;
     private bool m_hasPlayerChunk;
-    private bool m_hasLastPlayerChunk;
+    private bool m_isMapUpdating;
     private bool m_isUpdatingNavMesh;
     private bool m_pendingNavMeshUpdate;
     private bool m_isNavMeshUpdateQueued;
@@ -40,13 +39,21 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     [SerializeField] private NavMeshSurface m_surface;
 
-    private void Start()
+    private IEnumerator Start()
     {
         GameLoop = InGameLoop.Instance;
 
-        if (Player != null)
+        if (Generator != null)
         {
-            MapUpdate(true);
+            while (Generator.IsReady == false)
+            {
+                yield return null;
+            }
+        }
+
+        if (Player != null && Generator != null)
+        {
+            yield return MapUpdateRoutine(true);
         }
 
         IsReady = true;
@@ -58,18 +65,31 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
         if (IsBlockUpdateMap == false)
         {
-            MapUpdate(false);
+            RequestMapUpdate();
         }
-
-        NavUpdate();
     }
 
-    private void MapUpdate(bool init)
+    private void RequestMapUpdate()
     {
-        if (Player == null || Generator == null || ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) return;
+        if (m_isMapUpdating || Player == null || Generator == null || ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) return;
 
         var nextPlayerChunk = GetPlayerChunkCoord(Player.position);
-        if (init == false && m_hasPlayerChunk && nextPlayerChunk == m_playerChunk) return;
+        if (m_hasPlayerChunk && nextPlayerChunk == m_playerChunk) return;
+
+        StartCoroutine(MapUpdateRoutine(false));
+    }
+
+    private IEnumerator MapUpdateRoutine(bool init)
+    {
+        if (Player == null || Generator == null || ChunkSize <= 0 || BlockSize.x <= 0 || BlockSize.z <= 0) yield break;
+
+        m_isMapUpdating = true;
+        var nextPlayerChunk = GetPlayerChunkCoord(Player.position);
+        if (init == false && m_hasPlayerChunk && nextPlayerChunk == m_playerChunk)
+        {
+            m_isMapUpdating = false;
+            yield break;
+        }
 
         m_playerChunk = nextPlayerChunk;
         m_hasPlayerChunk = true;
@@ -87,7 +107,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 if (inView)
                 {
                     var shouldQueueSpawn = init == false || offset != Vector2Int.zero;
-                    LoadOrGenerateChunk(coord, shouldQueueSpawn);
+                    yield return LoadOrGenerateChunkRoutine(coord, shouldQueueSpawn);
                     m_loadedCoords.Add(coord);
                 }
                 else
@@ -100,25 +120,29 @@ public class ChunkManager : ManagerBase<ChunkManager>
             }
         }
 
-        if (init) return;
-
-        foreach (var pair in m_chunks)
+        if (init == false)
         {
-            if (m_loadedCoords.Contains(pair.Key) == false)
+            foreach (var pair in m_chunks)
             {
-                pair.Value.Unload();
+                if (m_loadedCoords.Contains(pair.Key) == false)
+                {
+                    pair.Value.Unload();
+                }
             }
         }
+
+        m_isMapUpdating = false;
+        RequestNavMeshUpdate();
     }
 
-    private void LoadOrGenerateChunk(Vector2Int coord, bool queueSpawn)
+    private IEnumerator LoadOrGenerateChunkRoutine(Vector2Int coord, bool queueSpawn)
     {
         var chunk = GetOrCreateChunk(coord);
         var didGenerate = false;
 
         if (chunk.IsGenerate == false)
         {
-            chunk.Generate(MinRoomSize, BlockSize);
+            yield return chunk.GenerateRoutine(MinRoomSize, BlockSize);
             didGenerate = true;
         }
 
@@ -142,7 +166,6 @@ public class ChunkManager : ManagerBase<ChunkManager>
         {
             chunk.IsGenerateMonster = true;
             m_pendingSpawnChunks.Add(chunk);
-            RequestNavMeshUpdate();
         }
     }
 
@@ -164,17 +187,6 @@ public class ChunkManager : ManagerBase<ChunkManager>
             Mathf.FloorToInt(position.x / (ChunkSize * BlockSize.x)),
             Mathf.FloorToInt(position.z / (ChunkSize * BlockSize.z))
         );
-    }
-
-    private void NavUpdate()
-    {
-        if (m_hasLastPlayerChunk == false || m_playerChunk != m_lastPlayerChunk)
-        {
-            RequestNavMeshUpdate();
-        }
-
-        m_lastPlayerChunk = m_playerChunk;
-        m_hasLastPlayerChunk = true;
     }
 
     private void RequestNavMeshUpdate()
@@ -359,9 +371,18 @@ public class ChunkManager : ManagerBase<ChunkManager>
         Player.transform.position = floor[Random.Range(0, floor.Count)] + PlayerSpawnOffset;
         if (m_surface != null)
         {
-            m_surface.BuildNavMesh();
-            yield return new WaitForSeconds(3f);
-            RequestNavMeshUpdate();
+            if (m_surface.navMeshData == null)
+            {
+                m_surface.BuildNavMesh();
+            }
+            else
+            {
+                RequestNavMeshUpdate();
+                while (m_isNavMeshUpdateQueued || m_isUpdatingNavMesh)
+                {
+                    yield return null;
+                }
+            }
         }
     }
 

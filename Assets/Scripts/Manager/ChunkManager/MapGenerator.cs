@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -14,13 +15,26 @@ public class MapGenerator : MonoBehaviour
     }
 
     public List<TileSst> Tiles;
+    public bool IsReady { get; private set; }
 
     private Dictionary<TileType, TileSst> m_tiles;
     private readonly Collider[] m_overlapBuffer = new Collider[64];
+    private const int PoolWarmupPerFrame = 64;
+    private const int TilePlacementsPerFrame = 64;
 
     private void Awake()
     {
         InitTiles();
+    }
+
+    private IEnumerator Start()
+    {
+        foreach (var tile in m_tiles.Values)
+        {
+            yield return tile.pool.Warmup(PoolWarmupPerFrame);
+        }
+
+        IsReady = true;
     }
 
     private void InitTiles()
@@ -34,20 +48,25 @@ public class MapGenerator : MonoBehaviour
         {
             if (t.pool == null) continue;
 
-            t.pool.Init();
+            t.pool.Init(null, 0);
             m_tiles[t.type] = t;
-            StartCoroutine(t.pool.AutoCreateObjectPerFrame());
         }
     }
 
-    public void GenerateChunk(RectInt bounds, Transform parent, int minRoomSize, Vector3Int blockSize, out List<Vector3> floorPosData)
+    public IEnumerator GenerateChunkRoutine(
+        RectInt bounds,
+        Transform parent,
+        int minRoomSize,
+        Vector3Int blockSize,
+        Action<List<Vector3>> onComplete)
     {
         InitTiles();
 
         var width = bounds.width;
         var height = bounds.height;
         var mapData = new TileType[width, height];
-        floorPosData = new List<Vector3>();
+        var floorPosData = new List<Vector3>();
+        var placementCount = 0;
 
         var root = new BSPNode(new RectInt(0, 0, width, height));
         root.Split(minRoomSize);
@@ -81,6 +100,7 @@ public class MapGenerator : MonoBehaviour
                     obj.parent = parent;
                     obj.position = pos;
                     floorPosData.Add(pos);
+                    placementCount++;
                 }
 
                 if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
@@ -88,6 +108,13 @@ public class MapGenerator : MonoBehaviour
                     var obj = ceiling.pool.GetObject();
                     obj.position = pos + ceiling.offset;
                     obj.parent = parent;
+                    placementCount++;
+                }
+
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
                 }
             }
         }
@@ -104,9 +131,15 @@ public class MapGenerator : MonoBehaviour
                     var obj = wall.pool.GetObject();
                     obj.position = pos + wall.offset;
                     obj.parent = parent;
+                    placementCount++;
                 }
 
                 mapData[x, y] = TileType.Wall;
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
+                }
             }
         }
 
@@ -114,9 +147,20 @@ public class MapGenerator : MonoBehaviour
         {
             for (var y = 0; y < height; y++)
             {
-                CreatePillar(mapData, x, y, ToWorldPosition(bounds, x, y, blockSize), parent);
+                if (CreatePillar(mapData, x, y, ToWorldPosition(bounds, x, y, blockSize), parent))
+                {
+                    placementCount++;
+                }
+
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
+                }
             }
         }
+
+        onComplete?.Invoke(floorPosData);
     }
 
     private Vector3 ToWorldPosition(RectInt bounds, int x, int y, Vector3Int blockSize)
@@ -129,9 +173,9 @@ public class MapGenerator : MonoBehaviour
         return x >= 0 && y >= 0 && x < map.GetLength(0) && y < map.GetLength(1);
     }
 
-    private void CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
+    private bool CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
     {
-        if (x < 1 || y > map.GetLength(1) - 2) return;
+        if (x < 1 || y > map.GetLength(1) - 2) return false;
 
         var left = map[x - 1, y] == TileType.Wall;
         var up = map[x, y + 1] == TileType.Wall;
@@ -147,7 +191,10 @@ public class MapGenerator : MonoBehaviour
             var obj = pillar.pool.GetObject();
             obj.position = wallPos + pillar.offset;
             obj.parent = parent;
+            return true;
         }
+
+        return false;
     }
 
     private void ConnectRooms(BSPNode node, TileType[,] mapData)
