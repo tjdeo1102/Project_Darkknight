@@ -293,6 +293,7 @@ public class EnemyStat : MonoBehaviour
         var renderers = Ctrl.GetComponentsInChildren<Renderer>();
         var originMaterials = new Dictionary<Renderer, Material[]>();
         var fadeMaterials = new List<Material>();
+        var runtimeMaterials = new HashSet<Material>();
         var originPosition = Ctrl.transform.position;
         foreach (var renderer in renderers)
         {
@@ -300,7 +301,10 @@ public class EnemyStat : MonoBehaviour
             var materials = renderer.materials;
             foreach (var mat in materials)
             {
-                if (mat != null && mat.HasProperty("_Color"))
+                if (mat == null) continue;
+
+                runtimeMaterials.Add(mat);
+                if (mat.HasProperty("_Color"))
                     fadeMaterials.Add(mat);
             }
         }
@@ -337,7 +341,7 @@ public class EnemyStat : MonoBehaviour
 
         yield return sequence.WaitForCompletion();
 
-        CleanupAfterDeath(cols, originMaterials, originPosition);
+        CleanupAfterDeath(cols, originMaterials, runtimeMaterials, originPosition);
     }
 
     private void StopNavigationForDeath()
@@ -371,7 +375,11 @@ public class EnemyStat : MonoBehaviour
         navAgent.Warp(transform.position);
     }
 
-    private void CleanupAfterDeath(Collider[] cols, Dictionary<Renderer, Material[]> originMaterials, Vector3 originPosition)
+    private void CleanupAfterDeath(
+        Collider[] cols,
+        Dictionary<Renderer, Material[]> originMaterials,
+        HashSet<Material> runtimeMaterials,
+        Vector3 originPosition)
     {
         foreach (var item in StatDic.Values)
         {
@@ -391,6 +399,12 @@ public class EnemyStat : MonoBehaviour
         {
             if (kvp.Key != null)
                 kvp.Key.sharedMaterials = kvp.Value;
+        }
+
+        foreach (var material in runtimeMaterials)
+        {
+            if (material != null)
+                Destroy(material);
         }
 
         if (InGameLoop.Instance != null && InGameLoop.Instance.EnemySpawner != null)
