@@ -14,6 +14,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     public int MinRoomSize = 6;
     public Vector3Int BlockSize = Vector3Int.one;
     public bool IsBlockUpdateMap = false;
+    [Min(1)] public int RetainedChunkPadding = 2;
 
     public Transform Player;
     public Vector3 PlayerSpawnOffset = new Vector3(0, 2, 0);
@@ -131,6 +132,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
                     pair.Value.Unload();
                 }
             }
+
+            ReleaseDistantChunks();
         }
 
         m_isMapUpdating = false;
@@ -181,6 +184,64 @@ public class ChunkManager : ManagerBase<ChunkManager>
         chunk = new Chunk(coord, ChunkSize, BlockSize, transform);
         m_chunks[coord] = chunk;
         return chunk;
+    }
+
+    private void ReleaseDistantChunks()
+    {
+        if (m_isUpdatingNavMesh) return;
+
+        var retentionRadius = Mathf.CeilToInt(ViewRadius) + RetainedChunkPadding;
+        var releaseCoords = new List<Vector2Int>();
+
+        foreach (var pair in m_chunks)
+        {
+            if (pair.Value.IsCombiningMesh) continue;
+
+            var delta = pair.Key - m_playerChunk;
+            if (Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y)) > retentionRadius)
+            {
+                releaseCoords.Add(pair.Key);
+            }
+        }
+
+        foreach (var coord in releaseCoords)
+        {
+            if (m_chunks.TryGetValue(coord, out var chunk) == false) continue;
+
+            ReleaseChunkContents(chunk);
+            m_pendingSpawnChunks.Remove(chunk);
+            m_chunks.Remove(coord);
+        }
+    }
+
+    private void ReleaseChunkContents(Chunk chunk)
+    {
+        if (chunk?.ChunkObject == null) return;
+
+        var enemies = chunk.ChunkObject.GetComponentsInChildren<EnemyController>(true);
+        foreach (var enemy in enemies)
+        {
+            GameLoop?.EnemySpawner?.DestroyEnemy(enemy);
+        }
+
+        var npcs = chunk.ChunkObject.GetComponentsInChildren<NPCBase>(true);
+        foreach (var npc in npcs)
+        {
+            GameLoop?.NPCSpawner?.DestroyNPC(npc);
+        }
+
+        foreach (var combinedObject in chunk.CombinedMeshObjects)
+        {
+            if (combinedObject == null) continue;
+
+            var filter = combinedObject.GetComponent<MeshFilter>();
+            if (filter != null && filter.sharedMesh != null)
+            {
+                Destroy(filter.sharedMesh);
+            }
+        }
+
+        Destroy(chunk.ChunkObject);
     }
 
     private Vector2Int GetPlayerChunkCoord(Vector3 position)
