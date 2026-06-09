@@ -29,6 +29,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private bool m_pendingNavMeshUpdate;
     private bool m_isNavMeshUpdateQueued;
     private readonly HashSet<Chunk> m_pendingSpawnChunks = new();
+    private readonly HashSet<int> m_combinableTileLayers = new();
     private static readonly Vector2Int[] NeighborDirs =
     {
         Vector2Int.up,
@@ -42,6 +43,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private IEnumerator Start()
     {
         GameLoop = InGameLoop.Instance;
+        CacheCombinableTileLayers();
 
         if (Generator != null)
         {
@@ -510,6 +512,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
             {
                 if (sourceFilter == null || sourceFilter.sharedMesh == null) continue;
                 if (IsUnderCombinedRoot(sourceFilter.transform, previousCombinedRoots)) continue;
+                if (m_combinableTileLayers.Contains(sourceFilter.gameObject.layer) == false) continue;
 
                 var sourceRenderer = sourceFilter.GetComponent<MeshRenderer>();
                 if (sourceRenderer == null || sourceRenderer.sharedMaterial == null) continue;
@@ -555,6 +558,25 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
         chunk.IsCombineMesh = chunk.CombinedMeshObjects.Count > 0;
         chunk.IsCombiningMesh = false;
+    }
+
+    private void CacheCombinableTileLayers()
+    {
+        m_combinableTileLayers.Clear();
+        AddCombinableTileLayer("Floor");
+        AddCombinableTileLayer("Wall");
+        AddCombinableTileLayer("Pillar");
+        AddCombinableTileLayer("Ceiling");
+        AddCombinableTileLayer("Gate");
+    }
+
+    private void AddCombinableTileLayer(string layerName)
+    {
+        var layer = LayerMask.NameToLayer(layerName);
+        if (layer >= 0)
+        {
+            m_combinableTileLayers.Add(layer);
+        }
     }
 
     private bool IsUnderCombinedRoot(Transform source, HashSet<Transform> combinedRoots)
