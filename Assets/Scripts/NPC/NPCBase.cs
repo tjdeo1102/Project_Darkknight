@@ -32,7 +32,7 @@ public class NPCBase : MonoBehaviour
         m_isInteract = false;
         if (SelectItems != null && SelectItems.Count > 3)
         {
-            SelectItems.RemoveRange(3, DialogTexts.Count - 3);
+            SelectItems.RemoveRange(3, SelectItems.Count - 3);
         }
 
         if (InGameLoop.Instance != null)
