@@ -1,10 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
-using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
-using static UnityEngine.UI.Image;
 
 [CreateAssetMenu(fileName = "AreaSkill", menuName = "Scriptable Objects/Area Skill")]
 public class AreaSkill: SkillBase
