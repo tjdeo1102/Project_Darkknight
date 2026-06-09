@@ -197,30 +197,12 @@ public class MapGenerator : MonoBehaviour
     public bool TryConnectChunks(Chunk chunk, Chunk neighborChunk, Vector2Int chunkToNeighborDir, Vector3Int blockSize)
     {
         if (chunk == null || neighborChunk == null || blockSize.x <= 0 || blockSize.z <= 0) return false;
+        if (chunkToNeighborDir != Vector2Int.up &&
+            chunkToNeighborDir != Vector2Int.down &&
+            chunkToNeighborDir != Vector2Int.left &&
+            chunkToNeighborDir != Vector2Int.right) return false;
 
-        var edgeStart = GetChunkEdgeStart(chunk, blockSize, chunkToNeighborDir);
-
-        if (chunkToNeighborDir == Vector2Int.up || chunkToNeighborDir == Vector2Int.down)
-        {
-            if (TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.right, blockSize, 2, chunk.Bounds.width, chunk.ChunkObject.transform))
-            {
-                return true;
-            }
-
-            return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
-        }
-
-        if (chunkToNeighborDir == Vector2Int.left || chunkToNeighborDir == Vector2Int.right)
-        {
-            if (TryBreakSlimWall(edgeStart, chunkToNeighborDir, Vector3.forward, blockSize, 2, chunk.Bounds.height, chunk.ChunkObject.transform))
-            {
-                return true;
-            }
-
-            return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
-        }
-
-        return false;
+        return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
     }
 
     private bool TryCarveFallbackTunnel(Chunk chunk, Chunk neighborChunk, Vector2Int dir, Vector3Int blockSize)
