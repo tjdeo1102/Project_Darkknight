@@ -26,8 +26,7 @@ public partial class PatrolPathFinderAction : Action
 
     protected override Status OnStart()
     {
-        Init();
-        return Status.Running;
+        return Init() ? Status.Running : Status.Failure;
     }
 
     protected override Status OnUpdate()
@@ -59,9 +58,22 @@ public partial class PatrolPathFinderAction : Action
         else return false;
     }
 
-    public void Init()
+    public bool Init()
     {
+        if (Agent == null || Agent.Value == null)
+        {
+            LogFailure("No agent assigned.");
+            return false;
+        }
+
+        if (PatrolPoints == null)
+        {
+            LogFailure("No patrol point variable assigned.");
+            return false;
+        }
+
         m_navAgent = Agent.Value.GetComponentInChildren<NavMeshAgent>();
+        PatrolPoints.Value = new List<GameObject>();
         m_patrolPool = new();
         var obj = new GameObject("point").transform;
         obj.transform.parent = Agent.Value.transform;
@@ -71,6 +83,9 @@ public partial class PatrolPathFinderAction : Action
 
         if (InGameLoop.Instance != null)
             Target.Value = InGameLoop.Instance.Player.gameObject;
+
+        m_Timer = 0f;
+        return true;
     }
 
     public void Setup(List<GameObject> patrolPoints)
@@ -97,6 +112,8 @@ public partial class PatrolPathFinderAction : Action
 
     public void PathFind()
     {
+        if (Agent == null || Agent.Value == null || m_navAgent == null || m_patrolPool == null) return;
+
         var patrolPoints = new List<GameObject>();
         // Check if Agent is currently placed on valid NavMesh Path
         if (m_navAgent != null && IsActiveNavAgent == true && m_navAgent.isOnNavMesh)

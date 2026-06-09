@@ -16,6 +16,15 @@ public partial class ListCountCondition : Condition
     {
         if (PatrolPoints == null || ComparisonIntValue == null) return false;
         if (PatrolPoints.Value == null || ComparisonIntValue.Type != typeof(int)) return false;
-        return ConditionUtils.Evaluate(PatrolPoints.Value.Count, Operator, ComparisonIntValue);
+        var validCount = 0;
+        foreach (var patrolPoint in PatrolPoints.Value)
+        {
+            if (patrolPoint != null && patrolPoint.activeInHierarchy)
+            {
+                validCount++;
+            }
+        }
+
+        return ConditionUtils.Evaluate(validCount, Operator, ComparisonIntValue);
     }
 }

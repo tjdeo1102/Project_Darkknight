@@ -66,13 +66,14 @@ public class EnemySpawner : MonoBehaviour
             }
             var selectKey = filter[Random.Range(0, filter.Count)];
             var pool = m_allEnemys[selectKey];
-            var enemy = pool.GetObject();
+            var enemy = pool.GetObject(false);
             var trans = enemy.transform;
             trans.position = pos;
             trans.rotation = Quaternion.identity;
+            enemy.Target = m_inGameLoop.Player.gameObject;
+            enemy.gameObject.SetActive(true);
             if (enemy.enabled)
             {
-                enemy.Target = m_inGameLoop.Player.gameObject;
                 enemy.ChunkRefresh();
             }
         }
@@ -97,14 +98,15 @@ public class EnemySpawner : MonoBehaviour
         foreach (var k in filter)
         {
             var pool = m_allEnemys[k];
-            var enemy = pool.GetObject();
+            var enemy = pool.GetObject(false);
             var trans = enemy.transform;
             if (useBasePostion == false)
                 trans.position = spawnPos;
             trans.rotation = Quaternion.identity;
+            enemy.Target = m_inGameLoop.Player.gameObject;
+            enemy.gameObject.SetActive(true);
             if (enemy.enabled)
             {
-                enemy.Target = m_inGameLoop.Player.gameObject;
                 enemy.ChunkRefresh();
             }
         }

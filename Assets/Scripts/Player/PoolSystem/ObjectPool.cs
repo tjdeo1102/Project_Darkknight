@@ -45,7 +45,7 @@ public class ObjectPool<T> where T : Component
             m_inactiveRoot.SetParent(parent, false);
     }
 
-    public T GetObject()
+    public T GetObject(bool activate = true)
     {
         if (pool == null) pool = new Queue<T>();
 
@@ -55,7 +55,8 @@ public class ObjectPool<T> where T : Component
         }
 
         var obj = pool.Dequeue();
-        obj.gameObject.SetActive(true);
+        if (activate)
+            obj.gameObject.SetActive(true);
         return obj;
     }
 
