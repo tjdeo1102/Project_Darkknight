@@ -31,13 +31,13 @@ public partial class CustomPatrolAction : Action
 
     protected override Status OnStart()
     {
-        if (Agent.Value == null)
+        if (Agent == null || Agent.Value == null)
         {
             LogFailure("No agent assigned.");
             return Status.Failure;
         }
 
-        if (Waypoints.Value == null || Waypoints.Value.Count == 0)
+        if (HasValidWaypoint() == false)
         {
             LogFailure("No waypoints to patrol assigned.");
             return Status.Failure;
@@ -48,13 +48,12 @@ public partial class CustomPatrolAction : Action
         m_Waiting = false;
         m_WaypointWaitTimer = 0.0f;
 
-        MoveToNextWaypoint();
-        return Status.Running;
+        return MoveToNextWaypoint() ? Status.Running : Status.Failure;
     }
 
     protected override Status OnUpdate()
     {
-        if (Agent.Value == null || Waypoints.Value == null)
+        if (Agent == null || Agent.Value == null || HasValidWaypoint() == false)
         {
             return Status.Failure;
         }
@@ -69,7 +68,10 @@ public partial class CustomPatrolAction : Action
             {
                 m_WaypointWaitTimer = 0f;
                 m_Waiting = false;
-                MoveToNextWaypoint();
+                if (MoveToNextWaypoint() == false)
+                {
+                    return Status.Failure;
+                }
             }
         }
         else
@@ -114,6 +116,12 @@ public partial class CustomPatrolAction : Action
 
     protected override void OnDeserialize()
     {
+        if (Agent == null || Agent.Value == null)
+        {
+            m_NavMeshAgent = null;
+            return;
+        }
+
         // If using a navigation mesh, we need to reset default value before Initialize.
         m_NavMeshAgent = Agent.Value.GetComponentInChildren<NavMeshAgent>();
         if (m_NavMeshAgent != null)
@@ -167,15 +175,42 @@ public partial class CustomPatrolAction : Action
         return Vector3.Distance(agentPosition, targetPosition);
     }
 
-    private void MoveToNextWaypoint()
+    private bool MoveToNextWaypoint()
     {
-        m_CurrentPatrolPoint = (m_CurrentPatrolPoint + 1) % Waypoints.Value.Count;
+        if (Waypoints == null || Waypoints.Value == null || Waypoints.Value.Count == 0) return false;
 
-        m_CurrentTarget = Waypoints.Value[m_CurrentPatrolPoint].transform.position;
-        if (m_NavMeshAgent != null && m_NavMeshAgent.isOnNavMesh)
+        for (var i = 0; i < Waypoints.Value.Count; i++)
         {
-            m_NavMeshAgent.SetDestination(m_CurrentTarget);
+            m_CurrentPatrolPoint = (m_CurrentPatrolPoint + 1) % Waypoints.Value.Count;
+            var waypoint = Waypoints.Value[m_CurrentPatrolPoint];
+            if (waypoint == null || waypoint.activeInHierarchy == false) continue;
+
+            m_CurrentTarget = waypoint.transform.position;
+            if (m_NavMeshAgent != null && m_NavMeshAgent.isOnNavMesh)
+            {
+                m_NavMeshAgent.SetDestination(m_CurrentTarget);
+            }
+
+            return true;
         }
+
+        return false;
+    }
+
+    private bool HasValidWaypoint()
+    {
+        if (Waypoints == null || Waypoints.Value == null) return false;
+
+        for (var i = 0; i < Waypoints.Value.Count; i++)
+        {
+            var waypoint = Waypoints.Value[i];
+            if (waypoint != null && waypoint.activeInHierarchy)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void UpdateAnimatorSpeed(float explicitSpeed = -1f)

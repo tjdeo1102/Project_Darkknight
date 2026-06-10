@@ -4,13 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Unity.Cinemachine;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
-using static UnityEngine.Rendering.VirtualTexturing.Debugging;
 
 [System.Serializable]
 public class ObservableVariable<T>
@@ -35,6 +32,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
     public int ExitStage = 3;
     public int StageUpCount = 15;
     public float DeadDuration = 2f;
+    [Min(1f)] public float ManagerInitializationTimeout = 30f;
     public bool IsStartGame = false;
     public PlayerController Player;
     public UIController UI;
@@ -56,17 +54,45 @@ public class InGameLoop : ManagerBase<InGameLoop>
     private InputActionMap m_originInputMap;
     private bool IsSpawnBoss;
     private Vector3 m_lastPlayerPos;
+    private AsyncOperationHandle<IList<GameObject>> m_npcHandle;
+    private AsyncOperationHandle<IList<InventoryItem>> m_itemHandle;
+    private AsyncOperationHandle<IList<GameObject>> m_enemyHandle;
+    private bool m_isDestroyed;
+
     private async void Start()
     {
-        await Init();
+        try
+        {
+            await Init();
+        }
+        catch (Exception exception)
+        {
+            IsReady = false;
+            Debug.LogException(exception, this);
+        }
 
+        if (m_isDestroyed) return;
         StartCoroutine(GameStartRoutine());
     }
 
     private void OnDisable()
     {
-        KillCount.OnValueChanged -= OnUpdateKill;
+        if (KillCount != null)
+            KillCount.OnValueChanged -= OnUpdateKill;
     }
+
+    private void OnDestroy()
+    {
+        m_isDestroyed = true;
+
+        if (m_npcHandle.IsValid())
+            Addressables.Release(m_npcHandle);
+        if (m_itemHandle.IsValid())
+            Addressables.Release(m_itemHandle);
+        if (m_enemyHandle.IsValid())
+            Addressables.Release(m_enemyHandle);
+    }
+
     private async Task Init()
     {
         IsSpawnBoss = false;
@@ -87,25 +113,25 @@ public class InGameLoop : ManagerBase<InGameLoop>
         // Spawner 초기화
         if (NPCSpawner != null)
         {
-            AsyncOperationHandle<IList<GameObject>> npcHandle =
-            Addressables.LoadAssetsAsync<GameObject>("NPC", null);
+            m_npcHandle = Addressables.LoadAssetsAsync<GameObject>("NPC", null);
 
-            AsyncOperationHandle<IList<InventoryItem>> itemHandle =
-            Addressables.LoadAssetsAsync<InventoryItem>("InventoryItem", null);
+            m_itemHandle = Addressables.LoadAssetsAsync<InventoryItem>("InventoryItem", null);
 
-            await itemHandle.Task;
-            await npcHandle.Task;
+            await m_itemHandle.Task;
+            if (m_isDestroyed) return;
+            await m_npcHandle.Task;
+            if (m_isDestroyed) return;
 
             var itemList = new List<InventoryItem>();
             var npcList = new List<NPCBase>();
             NPCSpawner.Items = itemList;
             NPCSpawner.AllNPCs = npcList;
 
-            if (itemHandle.Status == AsyncOperationStatus.Succeeded
-                && npcHandle.Status == AsyncOperationStatus.Succeeded)
+            if (m_itemHandle.Status == AsyncOperationStatus.Succeeded
+                && m_npcHandle.Status == AsyncOperationStatus.Succeeded)
             {
-                itemList.AddRange(itemHandle.Result);
-                foreach (var npc in npcHandle.Result)
+                itemList.AddRange(m_itemHandle.Result);
+                foreach (var npc in m_npcHandle.Result)
                 {
                     if (npc.TryGetComponent<NPCBase>(out var npcCtrl))
                         npcList.Add(npcCtrl);
@@ -122,17 +148,17 @@ public class InGameLoop : ManagerBase<InGameLoop>
 
         if (EnemySpawner != null)
         {
-            AsyncOperationHandle<IList<GameObject>> enemyHandle =
-            Addressables.LoadAssetsAsync<GameObject>("Enemy", null);
+            m_enemyHandle = Addressables.LoadAssetsAsync<GameObject>("Enemy", null);
 
-            await enemyHandle.Task;
+            await m_enemyHandle.Task;
+            if (m_isDestroyed) return;
 
             var enemyList = new List<EnemyController>();
             EnemySpawner.AllEnemys = enemyList;
 
-            if (enemyHandle.Status == AsyncOperationStatus.Succeeded)
+            if (m_enemyHandle.Status == AsyncOperationStatus.Succeeded)
             {
-                foreach (var enemy in enemyHandle.Result)
+                foreach (var enemy in m_enemyHandle.Result)
                 {
                     if (enemy.TryGetComponent<EnemyController>(out var enemyCtrl))
                         enemyList.Add(enemyCtrl);
@@ -150,8 +176,22 @@ public class InGameLoop : ManagerBase<InGameLoop>
 
     IEnumerator GameStartRoutine()
     {
+        var startTime = Time.realtimeSinceStartup;
         while(m_managers != null && m_managers.Any(x => x.IsReady == false))
         {
+            if (Time.realtimeSinceStartup - startTime >= ManagerInitializationTimeout)
+            {
+                var pendingManagers = string.Join(
+                    ", ",
+                    m_managers.Where(manager => manager.IsReady == false)
+                        .Select(manager => manager.GetType().Name));
+                Debug.LogError(
+                    $"Game initialization timed out after {ManagerInitializationTimeout:F1}s. " +
+                    $"Pending managers: {pendingManagers}",
+                    this);
+                yield break;
+            }
+
             yield return null;
         }
         if (ChunkManager != null) StartCoroutine(ChunkManager.PlayerStartRoutine());

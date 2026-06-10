@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -10,25 +9,41 @@ public class ObjectPool<T> where T : Component
     public Transform parent;
     public int InitSize;
     private Queue<T> pool;
+    private Transform m_inactiveRoot;
 
-    public void Init(Transform parent = null)
+    public void Init(Transform parent = null, int initialSize = -1)
     {
         pool = new Queue<T>();
         if (this.parent == null) this.parent = parent;
-        CreateObject(InitSize);
+        EnsureInactiveRoot();
+        CreateObject(initialSize < 0 ? InitSize : initialSize);
     }
 
     private void CreateObject(int size)
     {
+        EnsureInactiveRoot();
+
         for (int i = 0; i < size; i++)
         {
-            var obj = GameObject.Instantiate(poolObj, parent);
+            var obj = GameObject.Instantiate(poolObj, m_inactiveRoot);
             obj.gameObject.SetActive(false);
             pool.Enqueue(obj);
         }
     }
 
-    public T GetObject()
+    private void EnsureInactiveRoot()
+    {
+        if (m_inactiveRoot != null) return;
+
+        var root = new GameObject($"{typeof(T).Name} Pool Inactive Root");
+        root.SetActive(false);
+        m_inactiveRoot = root.transform;
+
+        if (parent != null)
+            m_inactiveRoot.SetParent(parent, false);
+    }
+
+    public T GetObject(bool activate = true)
     {
         if (pool == null) pool = new Queue<T>();
 
@@ -38,7 +53,9 @@ public class ObjectPool<T> where T : Component
         }
 
         var obj = pool.Dequeue();
-        obj.gameObject.SetActive(true);
+        obj.transform.SetParent(parent, false);
+        if (activate)
+            obj.gameObject.SetActive(true);
         return obj;
     }
 
@@ -47,6 +64,7 @@ public class ObjectPool<T> where T : Component
         if (pool == null) pool = new Queue<T>();
 
         obj.gameObject.SetActive(false);
+        obj.transform.SetParent(m_inactiveRoot, false);
         pool.Enqueue(obj);
     }
 
@@ -67,6 +85,17 @@ public class ObjectPool<T> where T : Component
             {
                 CreateObject(1);
             }
+            yield return null;
+        }
+    }
+
+    public IEnumerator Warmup(int maxCreatePerFrame)
+    {
+        maxCreatePerFrame = Mathf.Max(1, maxCreatePerFrame);
+
+        while (Count() < InitSize)
+        {
+            CreateObject(Mathf.Min(maxCreatePerFrame, InitSize - Count()));
             yield return null;
         }
     }

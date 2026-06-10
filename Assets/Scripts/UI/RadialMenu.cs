@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class RadialMenu : UIElementBase
@@ -15,6 +16,7 @@ public class RadialMenu : UIElementBase
 
     public MenuContent[] contents;
     public float IconOvelayMagnitude;
+    [Min(0f)] public float SelectionDistance = 100f;
     public TextMeshProUGUI Text;
 
     private Vector2 m_center;
@@ -24,6 +26,7 @@ public class RadialMenu : UIElementBase
     void OnEnable()
     {
         m_lastSelect = -1;
+        if (Text != null) Text.text = "";
         var pos = GetComponent<RectTransform>().position;
         // Recttransform에 맞게 스크린 위치 좌표
         m_center = RectTransformUtility.WorldToScreenPoint(null, pos);
@@ -31,19 +34,23 @@ public class RadialMenu : UIElementBase
 
     protected override void OnDisable()
     {
-        if (m_lastSelect >= contents.Length || m_lastSelect < 0) return;
-
-        contents[m_lastSelect].Icon.localScale = m_lastIconOriginScale;
-        Text.text = "";
+        ClearSelection();
+        base.OnDisable();
     }
     // Update is called once per frame
     void Update()
     {
-        Vector2 mousePos = Input.mousePosition;
+        if (contents == null || contents.Length == 0 || Mouse.current == null) return;
+
+        Vector2 mousePos = Mouse.current.position.ReadValue();
         var dir = mousePos - m_center;
 
         // 일정 거리 이내일 때는 버튼 동작 안함
-        if (dir.sqrMagnitude < 100) return;
+        if (dir.sqrMagnitude < SelectionDistance * SelectionDistance)
+        {
+            ClearSelection();
+            return;
+        }
 
         // 45도 회전
         var deg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 135f;
@@ -54,16 +61,32 @@ public class RadialMenu : UIElementBase
 
         OverlayIcon(select);
 
-        if (Input.GetMouseButtonDown(0) 
-            && m_lastSelect < contents.Length
-            && m_lastSelect > -1
-            && contents != null)
-        {
-            Controller.ChangeState(contents[m_lastSelect].ChangeState);
-            gameObject.SetActive(false);
-        }
     }
 
+
+    public bool TryGetSelectedState(out UIState state)
+    {
+        if (contents != null && m_lastSelect >= 0 && m_lastSelect < contents.Length)
+        {
+            state = contents[m_lastSelect].ChangeState;
+            return true;
+        }
+
+        state = UIState.None;
+        return false;
+    }
+
+    private void ClearSelection()
+    {
+        if (contents != null && m_lastSelect >= 0 && m_lastSelect < contents.Length)
+        {
+            var icon = contents[m_lastSelect].Icon;
+            if (icon != null) icon.localScale = m_lastIconOriginScale;
+        }
+
+        m_lastSelect = -1;
+        if (Text != null) Text.text = "";
+    }
     void OverlayIcon(int idx)
     {
         if (contents.Length <= idx || m_lastSelect == idx) return;

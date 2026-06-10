@@ -17,6 +17,12 @@ public class UIController : ManagerBase<UIController>
     public TextMeshProUGUI MoneyText;
 
     private UIState m_currentState;
+    private bool m_isInitialized;
+    private InputAction m_radialMenuAction;
+    private InputAction m_exitAction;
+    private CanvasGroup m_noticeGroup;
+    private TextMeshProUGUI m_noticeText;
+    private DG.Tweening.Sequence m_noticeSequence;
     public UIState CurrentState => m_currentState;
 
     private void Start()
@@ -31,42 +37,64 @@ public class UIController : ManagerBase<UIController>
             UIElements[element.Type] = element;
         }
 
-        var instance = InGameLoop.Instance;
-        if (instance != null)
-        {
-            instance.KillCount.OnValueChanged += OnKillChanged;
-            OnKillChanged(instance.KillCount.Value);
-        }
+        ChangeState(UIState.None);
+        InitializeNotice();
         IsReady = true;
     }
     public override void StartInit()
     {
         base.StartInit();
+        if (m_isInitialized) return;
         if (Player == null || Player.input == null || Player.input.actions == null || Player.model == null) return;
 
-        Player.input.actions["RadialMenu"].performed += OnRadialMenu;
-        Player.input.actions["RadialMenu"].canceled += OnRadialMenu;
-        Player.input.actions["Exit"].performed += OnExitPanel;
+        m_radialMenuAction = Player.input.actions.FindAction("Player/RadialMenu");
+        m_exitAction = Player.input.actions.FindAction("UI/Exit");
+        if (m_radialMenuAction == null || m_exitAction == null)
+        {
+            Debug.LogError("Required UI input actions are missing.", this);
+            return;
+        }
+
+        m_radialMenuAction.performed += OnRadialMenu;
+        m_radialMenuAction.canceled += OnRadialMenu;
+        m_exitAction.performed += OnExitPanel;
         Player.model.Health.OnChangeStat += OnHPChanged;
         Player.model.Mana.OnChangeStat += OnMPChanged;
         Player.model.Money.OnChangeStat += OnMoneyChanged;
+
+        var instance = InGameLoop.Instance;
+        if (instance?.KillCount != null)
+        {
+            instance.KillCount.OnValueChanged += OnKillChanged;
+            OnKillChanged(instance.KillCount.Value);
+        }
+
+        m_isInitialized = true;
+        OnHPChanged();
+        OnMPChanged();
+        OnMoneyChanged();
     }
     private void OnDisable()
     {
-        if (Player != null && Player.IsDestroyed() == false)
+        if (m_isInitialized && Player != null && Player.IsDestroyed() == false)
         {
-            Player.input.actions["RadialMenu"].performed -= OnRadialMenu;
-            Player.input.actions["RadialMenu"].canceled -= OnRadialMenu;
-            Player.input.actions["Exit"].performed -= OnExitPanel;
+            if (m_radialMenuAction != null)
+            {
+                m_radialMenuAction.performed -= OnRadialMenu;
+                m_radialMenuAction.canceled -= OnRadialMenu;
+            }
+            if (m_exitAction != null)
+                m_exitAction.performed -= OnExitPanel;
             Player.model.Health.OnChangeStat -= OnHPChanged;
             Player.model.Mana.OnChangeStat -= OnMPChanged;
             Player.model.Money.OnChangeStat -= OnMoneyChanged;
         }
 
-        if (InGameLoop.Instance != null)
+        if (InGameLoop.Instance?.KillCount != null)
         {
             InGameLoop.Instance.KillCount.OnValueChanged -= OnKillChanged;
         }
+        m_isInitialized = false;
     }
 
     public void OnRadialMenu(InputAction.CallbackContext context)
@@ -78,7 +106,17 @@ public class UIController : ManagerBase<UIController>
             if (context.performed)
                 element.gameObject.SetActive(true);
             else if (context.canceled)
+            {
+                var selectedState = UIState.None;
+                var hasSelection = element is RadialMenu radialMenu &&
+                                   radialMenu.TryGetSelectedState(out selectedState);
                 element.gameObject.SetActive(false);
+
+                if (hasSelection)
+                {
+                    ChangeState(selectedState);
+                }
+            }
         }
     }
 
@@ -101,6 +139,8 @@ public class UIController : ManagerBase<UIController>
     }
     public void OnMoneyChanged()
     {
+        if (Player == null || Player.model == null || MoneyText == null) return;
+
         var money = Player.model.Money;
         MoneyText.text = $"{money.TotalValue} $";
     }
@@ -108,6 +148,87 @@ public class UIController : ManagerBase<UIController>
     {
         KillText.text = $"{newKill} Kill";
     }
+
+    public void ShowRequiredWeaponMessage(WeaponType weaponType)
+    {
+        var weaponName = weaponType switch
+        {
+            WeaponType.Sword => "Í≤Ä",
+            WeaponType.Knife => "Îã®Í≤Ä",
+            _ => "ÏïåÎßûÏùÄ Î¨¥Í∏∞",
+        };
+
+        ShowNotice($"{weaponName}ÏùÑ Ïû•Ï∞©Ìï¥Ïïº Ïä§ÌÇ¨ÏùÑ ÏÇ¨Ïö©Ìï† Ïàò ÏûàÏäµÎãàÎã§.");
+    }
+
+    private void InitializeNotice()
+    {
+        if (m_noticeGroup != null) return;
+
+        var noticeObject = new GameObject(
+            "SkillNotice",
+            typeof(RectTransform),
+            typeof(CanvasGroup),
+            typeof(Image));
+        noticeObject.transform.SetParent(transform, false);
+        noticeObject.transform.SetAsLastSibling();
+
+        var noticeRect = noticeObject.GetComponent<RectTransform>();
+        noticeRect.anchorMin = new Vector2(0.5f, 0.22f);
+        noticeRect.anchorMax = new Vector2(0.5f, 0.22f);
+        noticeRect.pivot = new Vector2(0.5f, 0.5f);
+        noticeRect.anchoredPosition = Vector2.zero;
+        noticeRect.sizeDelta = new Vector2(500f, 48f);
+
+        var background = noticeObject.GetComponent<Image>();
+        background.color = new Color(0.05f, 0.05f, 0.05f, 0.82f);
+        background.raycastTarget = false;
+
+        m_noticeGroup = noticeObject.GetComponent<CanvasGroup>();
+        m_noticeGroup.alpha = 0f;
+        m_noticeGroup.interactable = false;
+        m_noticeGroup.blocksRaycasts = false;
+
+        var textObject = new GameObject(
+            "Text",
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(noticeObject.transform, false);
+
+        var textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(16f, 4f);
+        textRect.offsetMax = new Vector2(-16f, -4f);
+
+        m_noticeText = textObject.GetComponent<TextMeshProUGUI>();
+        m_noticeText.font = MoneyText != null ? MoneyText.font : KillText?.font;
+        m_noticeText.alignment = TextAlignmentOptions.Center;
+        m_noticeText.color = Color.white;
+        m_noticeText.fontSize = 22f;
+        m_noticeText.enableAutoSizing = true;
+        m_noticeText.fontSizeMin = 14f;
+        m_noticeText.fontSizeMax = 22f;
+        m_noticeText.raycastTarget = false;
+    }
+
+    private void ShowNotice(string message)
+    {
+        InitializeNotice();
+        if (m_noticeGroup == null || m_noticeText == null) return;
+
+        m_noticeText.text = message;
+        m_noticeGroup.transform.SetAsLastSibling();
+        m_noticeSequence?.Kill();
+        m_noticeGroup.alpha = 0f;
+
+        m_noticeSequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .Append(m_noticeGroup.DOFade(1f, 0.12f))
+            .AppendInterval(1.25f)
+            .Append(m_noticeGroup.DOFade(0f, 0.22f));
+    }
+
     public void DeadUI(float duration)
     {
         ChangeState(UIState.Die);
@@ -118,7 +239,7 @@ public class UIController : ManagerBase<UIController>
             var texts = element.GetComponentsInChildren<TextMeshProUGUI>(true);
             var btns = element.GetComponentsInChildren<Button>(true);
 
-            // ø¯∑° ªˆªÛ ¿˙¿Â π◊ æÀ∆ƒ∞™ 0¿∏∑Œ º≥¡§
+            // Store original colors and start fully transparent.
             Color[] imgsOriginalAlphas = new Color[imgs.Length];
             Color[] textsOriginalAlphas = new Color[texts.Length];
             float[] btnsOriginalAlphas = new float[btns.Length];
@@ -143,7 +264,7 @@ public class UIController : ManagerBase<UIController>
                 btns[i].interactable = false;
             }
 
-            // ∏µÁ ø‰º“ durationµøæ» µøΩ√ø° Fade
+            // Fade all elements together.
             DG.Tweening.Sequence seq = DOTween.Sequence();
             seq.SetUpdate(true);
 
@@ -156,7 +277,7 @@ public class UIController : ManagerBase<UIController>
                 seq.Join(texts[i].DOColor(textsOriginalAlphas[i], duration));
             }
 
-            // øœ∑·»ƒ πˆ∆∞ »∞º∫»≠
+            // Enable buttons after the fade completes.
             seq.OnComplete(() =>
             {
                 for (int i = 0; i < btns.Length; i++)
@@ -171,31 +292,28 @@ public class UIController : ManagerBase<UIController>
 
     public void ChangeState(UIState state)
     {
+        if (UIElements == null) return;
+        if (state != UIState.None && UIElements.ContainsKey(state) == false)
+            state = UIState.None;
+
         m_currentState = state;
-
-        // ∏∏æ‡, ui¿¸øÎ ∆–≥Œ¿Ã ø≠∏± ∞ÊøÏ ui≈∞¿‘∑¬¿∏∑Œ ªÛ≈¬ ¿¸»Ø
-        
-        if (state == UIState.None)
+        foreach (var pair in UIElements)
         {
-            Time.timeScale = 1f;
-            foreach (var element in UIElements.Values)
-            {
-                if (element.DependencyOnChangeState)
-                    element.gameObject.SetActive(false);
-            }
-            Player?.SetActionMap(InputActionMap.Player);
-        }
-        else
-        {
-            Time.timeScale = 0f;
-            if (UIElements.TryGetValue(state, out var element))
-            {
-                if (element.DependencyOnChangeState)
-                    element.gameObject.SetActive(true);
-            }
-            else ChangeState(UIState.None);
+            var element = pair.Value;
+            if (element == null || element.DependencyOnChangeState == false) continue;
 
-            Player?.SetActionMap(state == UIState.Dialog ? InputActionMap.Dialog : InputActionMap.UI);
+            var shouldBeActive = state != UIState.None && pair.Key == state;
+            if (element.gameObject.activeSelf != shouldBeActive)
+                element.gameObject.SetActive(shouldBeActive);
         }
+
+        Time.timeScale = state == UIState.None ? 1f : 0f;
+        var inputMap = state switch
+        {
+            UIState.None => InputActionMap.Player,
+            UIState.Dialog => InputActionMap.Dialog,
+            _ => InputActionMap.UI,
+        };
+        Player?.SetActionMap(inputMap);
     }
 }

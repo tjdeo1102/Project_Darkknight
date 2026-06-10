@@ -14,6 +14,10 @@ public class PlayerCombat : MonoBehaviour
     private WeaponBase curWeapon;
     private Dictionary<WeaponType, WeaponBase> weapons;
     private bool m_isInputSubscribed;
+    private SkillRuntimeStateStore m_skillStates;
+    private InputAction m_skillAction;
+    private InputAction m_swapWeaponAction;
+    private InputAction m_attackAction;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
@@ -34,9 +38,14 @@ public class PlayerCombat : MonoBehaviour
         if (ctrl == null) ctrl = GetComponentInParent<PlayerController>();
         if (ctrl == null || ctrl.input == null || ctrl.input.actions == null) return;
 
-        ctrl.input.actions["Skill"].performed += OnSkill;
-        ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
-        ctrl.input.actions["Attack"].performed += OnAttack;
+        m_skillAction = ctrl.input.actions.FindAction("Player/Skill");
+        m_swapWeaponAction = ctrl.input.actions.FindAction("Player/SwapWeapon");
+        m_attackAction = ctrl.input.actions.FindAction("Player/Attack");
+        if (m_skillAction == null || m_swapWeaponAction == null || m_attackAction == null) return;
+
+        m_skillAction.performed += OnSkill;
+        m_swapWeaponAction.performed += OnSwapWeapon;
+        m_attackAction.performed += OnAttack;
         m_isInputSubscribed = true;
     }
 
@@ -49,9 +58,9 @@ public class PlayerCombat : MonoBehaviour
             return;
         }
 
-        ctrl.input.actions["Skill"].performed -= OnSkill;
-        ctrl.input.actions["SwapWeapon"].performed -= OnSwapWeapon;
-        ctrl.input.actions["Attack"].performed -= OnAttack;
+        m_skillAction.performed -= OnSkill;
+        m_swapWeaponAction.performed -= OnSwapWeapon;
+        m_attackAction.performed -= OnAttack;
         m_isInputSubscribed = false;
     }
 
@@ -122,30 +131,83 @@ public class PlayerCombat : MonoBehaviour
         var size = (int)InputSkill.Size;
         int bindingIndex = context.action.GetBindingIndexForControl(context.control);
         if (bindingIndex < 0 || bindingIndex >= size) return;
+        if (ctrl.machine.CanOtherAction() == false || bindingIndex >= skills.Count) return;
 
-        if (ctrl.machine.CanOtherAction() && skills[bindingIndex] != null)
+        var skill = skills[bindingIndex];
+        if (IsEquippedSkillActive(skill) == false) return;
+
+        if (HasRequiredWeapon(skill) == false)
         {
-            StartCoroutine(skills[bindingIndex].Active(ctrl));
+            UIController.Instance?.ShowRequiredWeaponMessage(skill.RequireWeapon);
+            return;
         }
+
+        StartCoroutine(skill.Active(ctrl));
     }
     #endregion
 
     private void Awake()
     {
+        m_skillStates = SkillRuntimeStateStore.GetOrCreate(this);
         weapons = new()
         {
             {WeaponType.None, null},
         };
         CurType = WeaponType.None;
 
-        skills = new()
+        skills ??= new List<SkillBase>();
+        var requiredSkillSlots = (int)InputSkill.Size;
+        while (skills.Count < requiredSkillSlots)
         {
-            null, null, null,
-        };
+            skills.Add(null);
+        }
     }
 
     public WeaponBase GetCurWeapon()
     {
         return curWeapon;
+    }
+
+    public SkillRuntimeState GetSkillState(SkillBase skill)
+    {
+        m_skillStates ??= SkillRuntimeStateStore.GetOrCreate(this);
+        return m_skillStates?.GetState(skill);
+    }
+
+    public bool IsSkillUnlocked(SkillBase skill)
+    {
+        if (skill == null) return false;
+        if (skill.CanUnlock) return true;
+        if (skill.RequireSkill == null || skill.RequireSkill.Length == 0) return false;
+
+        foreach (var requiredSkill in skill.RequireSkill)
+        {
+            var requiredState = GetSkillState(requiredSkill);
+            if (requiredSkill == null || requiredState == null || requiredState.IsActive == false)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool CanUseEquippedSkill(SkillBase skill)
+    {
+        return IsEquippedSkillActive(skill) && HasRequiredWeapon(skill);
+    }
+
+    private bool IsEquippedSkillActive(SkillBase skill)
+    {
+        if (skill == null) return false;
+
+        var state = GetSkillState(skill);
+        return state != null && state.IsActive;
+    }
+
+    private bool HasRequiredWeapon(SkillBase skill)
+    {
+        return skill != null &&
+               (skill.RequireWeapon == WeaponType.None || skill.RequireWeapon == CurType);
     }
 }

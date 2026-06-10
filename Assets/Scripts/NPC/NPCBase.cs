@@ -1,8 +1,4 @@
-using NUnit.Framework;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.AppUI.UI;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -24,6 +20,7 @@ public class NPCBase : MonoBehaviour
     private ChunkManager m_chunkManager;
     private PlayerController m_player;
     private NPCDialog m_dialog;
+    private readonly HashSet<Collider> m_playerColliders = new();
 
     private void Awake()
     {
@@ -32,11 +29,13 @@ public class NPCBase : MonoBehaviour
     private void OnEnable()
     {
         m_isTouch = false;
+        m_player = null;
+        m_playerColliders.Clear();
         m_canSelectItem = true;
         m_isInteract = false;
         if (SelectItems != null && SelectItems.Count > 3)
         {
-            SelectItems.RemoveRange(3, DialogTexts.Count - 3);
+            SelectItems.RemoveRange(3, SelectItems.Count - 3);
         }
 
         if (InGameLoop.Instance != null)
@@ -59,31 +58,28 @@ public class NPCBase : MonoBehaviour
             gameLoop.StageLevel.OnValueChanged -= DestroyThisNPC;
         }
         if (NavAgent != null) NavAgent.enabled = false;
+        m_isTouch = false;
+        m_player = null;
+        m_playerColliders.Clear();
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        m_isTouch = true;
-        if (m_isInteract)
-        {
-            Interact();
-            return;
-        }
+        if (other.CompareTag(TagManager.GetTagString(TargetTag.Player)) == false) return;
 
-        if (other.CompareTag(TagManager.GetTagString(TargetTag.Player)))
-        {
-            var ctrl = other.GetComponentInParent<PlayerController>();
-            if (ctrl != null)
-            {
-                m_player = ctrl;
-            }
-        }
+        var ctrl = other.GetComponentInParent<PlayerController>();
+        if (ctrl == null) return;
+
+        m_playerColliders.Add(other);
+        m_player = ctrl;
+        m_isTouch = true;
     }
 
     private void Update()
     {
         if (m_isTouch == false) return;
-        if (m_player != null && m_player.input.actions["Interact"].triggered)
+        var interactAction = m_player?.input?.currentActionMap?.FindAction("Interact");
+        if (interactAction != null && interactAction.triggered)
         {
             // 플레이어 향해 회전
             var target = m_player.transform.position;
@@ -95,6 +91,9 @@ public class NPCBase : MonoBehaviour
     }
     private void OnTriggerExit(Collider other)
     {
+        if (m_playerColliders.Remove(other) == false) return;
+        if (m_playerColliders.Count > 0) return;
+
         m_isTouch = false;
         m_player = null;
     }
@@ -111,7 +110,7 @@ public class NPCBase : MonoBehaviour
             m_textLine = 0;
             // Dialog UI 제작후, 컨트롤러에 등록하면, 해당 Dialog UI를 활성화
 
-            m_dialog.gameObject.SetActive(true);
+            gameLoop.UI.ChangeState(UIState.Dialog);
             m_dialog.Init(this);
 
             m_isInteract = true;

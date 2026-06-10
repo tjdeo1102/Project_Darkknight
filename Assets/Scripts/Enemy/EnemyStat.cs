@@ -32,6 +32,7 @@ public class EnemyStat : MonoBehaviour
     private Vector3 m_pendingHitDirection;
     private float m_pendingKnockBackForce;
     private Coroutine m_navRestoreRoutine;
+    private bool m_isStageSubscribed;
     private static readonly int KnockBackHash = Animator.StringToHash("KnockBack");
     private static readonly int StateHash = Animator.StringToHash("State");
 
@@ -41,6 +42,7 @@ public class EnemyStat : MonoBehaviour
         m_hasPendingDeath = false;
         m_isDead = false;
         m_navRestoreRoutine = null;
+        SubscribeStageLevel();
 
         if (Ctrl != null && Ctrl.AI != null && Ctrl.AI.NavAgent != null)
         {
@@ -48,6 +50,11 @@ public class EnemyStat : MonoBehaviour
             if (Ctrl.AI.NavAgent.enabled && Ctrl.AI.NavAgent.isOnNavMesh)
                 Ctrl.AI.NavAgent.isStopped = false;
         }
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeStageLevel();
     }
 
     private void Start()
@@ -64,18 +71,41 @@ public class EnemyStat : MonoBehaviour
             { StatType.Money, Money},
         };
 
-        if (InGameLoop.Instance != null)
-        {
-            InGameLoop.Instance.StageLevel.OnValueChanged += UpdateStat;
-            UpdateStat(InGameLoop.Instance.StageLevel.Value);
-        }
-        else UpdateStat(1);
+        SubscribeStageLevel();
+        if (m_isStageSubscribed == false)
+            UpdateStat(1);
     }
 
     public void UpdateStat(int newLevel)
     {
         if (newLevel > StatData.Count) return;
         StatData[newLevel - 1].SetStat(ref StatDic);
+    }
+
+    private void SubscribeStageLevel()
+    {
+        if (m_isStageSubscribed || StatDic == null ||
+            InGameLoop.Instance == null || InGameLoop.Instance.StageLevel == null)
+        {
+            return;
+        }
+
+        InGameLoop.Instance.StageLevel.OnValueChanged += UpdateStat;
+        m_isStageSubscribed = true;
+        UpdateStat(InGameLoop.Instance.StageLevel.Value);
+    }
+
+    private void UnsubscribeStageLevel()
+    {
+        if (m_isStageSubscribed == false || InGameLoop.Instance == null ||
+            InGameLoop.Instance.StageLevel == null)
+        {
+            m_isStageSubscribed = false;
+            return;
+        }
+
+        InGameLoop.Instance.StageLevel.OnValueChanged -= UpdateStat;
+        m_isStageSubscribed = false;
     }
 
     public void ApplyDamage(float damage, Vector3 attackerPos, float force)
@@ -263,6 +293,7 @@ public class EnemyStat : MonoBehaviour
         var renderers = Ctrl.GetComponentsInChildren<Renderer>();
         var originMaterials = new Dictionary<Renderer, Material[]>();
         var fadeMaterials = new List<Material>();
+        var runtimeMaterials = new HashSet<Material>();
         var originPosition = Ctrl.transform.position;
         foreach (var renderer in renderers)
         {
@@ -270,7 +301,10 @@ public class EnemyStat : MonoBehaviour
             var materials = renderer.materials;
             foreach (var mat in materials)
             {
-                if (mat != null && mat.HasProperty("_Color"))
+                if (mat == null) continue;
+
+                runtimeMaterials.Add(mat);
+                if (mat.HasProperty("_Color"))
                     fadeMaterials.Add(mat);
             }
         }
@@ -307,7 +341,7 @@ public class EnemyStat : MonoBehaviour
 
         yield return sequence.WaitForCompletion();
 
-        CleanupAfterDeath(cols, originMaterials, originPosition);
+        CleanupAfterDeath(cols, originMaterials, runtimeMaterials, originPosition);
     }
 
     private void StopNavigationForDeath()
@@ -318,20 +352,18 @@ public class EnemyStat : MonoBehaviour
             Ctrl.AI.BTAgent.enabled = false;
 
         var navAgent = Ctrl.AI.NavAgent;
-        if (navAgent.enabled == false)
-            navAgent.enabled = true;
-
-        if (navAgent.isOnNavMesh == false)
+        if (navAgent.enabled == false || navAgent.isOnNavMesh == false)
         {
-            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas) == false)
             {
-                transform.position = hit.position;
-                navAgent.Warp(hit.position);
-            }
-            else
-            {
+                navAgent.enabled = false;
                 return;
             }
+
+            navAgent.enabled = false;
+            transform.position = hit.position;
+            navAgent.enabled = true;
+            navAgent.Warp(hit.position);
         }
 
         navAgent.ResetPath();
@@ -341,16 +373,15 @@ public class EnemyStat : MonoBehaviour
         navAgent.Warp(transform.position);
     }
 
-    private void CleanupAfterDeath(Collider[] cols, Dictionary<Renderer, Material[]> originMaterials, Vector3 originPosition)
+    private void CleanupAfterDeath(
+        Collider[] cols,
+        Dictionary<Renderer, Material[]> originMaterials,
+        HashSet<Material> runtimeMaterials,
+        Vector3 originPosition)
     {
         foreach (var item in StatDic.Values)
         {
             item.RemoveAllModifier();
-        }
-
-        if (InGameLoop.Instance != null)
-        {
-            InGameLoop.Instance.StageLevel.OnValueChanged -= UpdateStat;
         }
 
         Ctrl.Rigid.useGravity = false;
@@ -366,6 +397,12 @@ public class EnemyStat : MonoBehaviour
         {
             if (kvp.Key != null)
                 kvp.Key.sharedMaterials = kvp.Value;
+        }
+
+        foreach (var material in runtimeMaterials)
+        {
+            if (material != null)
+                Destroy(material);
         }
 
         if (InGameLoop.Instance != null && InGameLoop.Instance.EnemySpawner != null)

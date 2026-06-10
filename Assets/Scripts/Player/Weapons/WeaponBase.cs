@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponBase: MonoBehaviour
@@ -17,6 +18,7 @@ public class WeaponBase: MonoBehaviour
     private Coroutine m_hitRoutine;
     private bool m_lastHitSucceeded;
     private Vector3 m_lastHitPosition;
+    private int m_attackSequence;
 
     public virtual void AddWeapon(WeaponType type)
     {
@@ -42,32 +44,34 @@ public class WeaponBase: MonoBehaviour
         m_hasPendingHit = true;
         m_pendingAttackIndex = m_attackCount;
         m_pendingAction = GetAttackAction(m_attackCount);
+        m_attackSequence++;
 
         if (ShouldUseAnimationEventHit() == false)
         {
             if (m_hitRoutine != null)
                 StopCoroutine(m_hitRoutine);
 
-            m_hitRoutine = StartCoroutine(HitRoutine(m_pendingAction));
+            m_hitRoutine = StartCoroutine(HitRoutine(m_pendingAction, m_attackSequence));
         }
 
         m_lastAttackTime = Time.time;
 
     }
 
-    IEnumerator HitRoutine(WeaponAttackSO action)
+    IEnumerator HitRoutine(WeaponAttackSO action, int attackSequence)
     {
         var delay = GetFallbackHitDelay(action);
         if (delay > 0f)
             yield return new WaitForSeconds(delay);
 
-        ApplyHit(action);
+        if (IsCurrentAttack(action, attackSequence))
+            ApplyHit(action);
         m_hitRoutine = null;
     }
 
-    public void ApplyAnimationEventHit()
+    public bool ApplyAnimationEventHit(WeaponAttackSO action, int attackSequence)
     {
-        if (m_hasPendingHit == false) return;
+        if (IsCurrentAttack(action, attackSequence) == false) return false;
 
         if (m_hitRoutine != null)
         {
@@ -75,7 +79,8 @@ public class WeaponBase: MonoBehaviour
             m_hitRoutine = null;
         }
 
-        ApplyHit(m_pendingAction);
+        ApplyHit(action);
+        return m_lastHitSucceeded;
     }
 
     private void ApplyHit(WeaponAttackSO action)
@@ -96,7 +101,7 @@ public class WeaponBase: MonoBehaviour
 
         Tool.DrawOverlapBox(center, range, rotation, Color.green, 2f);
 
-        EnemyStat stat = null;
+        var damagedTargets = new HashSet<EnemyStat>();
         m_lastHitSucceeded = false;
         m_lastHitPosition = Vector3.zero;
         var additionalDamage = action.AdditionalDamage;
@@ -105,8 +110,8 @@ public class WeaponBase: MonoBehaviour
         {
             if (hit.CompareTag(TagManager.GetTagString(TargetTag.Enemy)))
             {
-                stat = hit.GetComponentInParent<EnemyStat>();
-                if (stat != null)
+                var stat = hit.GetComponentInParent<EnemyStat>();
+                if (stat != null && damagedTargets.Add(stat))
                 {
                     stat.ApplyDamage(ctrl.model.AttackPower.TotalValue + additionalDamage, ctrl.transform.position , knockBackForce);
                     m_lastHitSucceeded = true;
@@ -145,7 +150,7 @@ public class WeaponBase: MonoBehaviour
     private float GetFallbackHitDelay(WeaponAttackSO action)
     {
         if (action == null) return 0f;
-        return Mathf.Max(0f, action.EffectDelay) + Mathf.Max(0f, action.ActiveDelay);
+        return Mathf.Max(0f, action.ActiveDelay);
     }
 
     public void ActiveWeapon(bool isActive)
@@ -162,6 +167,23 @@ public class WeaponBase: MonoBehaviour
     public WeaponAttackSO GetCurrentAttackAction()
     {
         return GetAttackAction(m_attackCount);
+    }
+
+    public int GetCurrentAttackSequence()
+    {
+        return m_attackSequence;
+    }
+
+    public bool IsCurrentAttack(WeaponAttackSO action, int attackSequence)
+    {
+        return m_hasPendingHit && IsAttackSequenceCurrent(action, attackSequence);
+    }
+
+    public bool IsAttackSequenceCurrent(WeaponAttackSO action, int attackSequence)
+    {
+        return action != null &&
+               action == m_pendingAction &&
+               attackSequence == m_attackSequence;
     }
 
     public bool TryGetLastHitPosition(out Vector3 position)

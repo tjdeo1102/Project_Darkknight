@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using TMPro;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,7 +22,7 @@ public class InventorySystem : UIElementBase
 
     private void OnEnable()
     {
-        Controller.ChangeState(UIState.Inventory);
+        if (Controller == null || Controller.Player == null) return;
         var model = Controller.Player.model;
         if (model != null)
         {
@@ -39,6 +38,12 @@ public class InventorySystem : UIElementBase
 
     protected override void OnDisable()
     {
+        if (Controller == null || Controller.Player == null)
+        {
+            base.OnDisable();
+            return;
+        }
+
         var model = Controller.Player.model;
         if (model != null)
         {
@@ -97,20 +102,20 @@ public class InventorySystem : UIElementBase
     public void SwapItem(ItemSlot from)
     {
         var model = Controller.Player.model;
-        // Unequip -> Equip·Î ¾ÆÀÌÅÛ Àü¼Û
+        // Unequip -> Equipë¡œ ì•„ì´í…œ ì „ì†¡
         if (from.SlotType == ItemType.None)
         {
-            // °°Àº ¾ÆÀÌÅÛ Å¸ÀÔÀÇ Equip ½½·Ô°ú Swap (Å¸ÀÔ º° Equip ½½·ÔÀº ÇÏ³ª)
+            // ê°™ì€ ì•„ì´í…œ íƒ€ìž…ì˜ Equip ìŠ¬ë¡¯ê³¼ Swap (íƒ€ìž… ë³„ Equip ìŠ¬ë¡¯ì€ í•˜ë‚˜)
 
             if (from.SlotItem!= null && equipDic.ContainsKey(from.SlotItem.ItemType))
             {
                 var equipSlot = equipDic[from.SlotItem.ItemType];
-                // ½ºÅÈ °»½Å
+                // ìŠ¤íƒ¯ ê°±ì‹ 
                 if (equipSlot.SlotItem != null)
                 {
                     foreach (var modifyStat in equipSlot.SlotItem.ModifierStats)
                     {
-                        // ±âÁ¸ ÀåÂøµÈ ¹«±âÀÇ ½ºÅÈÀÇ °ªÀº »©±â
+                        // ê¸°ì¡´ ìž¥ì°©ëœ ë¬´ê¸°ì˜ ìŠ¤íƒ¯ì˜ ê°’ì€ ë¹¼ê¸°
                         model.Stats[modifyStat.StatType].AddModifier(-modifyStat.StatModifier, StatModifyType.Equipment);
                     }
                 }
@@ -118,26 +123,29 @@ public class InventorySystem : UIElementBase
                 {
                     foreach (var modifyStat in from.SlotItem.ModifierStats)
                     {
-                        // »õ·Î ÀåÂøÇÒ ¹«±âÀÇ ½ºÅÈÀÇ °ªÀº ´õÇÏ±â
+                        // ìƒˆë¡œ ìž¥ì°©í•  ë¬´ê¸°ì˜ ìŠ¤íƒ¯ì˜ ê°’ì€ ë”í•˜ê¸°
                         model.Stats[modifyStat.StatType].AddModifier(modifyStat.StatModifier, StatModifyType.Equipment);
                     }
 
                 }
-                // ½º¿Ò
+                // ìŠ¤ì™‘
                 (from.SlotItem, equipSlot.SlotItem) = (equipSlot.SlotItem, from.SlotItem);
             }
         }
-        // Equip -> Unequip·Î ¾ÆÀÌÅÛ Àü¼Û (ÀåÂø ÇØÁ¦)
+        // Equip -> Unequipë¡œ ì•„ì´í…œ ì „ì†¡ (ìž¥ì°© í•´ì œ)
         else
         {
-            var res = UnequipSlots.First(slot => slot.SlotItem == null);
+            if (from.SlotItem == null) return;
 
-            // ½ºÅÈ °»½Å
+            var res = UnequipSlots.FirstOrDefault(slot => slot.SlotItem == null);
+            if (res == null) return;
+
+            // ìŠ¤íƒ¯ ê°±ì‹ 
             if (from.SlotItem.ModifierStats != null)
             {
                 foreach (var modifyStat in from.SlotItem.ModifierStats)
                 {
-                    // ±âÁ¸ ÀåÂøµÈ ¹«±âÀÇ ½ºÅÈÀÇ °ªÀº »©±â
+                    // ê¸°ì¡´ ìž¥ì°©ëœ ë¬´ê¸°ì˜ ìŠ¤íƒ¯ì˜ ê°’ì€ ë¹¼ê¸°
                     model.Stats[modifyStat.StatType].AddModifier(-modifyStat.StatModifier, StatModifyType.Equipment);
                 }
             }
@@ -145,7 +153,7 @@ public class InventorySystem : UIElementBase
             (from.SlotItem, res.SlotItem) = (res.SlotItem, from.SlotItem);
         }
 
-        // Unequip ½½·Ô Á¤·Ä
+        // Unequip ìŠ¬ë¡¯ ì •ë ¬
         var sortedItems = UnequipSlots
             .Select(slot => slot.SlotItem)
             .OrderBy(item => item == null)
@@ -159,6 +167,8 @@ public class InventorySystem : UIElementBase
 
     public bool TryAddItem(InventoryItem item)
     {
+        if (item == null) return false;
+
         foreach (var slot in UnequipSlots)
         {
             if (slot.SlotItem == null)
@@ -168,6 +178,11 @@ public class InventorySystem : UIElementBase
             }
         }
         return false;
+    }
+
+    public bool HasEmptySlot()
+    {
+        return UnequipSlots.Any(slot => slot != null && slot.SlotItem == null);
     }
 
     private void UpdateDescription(InventoryItem item)

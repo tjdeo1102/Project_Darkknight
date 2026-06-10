@@ -1,10 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
-using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
-using static UnityEngine.UI.Image;
 
 [CreateAssetMenu(fileName = "AreaSkill", menuName = "Scriptable Objects/Area Skill")]
 public class AreaSkill: SkillBase
@@ -16,34 +13,42 @@ public class AreaSkill: SkillBase
 
     public override IEnumerator Active(PlayerController player)
     {
-        if (player.combat.CurType != RequireWeapon)
-        {
-            isFailSkill = true;
-            yield break;
-        }
+        if (player == null || player.combat.CurType != RequireWeapon) yield break;
+        if (player.model.Stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
 
-        yield return base.Active(player);
+        var context = CreateContext(player.combat, player.transform);
+        yield return BeginSkill(player.combat, player.transform, mp, context, player);
 
-        if (isFailSkill) yield break;
-        Hit(player.transform, player.model.Stats, TargetTag.Enemy);
+        if (context.Failed) yield break;
+        Hit(player.transform, player.model.Stats, TargetTag.Enemy, context);
         yield break;
     }
 
     public override IEnumerator Active(Transform origin, Dictionary<StatType, Stat> stats, GameObject Target)
     {
-        yield return base.Active(origin, stats, Target);
+        if (origin == null || stats == null || stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
 
-        if (isFailSkill) yield break;
-        Hit(origin, stats,TagManager.TryGetTargetTag(Target.tag));
+        var owner = origin.GetComponentInParent<EnemyController>() as Component ?? origin;
+        var context = CreateContext(owner, origin);
+        yield return BeginSkill(owner, origin, mp, context);
 
+        if (context.Failed || Target == null) yield break;
+        Hit(origin, stats, TagManager.TryGetTargetTag(Target.tag), context);
         yield break;
     }
 
-    public void Hit(Transform origin, Dictionary<StatType, Stat> stats, TargetTag Target)
+    public void Hit(
+        Transform origin,
+        Dictionary<StatType, Stat> stats,
+        TargetTag target,
+        SkillExecutionContext context)
     {
-        SetStartPos(origin);
-        var center = this.center + foward * HitOffset.z + right * HitOffset.x + up * HitOffset.y;
-        var rotation = Quaternion.LookRotation(foward);
+        UpdateStartPose(origin, context);
+        var center = context.Center
+                     + context.Forward * HitOffset.z
+                     + context.Right * HitOffset.x
+                     + context.Up * HitOffset.y;
+        var rotation = Quaternion.LookRotation(context.Forward);
         Vector3 halfExtents = Range * 0.5f;
 
         Collider[] hits = Physics.OverlapBox(center, halfExtents, rotation, TargetLayer);
@@ -54,24 +59,34 @@ public class AreaSkill: SkillBase
         if (stats.TryGetValue(StatType.AttackPower, out var stat))
             atk = stat.TotalValue;
 
+        var damagedPlayers = new HashSet<PlayerModel>();
+        var damagedEnemies = new HashSet<EnemyStat>();
         foreach (Collider hit in hits)
         {
-            if (hit.CompareTag(TagManager.GetTagString(Target)))
+            if (hit.CompareTag(TagManager.GetTagString(target)))
             {
                 var Damage = 0f;
                 var atts = SkillStats.Where(skillStat => skillStat.StatType == StatType.AttackPower).ToArray();
                 if (atts.Length > 0)
                 {
                     var baseDamage = atts[0].StatModifier.FixedValue * (atts[0].StatModifier.PercentValue + 1);
-                    Damage = atts[0].EnforceStatFactor * EnforceLevel + baseDamage;
+                    Damage = atts[0].EnforceStatFactor * context.State.EnforceLevel + baseDamage;
                 }
-                if (Target == TargetTag.Player)
+                if (target == TargetTag.Player)
                 {
-                    hit.GetComponentInParent<PlayerModel>().ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    var player = hit.GetComponentInParent<PlayerModel>();
+                    if (player != null && damagedPlayers.Add(player))
+                    {
+                        player.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    }
                 }
-                else if (Target == TargetTag.Enemy)
+                else if (target == TargetTag.Enemy)
                 {
-                    hit.GetComponentInParent<EnemyStat>().ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    var enemy = hit.GetComponentInParent<EnemyStat>();
+                    if (enemy != null && damagedEnemies.Add(enemy))
+                    {
+                        enemy.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                    }
                 }
             }
         }

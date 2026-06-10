@@ -21,7 +21,7 @@ public class NPCDialog : UIElementBase
 
     private void OnEnable()
     {
-        Controller.ChangeState(UIState.Dialog);
+        if (Controller == null) return;
 
         if (select != null && select.Count > 3)
         {
@@ -69,27 +69,39 @@ public class NPCDialog : UIElementBase
         if (selectItem != null)
         {
             var player = Controller.Player;
-            // ∞·¡¶
-            if (player != null
-                && player.model.Stats[StatType.Money].TotalValue < selectItem.Price)
+            if (player == null || player.model == null)
             {
-                mainTextMesh.text = "∫Ûº’¿∏∑Œ ∂« ø‘±∫. ¿Ãπ¯ø°µµ ∞≈∑°¥¬ æ¯æÓ.";
+                mainTextMesh.text = "Í±∞ÎûòÎ•º ÏßÑÌñâÌï† Ïàò ÏóÜÏäµÎãàÎã§.";
+            }
+            else if (player.model.Stats[StatType.Money].TotalValue < selectItem.Price)
+            {
+                mainTextMesh.text = "ÎπàÏÜêÏúºÎ°ú Îòê ÏôîÍµ∞. Ïù¥Î≤àÏóêÎèÑ Í±∞ÎûòÎäî ÏóÜÏñ¥.";
+            }
+            else if (Controller.UIElements.TryGetValue(UIState.Inventory, out var element) == false ||
+                     element is not InventorySystem inventory ||
+                     inventory.HasEmptySlot() == false)
+            {
+                mainTextMesh.text = "ÏÜåÏßÄÌíàÏù¥ Í∞ÄÎìù Ï∞ºÍµ∞. ÏûêÎ¶¨Î•º ÎπÑÏö∞Í≥† Îã§Ïãú Ïò§Í≤å.";
             }
             else
             {
-                player.model.Stats[StatType.Money].AddModifier(new StatModifier(-selectItem.Price), StatModifyType.BuyItem);
-
-                // æ∆¿Ã≈€ ª˝º∫«ÿº≠ ≥÷±‚
-                if (Controller.UIElements.TryGetValue(UIState.Inventory,out var element))
+                var purchasedItem = Instantiate(selectItem);
+                if (inventory.TryAddItem(purchasedItem))
                 {
-                    var inventory = element as InventorySystem;
-                    inventory?.TryAddItem(Instantiate(selectItem));
-                    mainTextMesh.text = "∞≈∑°¥¬ ≥°≥µº“. «‡øÓ¿ª ∫Ù¡ˆ, ∏«Ë∞°.";
+                    player.model.Stats[StatType.Money].AddModifier(
+                        new StatModifier(-selectItem.Price),
+                        StatModifyType.BuyItem);
+                    mainTextMesh.text = "Í±∞ÎûòÎäî ÎÅùÎÇ¨ÏÜå. ÌñâÏö¥ÏùÑ ÎπåÏßÄ, Î™®ÌóòÍ∞Ä.";
+                }
+                else
+                {
+                    Destroy(purchasedItem);
+                    mainTextMesh.text = "Í±∞ÎûòÎ•º ÏôÑÎ£åÌïòÏßÄ Î™ªÌñàÎÑ§. Îã§Ïãú ÏãúÎèÑÌï¥ Ï£ºÍ≤å.";
                 }
             }
         }
         Sequence seq = DOTween.Sequence();
-        seq.SetUpdate(true) // Time.timeScale π´Ω√
+        seq.SetUpdate(true) // Time.timeScale Î¨¥Ïãú
            .AppendInterval(2f)
            .OnComplete(() =>
            {
@@ -98,7 +110,7 @@ public class NPCDialog : UIElementBase
                {
                    item.btn.gameObject.SetActive(false);
                }
-               gameObject.SetActive(false);
+               Controller.ChangeState(UIState.None);
            });
     }
 }

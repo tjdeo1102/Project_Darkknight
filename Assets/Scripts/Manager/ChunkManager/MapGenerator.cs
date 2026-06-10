@@ -1,11 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-
-public class MapGenerator: MonoBehaviour
+public class MapGenerator : MonoBehaviour
 {
     [Serializable]
     public struct TileSst
@@ -14,297 +13,565 @@ public class MapGenerator: MonoBehaviour
         public ObjectPool<Transform> pool;
         public Vector3 offset;
     }
+
     public List<TileSst> Tiles;
+    public bool IsReady { get; private set; }
 
     private Dictionary<TileType, TileSst> m_tiles;
-
+    private readonly Collider[] m_overlapBuffer = new Collider[64];
+    private const int PoolWarmupPerFrame = 64;
+    private const int TilePlacementsPerFrame = 64;
 
     private void Awake()
     {
-        m_tiles = new();
+        InitTiles();
+    }
+
+    private IEnumerator Start()
+    {
+        foreach (var tile in m_tiles.Values)
+        {
+            yield return tile.pool.Warmup(PoolWarmupPerFrame);
+        }
+
+        IsReady = true;
+    }
+
+    private void InitTiles()
+    {
+        if (m_tiles != null) return;
+
+        m_tiles = new Dictionary<TileType, TileSst>();
+        if (Tiles == null) return;
+
         foreach (var t in Tiles)
         {
-            t.pool.Init();
+            if (t.pool == null) continue;
+
+            t.pool.Init(null, 0);
             m_tiles[t.type] = t;
-            StartCoroutine(t.pool.AutoCreateObjectPerFrame());
         }
     }
 
-    public void GenerateChunk(RectInt bounds, Transform parent, int minRoomSize, Vector3Int blockSize, out List<Vector3> floorPosData)
+    public IEnumerator GenerateChunkRoutine(
+        RectInt bounds,
+        Transform parent,
+        int minRoomSize,
+        Vector3Int blockSize,
+        Action<List<Vector3>> onComplete)
     {
-        int width = bounds.width;
-        int height = bounds.height;
-        var mapData = new TileType[width, height];
-        floorPosData = new List<Vector3>();
+        InitTiles();
 
-        BSPNode root = new BSPNode(new RectInt(0, 0, width, height));
+        var width = bounds.width;
+        var height = bounds.height;
+        var mapData = new TileType[width, height];
+        var floorPosData = new List<Vector3>();
+        var placementCount = 0;
+
+        var root = new BSPNode(new RectInt(0, 0, width, height));
         root.Split(minRoomSize);
 
-        List<RectInt> rooms = root.GetRooms();
-
-        // 방 생성
-        foreach (var room in rooms)
+        foreach (var room in root.GetRooms())
         {
-            for (int x = room.xMin + 1; x < room.xMax - 1; x++)
+            for (var x = room.xMin + 1; x < room.xMax - 1; x++)
             {
-                for (int y = room.yMin + 1; y < room.yMax - 1; y++)
+                for (var y = room.yMin + 1; y < room.yMax - 1; y++)
                 {
-                    mapData[x, y] = TileType.Floor;
+                    if (IsInside(mapData, x, y))
+                    {
+                        mapData[x, y] = TileType.Floor;
+                    }
                 }
             }
         }
 
-        // 복도 연결
         ConnectRooms(root, mapData);
 
-
-        // 바닥 생성
-        for (int x = 0; x < width; x++)
+        for (var x = 0; x < width; x++)
         {
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
-                if (mapData[x, y] == TileType.Floor)
+                if (mapData[x, y] != TileType.Floor) continue;
+
+                var pos = ToWorldPosition(bounds, x, y, blockSize);
+                if (m_tiles.TryGetValue(TileType.Floor, out var floor))
                 {
-                    Vector3 pos = new Vector3(bounds.x + (x*blockSize.x), 0, bounds.y + (y*blockSize.z));
-                    if (m_tiles.TryGetValue(TileType.Floor, out var floor))
-                    {
-                        Transform obj = floor.pool.GetObject();
-                        obj.parent = parent;
-                        obj.position = pos;
-                        floorPosData.Add(pos);
-                    }
-                    if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
-                    {
-                        var obj = ceiling.pool.GetObject();
-                        obj.position = pos + ceiling.offset;
-                        obj.parent = parent;
-                    }
+                    var obj = floor.pool.GetObject();
+                    obj.parent = parent;
+                    obj.position = pos;
+                    floorPosData.Add(pos);
+                    placementCount++;
+                }
+
+                if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
+                {
+                    var obj = ceiling.pool.GetObject();
+                    obj.position = pos + ceiling.offset;
+                    obj.parent = parent;
+                    placementCount++;
+                }
+
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
                 }
             }
         }
 
-        // 비어있는 구역은 임의의 벽으로 메우기
-        for (int x = 0; x < width; x++)
+        for (var x = 0; x < width; x++)
         {
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
-                if (mapData[x, y] == TileType.Empty)
+                if (mapData[x, y] != TileType.Empty) continue;
+
+                var pos = ToWorldPosition(bounds, x, y, blockSize);
+                if (m_tiles.TryGetValue(TileType.Wall, out var wall))
                 {
-                    Vector3 pos = new Vector3(bounds.x + (x * blockSize.x), 0, bounds.y + (y * blockSize.z));
-                    if (m_tiles.TryGetValue(TileType.Wall, out var wall))
-                    {
-                        var obj = wall.pool.GetObject();
-                        obj.position = pos + wall.offset;
-                        obj.parent = parent;
-                    }
-                    mapData[x, y] = TileType.Wall;
+                    var obj = wall.pool.GetObject();
+                    obj.position = pos + wall.offset;
+                    obj.parent = parent;
+                    placementCount++;
+                }
+
+                mapData[x, y] = TileType.Wall;
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
                 }
             }
         }
 
-        for (int x = 0; x < width; x++)
+        for (var x = 0; x < width; x++)
         {
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
-                Vector3 pos = new Vector3(bounds.x + (x * blockSize.x), 0, bounds.y + (y * blockSize.z));
-                CreatePillar(mapData, x, y, pos, parent);
+                if (CreatePillar(mapData, x, y, ToWorldPosition(bounds, x, y, blockSize), parent))
+                {
+                    placementCount++;
+                }
+
+                if (placementCount >= TilePlacementsPerFrame)
+                {
+                    placementCount = 0;
+                    yield return null;
+                }
             }
         }
+
+        onComplete?.Invoke(floorPosData);
     }
 
-
-    private void CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
+    private Vector3 ToWorldPosition(RectInt bounds, int x, int y, Vector3Int blockSize)
     {
-        // 1x1부터 좌상단 4개의 블럭을 검사하도록
-        if (x < 1 || y > map.GetLength(1) - 2) return;
+        return new Vector3(bounds.x + x * blockSize.x, 0, bounds.y + y * blockSize.z);
+    }
 
-        // 규칙: [좌,상,좌상] , [상], [좌]에 블럭이 있는 경우를 제외하면 좌상단 모서리에 기둥 필요
-        // 예외: x,y에 벽이 없는 경우는 위의 경우에서 기둥 필요
-        // 예외2: 좌상단만 벽이 있는 경우, x,y의 벽 유무와 상관없이 기둥 필요
-        bool left = map[x-1, y] == TileType.Wall;
-        bool up = map[x, y + 1] == TileType.Wall;
-        bool leftUp = map[x - 1, y + 1] == TileType.Wall;
-        bool exceptions = (left && up && leftUp) || (!left && up && !leftUp) || (left && !up && !leftUp);
-        bool exceptions2 = !left && !up && leftUp;
+    private bool IsInside(TileType[,] map, int x, int y)
+    {
+        return x >= 0 && y >= 0 && x < map.GetLength(0) && y < map.GetLength(1);
+    }
 
-        bool res = exceptions ^ (map[x, y] == TileType.Wall);
-        res |= exceptions2;
-        if (res && m_tiles.TryGetValue(TileType.Pillar, out var pillar))
+    private bool CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
+    {
+        if (x < 1 || y > map.GetLength(1) - 2) return false;
+
+        var left = map[x - 1, y] == TileType.Wall;
+        var up = map[x, y + 1] == TileType.Wall;
+        var leftUp = map[x - 1, y + 1] == TileType.Wall;
+        var exceptions = (left && up && leftUp) || (!left && up && !leftUp) || (left && !up && !leftUp);
+        var exceptions2 = !left && !up && leftUp;
+
+        var shouldCreate = exceptions ^ (map[x, y] == TileType.Wall);
+        shouldCreate |= exceptions2;
+
+        if (shouldCreate && m_tiles.TryGetValue(TileType.Pillar, out var pillar))
         {
             var obj = pillar.pool.GetObject();
             obj.position = wallPos + pillar.offset;
             obj.parent = parent;
+            return true;
         }
+
+        return false;
     }
 
     private void ConnectRooms(BSPNode node, TileType[,] mapData)
     {
-        if (node.IsLeaf) return;
+        if (node == null || node.IsLeaf || node.Left == null || node.Right == null) return;
 
-        Vector2Int centerA = node.Left.GetRoomCenter();
-        Vector2Int centerB = node.Right.GetRoomCenter();
+        var centerA = node.Left.GetRoomCenter();
+        var centerB = node.Right.GetRoomCenter();
 
         if (Random.value > 0.5f)
         {
-            for (int x = Mathf.Min(centerA.x, centerB.x); x <= Mathf.Max(centerA.x, centerB.x); x++)
-                mapData[x, centerA.y] = TileType.Floor;
-            for (int y = Mathf.Min(centerA.y, centerB.y); y <= Mathf.Max(centerA.y, centerB.y); y++)
-                mapData[centerB.x, y] = TileType.Floor;
+            CarveHorizontal(mapData, centerA.x, centerB.x, centerA.y);
+            CarveVertical(mapData, centerA.y, centerB.y, centerB.x);
         }
         else
         {
-            for (int y = Mathf.Min(centerA.y, centerB.y); y <= Mathf.Max(centerA.y, centerB.y); y++)
-                mapData[centerA.x, y] = TileType.Floor;
-            for (int x = Mathf.Min(centerA.x, centerB.x); x <= Mathf.Max(centerA.x, centerB.x); x++)
-                mapData[x, centerB.y] = TileType.Floor;
+            CarveVertical(mapData, centerA.y, centerB.y, centerA.x);
+            CarveHorizontal(mapData, centerA.x, centerB.x, centerB.y);
         }
 
         ConnectRooms(node.Left, mapData);
         ConnectRooms(node.Right, mapData);
     }
 
-    public bool TryConnectChunks(Chunk a, Vector2Int aTobDir, Vector3Int blockSize, Transform parent)
+    private void CarveHorizontal(TileType[,] mapData, int fromX, int toX, int y)
     {
-        // 이미 들어오는 인자는 인접한 청크임을 보장 + 인접한 면의 길이는 동일
-        var midEdge = GetMinEdge(a.Bounds, blockSize, aTobDir);
-        // 가장자리의 중심좌표를 미리 구해서 전달
-        if (aTobDir == Vector2Int.up || aTobDir == Vector2Int.down)
+        for (var x = Mathf.Min(fromX, toX); x <= Mathf.Max(fromX, toX); x++)
         {
-            return TryBreakSlimWall(midEdge ,aTobDir, Vector3.right, blockSize, 2 , a.Bounds.width, parent);
-        }
-        else if (aTobDir == Vector2Int.left || aTobDir == Vector2Int.right)
-        {
-            return TryBreakSlimWall(midEdge, aTobDir, Vector3.forward, blockSize, 2, a.Bounds.height, parent);
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    private Vector2 GetMinEdge(RectInt bound, Vector3Int blockSize ,Vector2Int turnelDir)
-    {
-        // 벽 방향은 Right or Up
-        if (turnelDir == Vector2Int.up)
-        {
-            return new Vector2(bound.xMin, bound.yMin * blockSize.x);
-        }
-        else if (turnelDir == Vector2Int.down)
-        {
-            return new Vector2(bound.xMin, bound.yMin);
-        }
-        else if (turnelDir == Vector2Int.left)
-        {
-            return new Vector2(bound.xMin, bound.yMin);
-        }
-        else if (turnelDir == Vector2Int.right)
-        {
-            return new Vector2(bound.xMin * blockSize.z , bound.yMin);
-        }
-        else
-        {
-            return Vector2Int.zero;
-        }
-    }
-
-    private bool TryBreakSlimWall(Vector2 minEdge,Vector2Int turnelDir, Vector3 wallDir, Vector3Int blockSize, int thickness, int maxLength,Transform parent)
-    {
-        List<int> turnelList = Enumerable.Range(0, maxLength).ToList();
-        turnelList = turnelList.OrderBy(x => Random.value).ToList();
-
-        float blockFrontSize = 0;
-        float blockRightSize = 0;
-
-        if (wallDir == Vector3.right)
-        {
-            blockFrontSize = blockSize.z;
-            blockRightSize = blockSize.x;
-        }
-        else
-        {
-            blockFrontSize = blockSize.x;
-            blockRightSize = blockSize.z;
-        }
-        
-        var startXY = minEdge - turnelDir * thickness;
-        var startTurnelOffset = new Vector3(startXY.x, 0 ,startXY.y);
-        var rayDir = new Vector3(turnelDir.x, 0, turnelDir.y);
-        if (m_tiles.TryGetValue(TileType.Wall, out var wall))
-            startTurnelOffset += wall.offset.y * Vector3.up;
-
-        // 벽 위치에 맞게 시작위치 보정
-        if (Physics.Raycast(startTurnelOffset, rayDir, out var hit, (thickness * 2 + 1) * blockFrontSize, 1 << LayerMask.NameToLayer("Wall")))
-            startTurnelOffset = hit.transform.position - rayDir * thickness * blockFrontSize;
-
-        // 랜덤으로 벽 가장자리를 따라 조건에 부합하는 가장자리 좌표 확인
-        // 일정 오프셋 뒤에서 터널 뚫는 방향으로 RaycastAll로 벽의 개수 검사
-        foreach (var wall_Idx in turnelList)
-        {
-            var startPos = startTurnelOffset + wallDir * blockRightSize * wall_Idx;
-            var res = Physics.RaycastAll(startPos, rayDir, (thickness * 2 + 1) * blockFrontSize, 1 << LayerMask.NameToLayer("Wall"));
-            // 벽이 일정두께 이하인 경우에만 터널 뚫기
-            if (res.Length <= thickness)
+            if (IsInside(mapData, x, y))
             {
-                Debug.DrawRay(startPos, rayDir * (thickness * 2 + 1) * blockFrontSize, Color.red, 3000f);
+                mapData[x, y] = TileType.Floor;
+            }
+        }
+    }
 
-                foreach (var obj in res)
+    private void CarveVertical(TileType[,] mapData, int fromY, int toY, int x)
+    {
+        for (var y = Mathf.Min(fromY, toY); y <= Mathf.Max(fromY, toY); y++)
+        {
+            if (IsInside(mapData, x, y))
+            {
+                mapData[x, y] = TileType.Floor;
+            }
+        }
+    }
+
+    public bool TryConnectChunks(Chunk chunk, Chunk neighborChunk, Vector2Int chunkToNeighborDir, Vector3Int blockSize)
+    {
+        if (chunk == null || neighborChunk == null || blockSize.x <= 0 || blockSize.z <= 0) return false;
+        if (chunkToNeighborDir != Vector2Int.up &&
+            chunkToNeighborDir != Vector2Int.down &&
+            chunkToNeighborDir != Vector2Int.left &&
+            chunkToNeighborDir != Vector2Int.right) return false;
+
+        return TryCarveFallbackTunnel(chunk, neighborChunk, chunkToNeighborDir, blockSize);
+    }
+
+    private bool TryCarveFallbackTunnel(Chunk chunk, Chunk neighborChunk, Vector2Int dir, Vector3Int blockSize)
+    {
+        if (chunk.floorPosData == null || neighborChunk.floorPosData == null) return false;
+        if (chunk.floorPosData.Count == 0 || neighborChunk.floorPosData.Count == 0) return false;
+
+        var start = GetEdgeFloor(chunk, dir);
+        var end = GetEdgeFloor(neighborChunk, -dir);
+        CarveGridTunnel(chunk, neighborChunk, start, end, dir, blockSize);
+        return true;
+    }
+
+    private Vector3 GetEdgeFloor(Chunk chunk, Vector2Int dir)
+    {
+        var floors = chunk.floorPosData;
+        var best = floors[0];
+        var selected = best;
+        var selectedCount = 1;
+
+        for (var i = 1; i < floors.Count; i++)
+        {
+            var pos = floors[i];
+            if (IsCloserToEdge(pos, best, dir))
+            {
+                best = pos;
+                selected = pos;
+                selectedCount = 1;
+                continue;
+            }
+
+            if (IsSameEdge(pos, best, dir) == false) continue;
+
+            selectedCount++;
+            if (Random.Range(0, selectedCount) == 0)
+            {
+                selected = pos;
+            }
+        }
+
+        return selected;
+    }
+
+    private bool IsCloserToEdge(Vector3 candidate, Vector3 currentBest, Vector2Int dir)
+    {
+        if (dir == Vector2Int.up) return candidate.z > currentBest.z;
+        if (dir == Vector2Int.down) return candidate.z < currentBest.z;
+        if (dir == Vector2Int.right) return candidate.x > currentBest.x;
+        return candidate.x < currentBest.x;
+    }
+
+    private bool IsSameEdge(Vector3 candidate, Vector3 currentBest, Vector2Int dir)
+    {
+        if (dir == Vector2Int.up || dir == Vector2Int.down)
+        {
+            return Mathf.Approximately(candidate.z, currentBest.z);
+        }
+
+        return Mathf.Approximately(candidate.x, currentBest.x);
+    }
+
+    private void CarveGridTunnel(Chunk chunk, Chunk neighborChunk, Vector3 start, Vector3 end, Vector2Int dir, Vector3Int blockSize)
+    {
+        var current = start;
+        var forwardStep = new Vector3(dir.x * blockSize.x, 0f, dir.y * blockSize.z);
+        var sideStep = dir.x == 0 ? new Vector3(Mathf.Sign(end.x - start.x) * blockSize.x, 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(end.z - start.z) * blockSize.z);
+
+        CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+
+        if (dir.x == 0)
+        {
+            while (Mathf.Approximately(current.z, end.z) == false)
+            {
+                current += forwardStep;
+                if ((dir.y > 0 && current.z > end.z) || (dir.y < 0 && current.z < end.z))
                 {
-                    var pos = new Vector3(obj.transform.position.x, 0 , obj.transform.position.z);
-                    if (m_tiles.TryGetValue(TileType.Floor, out var floor))
-                    {
-                        var obj2 = floor.pool.GetObject();
-                        obj2.position = pos;
-                        obj2.parent = parent;
-                    }
-                    if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
-                    {
-                        var obj2 = ceiling.pool.GetObject();
-                        obj2.position = pos + ceiling.offset;
-                        obj2.parent = parent;
-                    }
-                    Destroy(obj.collider.gameObject);
+                    current.z = end.z;
                 }
-                // 없어진 자리에는 아치형 문 생성
-                // 회전 및 축 보정
-                if (m_tiles.TryGetValue(TileType.Gate, out var gate))
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+
+            while (Mathf.Approximately(current.x, end.x) == false)
+            {
+                current += sideStep;
+                if ((sideStep.x > 0f && current.x > end.x) || (sideStep.x < 0f && current.x < end.x))
                 {
-                    Vector3 forward = rayDir;
-                    Vector3 right = Vector3.Cross(Vector3.up, forward);
-                    Vector3 up = Vector3.up;
-
-                    //// forward각이 서로 90차이나는 경우, right의 방향을 서로 뒤집어야 함
-                    //// 다른 그렇지 않은 경우에 서로 x 오프셋 방향 반대로 작용
-                    //if (Mathf.Abs(forward.x) > 0.5f && Mathf.Abs(forward.z) < 0.5f)
-                    //{
-                    //    right = -right;
-                    //}
-
-                    var look = new Vector3(rayDir.x, startPos.y + gate.offset.y, rayDir.z);
-                    Quaternion rotation = Quaternion.LookRotation(rayDir);
-
-                    var GateOffset = gate.offset;
-                    Vector3 rotatedPos = startPos
-                                        + GateOffset.z * forward
-                                        + GateOffset.x * right
-                                        + GateOffset.y * up;
-
-                    var gate1 = gate.pool.GetObject();
-                    gate1.position = rotatedPos;
-                    gate1.rotation = rotation;
-                    gate1.parent = parent;
-
-                    var gate2 = gate.pool.GetObject();
-                    gate2.position = rotatedPos + res.Length * blockFrontSize * rayDir;
-                    gate2.rotation = rotation;
-                    gate2.parent = parent;
-
-                    //Debug.DrawRay(rotatedPos, forward * 2f, Color.red, 1000f);
-                    //Debug.DrawRay(rotatedPos, right * 2f, Color.green, 1000f);   // x방향
+                    current.x = end.x;
                 }
-                
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+        }
+        else
+        {
+            while (Mathf.Approximately(current.x, end.x) == false)
+            {
+                current += forwardStep;
+                if ((dir.x > 0 && current.x > end.x) || (dir.x < 0 && current.x < end.x))
+                {
+                    current.x = end.x;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+
+            while (Mathf.Approximately(current.z, end.z) == false)
+            {
+                current += sideStep;
+                if ((sideStep.z > 0f && current.z > end.z) || (sideStep.z < 0f && current.z < end.z))
+                {
+                    current.z = end.z;
+                }
+
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+            }
+        }
+    }
+
+    private void CarveTunnelCell(Chunk chunk, Chunk neighborChunk, Vector3 pos, Vector3Int blockSize)
+    {
+        var owner = ContainsWorldPosition(chunk, pos, blockSize) ? chunk : neighborChunk;
+        RemoveBlockingTiles(pos, blockSize);
+        if (HasTileAt(pos, TileType.Floor, blockSize) == false)
+        {
+            CreateTunnelFloor(pos, owner.ChunkObject.transform);
+        }
+
+        owner.floorPosData ??= new List<Vector3>();
+        if (HasFloorData(owner.floorPosData, pos) == false)
+        {
+            owner.floorPosData.Add(pos);
+        }
+    }
+
+    private bool HasFloorData(List<Vector3> floors, Vector3 pos)
+    {
+        for (var i = 0; i < floors.Count; i++)
+        {
+            if (Vector3.SqrMagnitude(floors[i] - pos) < 0.01f)
+            {
                 return true;
             }
         }
+
         return false;
+    }
+
+    private bool HasTileAt(Vector3 pos, TileType tileType, Vector3Int blockSize)
+    {
+        var layer = LayerMask.NameToLayer(tileType.ToString());
+        if (layer < 0) return false;
+
+        var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
+        return Physics.OverlapBoxNonAlloc(pos + Vector3.up * 0.5f, halfExtents, m_overlapBuffer, Quaternion.identity, 1 << layer) > 0;
+    }
+
+    private bool ContainsWorldPosition(Chunk chunk, Vector3 pos, Vector3Int blockSize)
+    {
+        var minX = chunk.Bounds.xMin;
+        var minZ = chunk.Bounds.yMin;
+        var maxX = chunk.Bounds.xMin + chunk.Bounds.width * blockSize.x;
+        var maxZ = chunk.Bounds.yMin + chunk.Bounds.height * blockSize.z;
+
+        return pos.x >= minX && pos.x < maxX && pos.z >= minZ && pos.z < maxZ;
+    }
+
+    private void RemoveBlockingTiles(Vector3 pos, Vector3Int blockSize)
+    {
+        var wallLayer = LayerMask.NameToLayer(TileType.Wall.ToString());
+        var pillarLayer = LayerMask.NameToLayer(TileType.Pillar.ToString());
+        var gateLayer = LayerMask.NameToLayer(TileType.Gate.ToString());
+        var mask = 0;
+
+        if (wallLayer >= 0) mask |= 1 << wallLayer;
+        if (pillarLayer >= 0) mask |= 1 << pillarLayer;
+        if (gateLayer >= 0) mask |= 1 << gateLayer;
+        if (mask == 0) mask = Physics.DefaultRaycastLayers;
+
+        var halfExtents = new Vector3(blockSize.x * 0.45f, 1.5f, blockSize.z * 0.45f);
+        var hitCount = Physics.OverlapBoxNonAlloc(pos + Vector3.up * 0.5f, halfExtents, m_overlapBuffer, Quaternion.identity, mask);
+        for (var i = 0; i < hitCount; i++)
+        {
+            Destroy(m_overlapBuffer[i].gameObject);
+        }
+    }
+
+    private Vector2 GetChunkEdgeStart(Chunk chunk, Vector3Int blockSize, Vector2Int tunnelDir)
+    {
+        var minX = chunk.ChunkObject.transform.position.x;
+        var minZ = chunk.ChunkObject.transform.position.z;
+        var maxX = minX + chunk.Bounds.width * blockSize.x;
+        var maxZ = minZ + chunk.Bounds.height * blockSize.z;
+
+        if (tunnelDir == Vector2Int.up) return new Vector2(minX, maxZ);
+        if (tunnelDir == Vector2Int.down) return new Vector2(minX, minZ);
+        if (tunnelDir == Vector2Int.left) return new Vector2(minX, minZ);
+        if (tunnelDir == Vector2Int.right) return new Vector2(maxX, minZ);
+
+        return new Vector2(minX, minZ);
+    }
+
+    private bool TryBreakSlimWall(Vector2 minEdge, Vector2Int tunnelDir, Vector3 wallDir, Vector3Int blockSize, int thickness, int maxLength, Transform parent)
+    {
+        InitTiles();
+
+        var blockFrontSize = wallDir == Vector3.right ? blockSize.z : blockSize.x;
+        var blockRightSize = wallDir == Vector3.right ? blockSize.x : blockSize.z;
+        var rayDir = new Vector3(tunnelDir.x, 0, tunnelDir.y);
+        var startXY = minEdge - (Vector2)tunnelDir * (thickness * blockFrontSize);
+        var startTunnelOffset = new Vector3(startXY.x, 0, startXY.y);
+
+        if (m_tiles.TryGetValue(TileType.Wall, out var wall))
+        {
+            startTunnelOffset += wall.offset.y * Vector3.up;
+        }
+
+        var wallLayer = LayerMask.NameToLayer("Wall");
+        var wallMask = wallLayer >= 0 ? 1 << wallLayer : Physics.DefaultRaycastLayers;
+        var rayDistance = (thickness * 2 + 1) * blockFrontSize;
+
+        Physics.SyncTransforms();
+
+        if (Physics.Raycast(startTunnelOffset, rayDir, out var hit, rayDistance, wallMask))
+        {
+            startTunnelOffset = hit.transform.position - rayDir * thickness * blockFrontSize;
+        }
+
+        Vector3 bestStartPos = Vector3.zero;
+        RaycastHit[] bestHits = null;
+
+        var startIndex = Random.Range(0, maxLength);
+        for (var attempt = 0; attempt < maxLength; attempt++)
+        {
+            var wallIndex = (startIndex + attempt) % maxLength;
+            var startPos = startTunnelOffset + wallDir * blockRightSize * wallIndex;
+            var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
+            if (hits.Length == 0 || hits.Length > thickness) continue;
+
+            CarveTunnel(startPos, rayDir, rayDistance, hits, parent);
+            return true;
+        }
+
+        for (var attempt = 0; attempt < maxLength; attempt++)
+        {
+            var wallIndex = (startIndex + attempt) % maxLength;
+            var startPos = startTunnelOffset + wallDir * blockRightSize * wallIndex;
+            var hits = Physics.RaycastAll(startPos, rayDir, rayDistance, wallMask);
+            if (hits.Length == 0) continue;
+
+            if (bestHits == null || hits.Length < bestHits.Length)
+            {
+                bestStartPos = startPos;
+                bestHits = hits;
+            }
+        }
+
+        if (bestHits != null)
+        {
+            CarveTunnel(bestStartPos, rayDir, rayDistance, bestHits, parent);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void CarveTunnel(Vector3 startPos, Vector3 rayDir, float rayDistance, RaycastHit[] hits, Transform parent)
+    {
+        Debug.DrawRay(startPos, rayDir * rayDistance, Color.red, 3000f);
+
+        var tunnelLength = 0f;
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (var hitInfo in hits)
+        {
+            var pos = new Vector3(hitInfo.transform.position.x, 0, hitInfo.transform.position.z);
+            CreateTunnelFloor(pos, parent);
+            tunnelLength = Mathf.Max(tunnelLength, hitInfo.distance);
+            Destroy(hitInfo.collider.gameObject);
+        }
+
+        CreateTunnelGates(startPos, rayDir, tunnelLength, parent);
+    }
+
+    private void CreateTunnelFloor(Vector3 pos, Transform parent)
+    {
+        if (m_tiles.TryGetValue(TileType.Floor, out var floor))
+        {
+            var obj = floor.pool.GetObject();
+            obj.position = pos;
+            obj.parent = parent;
+        }
+
+        if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
+        {
+            var obj = ceiling.pool.GetObject();
+            obj.position = pos + ceiling.offset;
+            obj.parent = parent;
+        }
+    }
+
+    private void CreateTunnelGates(Vector3 startPos, Vector3 rayDir, float tunnelLength, Transform parent)
+    {
+        if (m_tiles.TryGetValue(TileType.Gate, out var gate) == false) return;
+
+        var forward = rayDir;
+        var right = Vector3.Cross(Vector3.up, forward);
+        var up = Vector3.up;
+        var rotation = Quaternion.LookRotation(rayDir);
+        var gateOffset = gate.offset;
+        var rotatedPos = startPos
+                         + gateOffset.z * forward
+                         + gateOffset.x * right
+                         + gateOffset.y * up;
+
+        var gate1 = gate.pool.GetObject();
+        gate1.position = rotatedPos;
+        gate1.rotation = rotation;
+        gate1.parent = parent;
+
+        var gate2 = gate.pool.GetObject();
+        gate2.position = rotatedPos + tunnelLength * rayDir;
+        gate2.rotation = rotation;
+        gate2.parent = parent;
     }
 }

@@ -38,20 +38,25 @@ public class SkillSlotView : MonoBehaviour
     {
         if (Combat != null)
         {
-            if (Combat.skills.Count != slotContents.Length) return;
-
             var skills = Combat.skills;
-            for (int i = 0; i < skills.Count; i++)
+            for (int i = 0; i < slotContents.Length; i++)
             {
-                if (skills[i] != null && skills[i].CanUseSkill(m_mana, false))
+                var skill = i < skills.Count ? skills[i] : null;
+                var canUse = skill != null &&
+                             Combat.CanUseEquippedSkill(skill) &&
+                             skill.CanUseSkill(Combat, m_mana, false);
+
+                if (canUse)
                 {
                     slotContents[i].Animator?.SetBool(animParam, true);
-                    slotContents[i].SlotImage.color = Color.white;
+                    if (slotContents[i].SlotImage != null)
+                        slotContents[i].SlotImage.color = Color.white;
                 }
                 else
                 {
                     slotContents[i].Animator?.SetBool(animParam, false);
-                    slotContents[i].SlotImage.color = new Color(0.5f, 0.5f, 0.5f);
+                    if (slotContents[i].SlotImage != null)
+                        slotContents[i].SlotImage.color = new Color(0.5f, 0.5f, 0.5f);
                 }
             }
         }

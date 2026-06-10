@@ -36,9 +36,9 @@ public class ItemSlot : MonoBehaviour, IPointerDownHandler,IPointerEnterHandler,
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (Time.time - clickTime > clickDelay) clickCount = 0;
+        if (Time.unscaledTime - clickTime > clickDelay) clickCount = 0;
         clickCount++;
-        clickTime = Time.time;
+        clickTime = Time.unscaledTime;
         // 슬롯 아이템 스왑 (SlotType에 따라, Equip, Unequip 구분)
         if (clickCount > 1)
         {

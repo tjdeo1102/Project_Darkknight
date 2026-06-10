@@ -17,11 +17,54 @@ public class PlayerController : MonoBehaviour
     public CinemachineImpulseSource Impulse;
     public Volume hitScreenVolume;
 
+    private Vector3 m_desiredPlanarVelocity;
+    private Quaternion m_desiredRotation;
+    private bool m_hasDesiredRotation;
+    private Vector3 m_pendingRootMotion;
+
     private void LateUpdate()
     {
-        var pos = body.localPosition;
-        transform.position += transform.TransformDirection(pos);
+        if (body == null) return;
+
+        m_pendingRootMotion += transform.TransformDirection(body.localPosition);
         body.localPosition = Vector3.zero;
+    }
+
+    private void FixedUpdate()
+    {
+        if (Rigid == null) return;
+
+        if (Rigid.isKinematic == false)
+        {
+            var velocity = Rigid.linearVelocity;
+            Rigid.linearVelocity = new Vector3(
+                m_desiredPlanarVelocity.x,
+                velocity.y,
+                m_desiredPlanarVelocity.z);
+        }
+
+        if (m_hasDesiredRotation)
+        {
+            Rigid.MoveRotation(m_desiredRotation);
+        }
+
+        if (m_pendingRootMotion.sqrMagnitude > Mathf.Epsilon)
+        {
+            Rigid.MovePosition(Rigid.position + m_pendingRootMotion);
+            m_pendingRootMotion = Vector3.zero;
+        }
+    }
+
+    public void SetMovement(Vector3 planarVelocity, Quaternion rotation)
+    {
+        m_desiredPlanarVelocity = planarVelocity;
+        m_desiredRotation = rotation;
+        m_hasDesiredRotation = true;
+    }
+
+    public void StopMovement()
+    {
+        m_desiredPlanarVelocity = Vector3.zero;
     }
 
     public void SetActionMap(InputActionMap mode)

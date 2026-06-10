@@ -35,9 +35,10 @@ public class NPCSpawner : MonoBehaviour
         }
         foreach (var list in m_allItems.Values)
         {
-            list.OrderBy(item => item.Price);
+            list.Sort((left, right) => left.Price.CompareTo(right.Price));
         }
-        m_pickList = Enumerable.Range((int)ItemType.Helmet, (int)ItemType.Pants)
+        var itemTypeCount = (int)ItemType.Pants - (int)ItemType.Helmet + 1;
+        m_pickList = Enumerable.Range((int)ItemType.Helmet, itemTypeCount)
                             .Select(i => (ItemType)i)
                             .Where(t => m_allItems.ContainsKey(t)).ToList();
 
@@ -84,13 +85,17 @@ public class NPCSpawner : MonoBehaviour
         {
             if (m_allItems.TryGetValue((ItemType)pick,out var list))
             {
-                var segCount = list.Count / maxLevel;
-                var segRemind = list.Count % maxLevel;
+                if (list.Count == 0 || maxLevel <= 0) continue;
 
-                var startIdx = segCount * (curLevel - 1);
-                var endIdx = startIdx + segCount;
-                if (curLevel == 1) endIdx += segRemind;
-                var pickIdx = Random.Range(startIdx, endIdx + 1);
+                var clampedLevel = Mathf.Clamp(curLevel, 1, maxLevel);
+                var startIdx = Mathf.FloorToInt(
+                    (clampedLevel - 1) * list.Count / (float)maxLevel);
+                var endExclusive = Mathf.CeilToInt(
+                    clampedLevel * list.Count / (float)maxLevel);
+
+                startIdx = Mathf.Clamp(startIdx, 0, list.Count - 1);
+                endExclusive = Mathf.Clamp(endExclusive, startIdx + 1, list.Count);
+                var pickIdx = Random.Range(startIdx, endExclusive);
                 if (npc.SelectItems == null) npc.SelectItems = new();
 
                 npc.SelectItems.Add(list[pickIdx]);

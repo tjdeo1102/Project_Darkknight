@@ -1,10 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.AI.Navigation;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.AI;
 
 public class Chunk
 {
@@ -14,7 +11,10 @@ public class Chunk
     public bool IsGenerate = false;
     public bool IsGenerateMonster = false;
     public bool IsCombineMesh = false;
-    public HashSet<Vector2> CheckDirection = new HashSet<Vector2>();
+    public bool IsCombiningMesh = false;
+    public bool NeedsMeshRebuild = false;
+    public HashSet<Vector2Int> CheckDirection = new HashSet<Vector2Int>();
+    public List<GameObject> CombinedMeshObjects = new List<GameObject>();
     public RectInt Bounds;
     public List<Vector3> floorPosData;
 
@@ -51,17 +51,26 @@ public class Chunk
         ChunkObject.SetActive(false);
     }
 
-    public void Generate(int minRoomSize, Vector3Int blockSize)
+    public IEnumerator GenerateRoutine(int minRoomSize, Vector3Int blockSize)
     {
-        if (!IsGenerate)
-        {
-            IsGenerate = true;
-            ChunkManager.Instance.Generator.GenerateChunk(Bounds, ChunkObject.transform, minRoomSize, blockSize, out floorPosData);
-            navMeshModifiers = ChunkObject.transform.GetComponentsInChildren<NavMeshModifier>(true);
-        }
+        if (IsGenerate) yield break;
+
+        IsGenerate = true;
+        yield return ChunkManager.Instance.Generator.GenerateChunkRoutine(
+            Bounds,
+            ChunkObject.transform,
+            minRoomSize,
+            blockSize,
+            result => floorPosData = result);
+        RefreshNavMeshModifiers();
     }
 
-    public bool IsCheckClosedChunk(Vector2 dir)
+    public void RefreshNavMeshModifiers()
+    {
+        navMeshModifiers = ChunkObject.transform.GetComponentsInChildren<NavMeshModifier>(true);
+    }
+
+    public bool IsCheckClosedChunk(Vector2Int dir)
     {
         if (CheckDirection.Contains(dir) == false)
         {
