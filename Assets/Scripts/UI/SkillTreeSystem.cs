@@ -20,6 +20,8 @@ public class SkillTreeSystem : UIElementBase
     private SkillTreeSlot m_clickedSkillSlot;
     private PlayerCombat m_combat;
     private InputAction m_skillEquipAction;
+    private bool m_runtimeEquipListener;
+    private bool m_runtimeEnforceListener;
 
     private void Start()
     {
@@ -32,8 +34,8 @@ public class SkillTreeSystem : UIElementBase
         if (Controller == null || Controller.Player == null) return;
 
         ResolveCombat();
-        EquipBtn?.onClick.AddListener(EquipSkill);
-        EnforceBtn?.onClick.AddListener(EnforceSkill);
+        m_runtimeEquipListener = AddListenerWhenMissing(EquipBtn, nameof(EquipSkill), EquipSkill);
+        m_runtimeEnforceListener = AddListenerWhenMissing(EnforceBtn, nameof(EnforceSkill), EnforceSkill);
         if (Controller.Player.input?.actions != null)
         {
             m_skillEquipAction = Controller.Player.input.actions.FindAction("UI/Skill");
@@ -53,9 +55,30 @@ public class SkillTreeSystem : UIElementBase
             m_skillEquipAction.performed -= OnSkillEquip;
         }
 
-        EquipBtn?.onClick.RemoveListener(EquipSkill);
-        EnforceBtn?.onClick.RemoveListener(EnforceSkill);
+        if (m_runtimeEquipListener)
+            EquipBtn?.onClick.RemoveListener(EquipSkill);
+        if (m_runtimeEnforceListener)
+            EnforceBtn?.onClick.RemoveListener(EnforceSkill);
+        m_runtimeEquipListener = false;
+        m_runtimeEnforceListener = false;
         base.OnDisable();
+    }
+
+    private bool AddListenerWhenMissing(Button button, string methodName, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null) return false;
+
+        for (var index = 0; index < button.onClick.GetPersistentEventCount(); index++)
+        {
+            if (button.onClick.GetPersistentTarget(index) == this &&
+                button.onClick.GetPersistentMethodName(index) == methodName)
+            {
+                return false;
+            }
+        }
+
+        button.onClick.AddListener(action);
+        return true;
     }
 
     public void ClickDescriptionWindow(SkillTreeSlot slot, bool isActive)
@@ -154,6 +177,14 @@ public class SkillTreeSystem : UIElementBase
         if (m_combat.skills.Count < size)
         {
             m_combat.skills.AddRange(Enumerable.Repeat<SkillBase>(null, size - m_combat.skills.Count));
+        }
+
+        for (var index = 0; index < size; index++)
+        {
+            if (index == bindingIndex || m_combat.skills[index] != selectedSkill) continue;
+
+            m_combat.skills[index] = null;
+            SkillSlots.RefreshSkillSlot(null, index);
         }
 
         m_combat.skills[bindingIndex] = selectedSkill;
