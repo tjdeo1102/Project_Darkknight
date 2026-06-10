@@ -17,6 +17,7 @@ public class UIController : ManagerBase<UIController>
     public TextMeshProUGUI MoneyText;
 
     private UIState m_currentState;
+    private bool m_isInitialized;
     public UIState CurrentState => m_currentState;
 
     private void Start()
@@ -31,17 +32,12 @@ public class UIController : ManagerBase<UIController>
             UIElements[element.Type] = element;
         }
 
-        var instance = InGameLoop.Instance;
-        if (instance != null)
-        {
-            instance.KillCount.OnValueChanged += OnKillChanged;
-            OnKillChanged(instance.KillCount.Value);
-        }
         IsReady = true;
     }
     public override void StartInit()
     {
         base.StartInit();
+        if (m_isInitialized) return;
         if (Player == null || Player.input == null || Player.input.actions == null || Player.model == null) return;
 
         Player.input.actions["RadialMenu"].performed += OnRadialMenu;
@@ -51,6 +47,16 @@ public class UIController : ManagerBase<UIController>
         Player.model.Mana.OnChangeStat += OnMPChanged;
         Player.model.Money.OnChangeStat += OnMoneyChanged;
 
+        var instance = InGameLoop.Instance;
+        if (instance?.KillCount != null)
+        {
+            instance.KillCount.OnValueChanged += OnKillChanged;
+            OnKillChanged(instance.KillCount.Value);
+        }
+
+        m_isInitialized = true;
+        OnHPChanged();
+        OnMPChanged();
         OnMoneyChanged();
     }
     private void OnDisable()
@@ -65,10 +71,11 @@ public class UIController : ManagerBase<UIController>
             Player.model.Money.OnChangeStat -= OnMoneyChanged;
         }
 
-        if (InGameLoop.Instance != null)
+        if (InGameLoop.Instance?.KillCount != null)
         {
             InGameLoop.Instance.KillCount.OnValueChanged -= OnKillChanged;
         }
+        m_isInitialized = false;
     }
 
     public void OnRadialMenu(InputAction.CallbackContext context)
