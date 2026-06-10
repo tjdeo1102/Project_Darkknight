@@ -8,22 +8,28 @@ public class ScriptableObjectManager : ManagerBase<ScriptableObjectManager>
     [SerializeField]
     private List<CSVScriptableObject> csvSO = new();
 
+    private AsyncOperationHandle<IList<CSVScriptableObject>> m_handle;
+    private bool m_isDestroyed;
+    private bool m_hasBackups;
+    private bool m_isReleased;
+
     private async void Start()
     {
-        AsyncOperationHandle<IList<CSVScriptableObject>> handle =
-            Addressables.LoadAssetsAsync<CSVScriptableObject>("SOManager", null);
+        m_handle = Addressables.LoadAssetsAsync<CSVScriptableObject>("SOManager", null);
 
-        await handle.Task;
+        await m_handle.Task;
+        if (m_isDestroyed) return;
 
-        if (handle.Status == AsyncOperationStatus.Succeeded)
+        if (m_handle.Status == AsyncOperationStatus.Succeeded)
         {
-            csvSO.AddRange(handle.Result);
+            csvSO.AddRange(m_handle.Result);
 
             foreach (var so in csvSO)
             {
                 so.Backup();
             }
 
+            m_hasBackups = true;
             IsReady = true;
         }
         else
@@ -34,9 +40,30 @@ public class ScriptableObjectManager : ManagerBase<ScriptableObjectManager>
 
     private void OnApplicationQuit()
     {
-        foreach (var item in csvSO)
+        RestoreAndRelease();
+    }
+
+    private void OnDestroy()
+    {
+        m_isDestroyed = true;
+        RestoreAndRelease();
+    }
+
+    private void RestoreAndRelease()
+    {
+        if (m_hasBackups)
         {
-            item.Restore();
+            foreach (var item in csvSO)
+            {
+                item.Restore();
+            }
+
+            m_hasBackups = false;
         }
+
+        if (m_isReleased || m_handle.IsValid() == false) return;
+
+        Addressables.Release(m_handle);
+        m_isReleased = true;
     }
 }
