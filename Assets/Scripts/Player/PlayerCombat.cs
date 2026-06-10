@@ -126,7 +126,7 @@ public class PlayerCombat : MonoBehaviour
 
         if (ctrl.machine.CanOtherAction() &&
             bindingIndex < skills.Count &&
-            skills[bindingIndex] != null)
+            CanUseEquippedSkill(skills[bindingIndex]))
         {
             StartCoroutine(skills[bindingIndex].Active(ctrl));
         }
@@ -177,5 +177,16 @@ public class PlayerCombat : MonoBehaviour
         }
 
         return true;
+    }
+
+    private bool CanUseEquippedSkill(SkillBase skill)
+    {
+        if (skill == null) return false;
+
+        var state = GetSkillState(skill);
+        if (state == null || state.IsActive == false) return false;
+
+        return skill.RequireWeapon == WeaponType.None ||
+               skill.RequireWeapon == CurType;
     }
 }
