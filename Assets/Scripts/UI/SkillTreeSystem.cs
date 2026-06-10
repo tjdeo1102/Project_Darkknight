@@ -19,6 +19,7 @@ public class SkillTreeSystem : UIElementBase
 
     private SkillTreeSlot m_clickedSkillSlot;
     private PlayerCombat m_combat;
+    private InputAction m_skillEquipAction;
 
     private void Start()
     {
@@ -31,12 +32,13 @@ public class SkillTreeSystem : UIElementBase
         if (Controller == null || Controller.Player == null) return;
 
         ResolveCombat();
-        Controller.ChangeState(UIState.SkillTree);
         EquipBtn?.onClick.AddListener(EquipSkill);
         EnforceBtn?.onClick.AddListener(EnforceSkill);
         if (Controller.Player.input?.actions != null)
         {
-            Controller.Player.input.actions["Skill"].performed += OnSkillEquip;
+            m_skillEquipAction = Controller.Player.input.actions.FindAction("UI/Skill");
+            if (m_skillEquipAction != null)
+                m_skillEquipAction.performed += OnSkillEquip;
         }
         RefreshAllSlots();
     }
@@ -45,9 +47,10 @@ public class SkillTreeSystem : UIElementBase
     {
         if (Controller != null &&
             Controller.Player != null &&
-            Controller.Player.input?.actions != null)
+            Controller.Player.input?.actions != null &&
+            m_skillEquipAction != null)
         {
-            Controller.Player.input.actions["Skill"].performed -= OnSkillEquip;
+            m_skillEquipAction.performed -= OnSkillEquip;
         }
 
         EquipBtn?.onClick.RemoveListener(EquipSkill);

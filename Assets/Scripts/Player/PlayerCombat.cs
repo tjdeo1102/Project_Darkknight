@@ -15,6 +15,9 @@ public class PlayerCombat : MonoBehaviour
     private Dictionary<WeaponType, WeaponBase> weapons;
     private bool m_isInputSubscribed;
     private SkillRuntimeStateStore m_skillStates;
+    private InputAction m_skillAction;
+    private InputAction m_swapWeaponAction;
+    private InputAction m_attackAction;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
@@ -35,9 +38,14 @@ public class PlayerCombat : MonoBehaviour
         if (ctrl == null) ctrl = GetComponentInParent<PlayerController>();
         if (ctrl == null || ctrl.input == null || ctrl.input.actions == null) return;
 
-        ctrl.input.actions["Skill"].performed += OnSkill;
-        ctrl.input.actions["SwapWeapon"].performed += OnSwapWeapon;
-        ctrl.input.actions["Attack"].performed += OnAttack;
+        m_skillAction = ctrl.input.actions.FindAction("Player/Skill");
+        m_swapWeaponAction = ctrl.input.actions.FindAction("Player/SwapWeapon");
+        m_attackAction = ctrl.input.actions.FindAction("Player/Attack");
+        if (m_skillAction == null || m_swapWeaponAction == null || m_attackAction == null) return;
+
+        m_skillAction.performed += OnSkill;
+        m_swapWeaponAction.performed += OnSwapWeapon;
+        m_attackAction.performed += OnAttack;
         m_isInputSubscribed = true;
     }
 
@@ -50,9 +58,9 @@ public class PlayerCombat : MonoBehaviour
             return;
         }
 
-        ctrl.input.actions["Skill"].performed -= OnSkill;
-        ctrl.input.actions["SwapWeapon"].performed -= OnSwapWeapon;
-        ctrl.input.actions["Attack"].performed -= OnAttack;
+        m_skillAction.performed -= OnSkill;
+        m_swapWeaponAction.performed -= OnSwapWeapon;
+        m_attackAction.performed -= OnAttack;
         m_isInputSubscribed = false;
     }
 

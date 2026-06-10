@@ -18,6 +18,8 @@ public class UIController : ManagerBase<UIController>
 
     private UIState m_currentState;
     private bool m_isInitialized;
+    private InputAction m_radialMenuAction;
+    private InputAction m_exitAction;
     public UIState CurrentState => m_currentState;
 
     private void Start()
@@ -32,6 +34,7 @@ public class UIController : ManagerBase<UIController>
             UIElements[element.Type] = element;
         }
 
+        ChangeState(UIState.None);
         IsReady = true;
     }
     public override void StartInit()
@@ -40,9 +43,17 @@ public class UIController : ManagerBase<UIController>
         if (m_isInitialized) return;
         if (Player == null || Player.input == null || Player.input.actions == null || Player.model == null) return;
 
-        Player.input.actions["RadialMenu"].performed += OnRadialMenu;
-        Player.input.actions["RadialMenu"].canceled += OnRadialMenu;
-        Player.input.actions["Exit"].performed += OnExitPanel;
+        m_radialMenuAction = Player.input.actions.FindAction("Player/RadialMenu");
+        m_exitAction = Player.input.actions.FindAction("UI/Exit");
+        if (m_radialMenuAction == null || m_exitAction == null)
+        {
+            Debug.LogError("Required UI input actions are missing.", this);
+            return;
+        }
+
+        m_radialMenuAction.performed += OnRadialMenu;
+        m_radialMenuAction.canceled += OnRadialMenu;
+        m_exitAction.performed += OnExitPanel;
         Player.model.Health.OnChangeStat += OnHPChanged;
         Player.model.Mana.OnChangeStat += OnMPChanged;
         Player.model.Money.OnChangeStat += OnMoneyChanged;
@@ -61,11 +72,15 @@ public class UIController : ManagerBase<UIController>
     }
     private void OnDisable()
     {
-        if (Player != null && Player.IsDestroyed() == false)
+        if (m_isInitialized && Player != null && Player.IsDestroyed() == false)
         {
-            Player.input.actions["RadialMenu"].performed -= OnRadialMenu;
-            Player.input.actions["RadialMenu"].canceled -= OnRadialMenu;
-            Player.input.actions["Exit"].performed -= OnExitPanel;
+            if (m_radialMenuAction != null)
+            {
+                m_radialMenuAction.performed -= OnRadialMenu;
+                m_radialMenuAction.canceled -= OnRadialMenu;
+            }
+            if (m_exitAction != null)
+                m_exitAction.performed -= OnExitPanel;
             Player.model.Health.OnChangeStat -= OnHPChanged;
             Player.model.Mana.OnChangeStat -= OnMPChanged;
             Player.model.Money.OnChangeStat -= OnMoneyChanged;
@@ -182,31 +197,28 @@ public class UIController : ManagerBase<UIController>
 
     public void ChangeState(UIState state)
     {
+        if (UIElements == null) return;
+        if (state != UIState.None && UIElements.ContainsKey(state) == false)
+            state = UIState.None;
+
         m_currentState = state;
-
-        // Switch input maps while a UI-only panel is open.
-        
-        if (state == UIState.None)
+        foreach (var pair in UIElements)
         {
-            Time.timeScale = 1f;
-            foreach (var element in UIElements.Values)
-            {
-                if (element.DependencyOnChangeState)
-                    element.gameObject.SetActive(false);
-            }
-            Player?.SetActionMap(InputActionMap.Player);
-        }
-        else
-        {
-            Time.timeScale = 0f;
-            if (UIElements.TryGetValue(state, out var element))
-            {
-                if (element.DependencyOnChangeState)
-                    element.gameObject.SetActive(true);
-            }
-            else ChangeState(UIState.None);
+            var element = pair.Value;
+            if (element == null || element.DependencyOnChangeState == false) continue;
 
-            Player?.SetActionMap(state == UIState.Dialog ? InputActionMap.Dialog : InputActionMap.UI);
+            var shouldBeActive = state != UIState.None && pair.Key == state;
+            if (element.gameObject.activeSelf != shouldBeActive)
+                element.gameObject.SetActive(shouldBeActive);
         }
+
+        Time.timeScale = state == UIState.None ? 1f : 0f;
+        var inputMap = state switch
+        {
+            UIState.None => InputActionMap.Player,
+            UIState.Dialog => InputActionMap.Dialog,
+            _ => InputActionMap.UI,
+        };
+        Player?.SetActionMap(inputMap);
     }
 }

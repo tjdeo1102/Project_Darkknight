@@ -22,7 +22,7 @@ public class InventorySystem : UIElementBase
 
     private void OnEnable()
     {
-        Controller.ChangeState(UIState.Inventory);
+        if (Controller == null || Controller.Player == null) return;
         var model = Controller.Player.model;
         if (model != null)
         {
@@ -38,6 +38,12 @@ public class InventorySystem : UIElementBase
 
     protected override void OnDisable()
     {
+        if (Controller == null || Controller.Player == null)
+        {
+            base.OnDisable();
+            return;
+        }
+
         var model = Controller.Player.model;
         if (model != null)
         {

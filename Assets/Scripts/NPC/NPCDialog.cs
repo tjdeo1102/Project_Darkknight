@@ -21,7 +21,7 @@ public class NPCDialog : UIElementBase
 
     private void OnEnable()
     {
-        Controller.ChangeState(UIState.Dialog);
+        if (Controller == null) return;
 
         if (select != null && select.Count > 3)
         {
@@ -110,7 +110,7 @@ public class NPCDialog : UIElementBase
                {
                    item.btn.gameObject.SetActive(false);
                }
-               gameObject.SetActive(false);
+               Controller.ChangeState(UIState.None);
            });
     }
 }

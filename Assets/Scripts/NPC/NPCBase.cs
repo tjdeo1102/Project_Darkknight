@@ -78,7 +78,8 @@ public class NPCBase : MonoBehaviour
     private void Update()
     {
         if (m_isTouch == false) return;
-        if (m_player != null && m_player.input.actions["Interact"].triggered)
+        var interactAction = m_player?.input?.currentActionMap?.FindAction("Interact");
+        if (interactAction != null && interactAction.triggered)
         {
             // 플레이어 향해 회전
             var target = m_player.transform.position;
@@ -109,7 +110,7 @@ public class NPCBase : MonoBehaviour
             m_textLine = 0;
             // Dialog UI 제작후, 컨트롤러에 등록하면, 해당 Dialog UI를 활성화
 
-            m_dialog.gameObject.SetActive(true);
+            gameLoop.UI.ChangeState(UIState.Dialog);
             m_dialog.Init(this);
 
             m_isInteract = true;
