@@ -352,20 +352,18 @@ public class EnemyStat : MonoBehaviour
             Ctrl.AI.BTAgent.enabled = false;
 
         var navAgent = Ctrl.AI.NavAgent;
-        if (navAgent.enabled == false)
-            navAgent.enabled = true;
-
-        if (navAgent.isOnNavMesh == false)
+        if (navAgent.enabled == false || navAgent.isOnNavMesh == false)
         {
-            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(transform.position, out var hit, 2.0f, NavMesh.AllAreas) == false)
             {
-                transform.position = hit.position;
-                navAgent.Warp(hit.position);
-            }
-            else
-            {
+                navAgent.enabled = false;
                 return;
             }
+
+            navAgent.enabled = false;
+            transform.position = hit.position;
+            navAgent.enabled = true;
+            navAgent.Warp(hit.position);
         }
 
         navAgent.ResetPath();
