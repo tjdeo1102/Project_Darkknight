@@ -437,6 +437,12 @@ public class ChunkManager : ManagerBase<ChunkManager>
             if (m_surface.navMeshData == null)
             {
                 m_surface.BuildNavMesh();
+                yield return null;
+                while (GameLoop != null && GameLoop.IsStartGame == false)
+                {
+                    yield return null;
+                }
+                ProcessPendingChunkSpawns();
             }
             else
             {
