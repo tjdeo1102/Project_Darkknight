@@ -323,8 +323,21 @@ public class ChunkManager : ManagerBase<ChunkManager>
         await UniTask.Yield();
 
         var worldToLocal = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one).inverse;
-        var result = new Bounds();
+        var result = default(Bounds);
+        var hasBounds = false;
         count = 0;
+
+        void Encapsulate(Bounds bounds)
+        {
+            if (hasBounds)
+            {
+                result.Encapsulate(bounds);
+                return;
+            }
+
+            result = bounds;
+            hasBounds = true;
+        }
 
         foreach (var src in sources)
         {
@@ -333,14 +346,14 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 case NavMeshBuildSourceShape.Mesh:
                     if (src.sourceObject is Mesh mesh)
                     {
-                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, mesh.bounds));
+                        Encapsulate(GetWorldBounds(worldToLocal * src.transform, mesh.bounds));
                     }
                     break;
                 case NavMeshBuildSourceShape.Terrain:
 #if NMC_CAN_ACCESS_TERRAIN
                     if (src.sourceObject is TerrainData terrain)
                     {
-                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * terrain.size, terrain.size)));
+                        Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * terrain.size, terrain.size)));
                     }
 #else
                     Debug.LogWarning("The NavMesh cannot be baked for terrain because the terrain module is unavailable.");
@@ -350,7 +363,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 case NavMeshBuildSourceShape.Sphere:
                 case NavMeshBuildSourceShape.Capsule:
                 case NavMeshBuildSourceShape.ModifierBox:
-                    result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(Vector3.zero, src.size)));
+                    Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(Vector3.zero, src.size)));
                     break;
             }
 
@@ -359,6 +372,19 @@ public class ChunkManager : ManagerBase<ChunkManager>
             {
                 await UniTask.Yield();
             }
+        }
+
+        if (hasBounds == false)
+        {
+            m_isUpdatingNavMesh = false;
+            if (m_pendingNavMeshUpdate)
+            {
+                RequestNavMeshUpdate();
+                return;
+            }
+
+            ProcessPendingChunkSpawns();
+            return;
         }
 
         result.Expand(0.1f);
