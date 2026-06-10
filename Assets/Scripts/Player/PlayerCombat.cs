@@ -142,10 +142,12 @@ public class PlayerCombat : MonoBehaviour
         };
         CurType = WeaponType.None;
 
-        skills = new()
+        skills ??= new List<SkillBase>();
+        var requiredSkillSlots = (int)InputSkill.Size;
+        while (skills.Count < requiredSkillSlots)
         {
-            null, null, null,
-        };
+            skills.Add(null);
+        }
     }
 
     public WeaponBase GetCurWeapon()
