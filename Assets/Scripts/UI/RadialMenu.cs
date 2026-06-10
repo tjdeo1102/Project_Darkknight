@@ -57,17 +57,20 @@ public class RadialMenu : UIElementBase
 
         OverlayIcon(select);
 
-        if (Mouse.current.leftButton.wasPressedThisFrame
-            && m_lastSelect < contents.Length
-            && m_lastSelect > -1)
-        {
-            if (Controller == null) return;
-
-            Controller.ChangeState(contents[m_lastSelect].ChangeState);
-            gameObject.SetActive(false);
-        }
     }
 
+
+    public bool TryGetSelectedState(out UIState state)
+    {
+        if (contents != null && m_lastSelect >= 0 && m_lastSelect < contents.Length)
+        {
+            state = contents[m_lastSelect].ChangeState;
+            return true;
+        }
+
+        state = UIState.None;
+        return false;
+    }
     void OverlayIcon(int idx)
     {
         if (contents.Length <= idx || m_lastSelect == idx) return;

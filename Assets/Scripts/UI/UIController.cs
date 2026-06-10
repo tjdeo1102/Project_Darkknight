@@ -102,7 +102,17 @@ public class UIController : ManagerBase<UIController>
             if (context.performed)
                 element.gameObject.SetActive(true);
             else if (context.canceled)
-                element.gameObject.SetActive(false);
+            {
+                if (element is RadialMenu radialMenu &&
+                    radialMenu.TryGetSelectedState(out var selectedState))
+                {
+                    ChangeState(selectedState);
+                }
+                else
+                {
+                    element.gameObject.SetActive(false);
+                }
+            }
         }
     }
 
