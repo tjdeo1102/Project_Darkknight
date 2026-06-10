@@ -20,6 +20,9 @@ public class UIController : ManagerBase<UIController>
     private bool m_isInitialized;
     private InputAction m_radialMenuAction;
     private InputAction m_exitAction;
+    private CanvasGroup m_noticeGroup;
+    private TextMeshProUGUI m_noticeText;
+    private DG.Tweening.Sequence m_noticeSequence;
     public UIState CurrentState => m_currentState;
 
     private void Start()
@@ -35,6 +38,7 @@ public class UIController : ManagerBase<UIController>
         }
 
         ChangeState(UIState.None);
+        InitializeNotice();
         IsReady = true;
     }
     public override void StartInit()
@@ -103,14 +107,14 @@ public class UIController : ManagerBase<UIController>
                 element.gameObject.SetActive(true);
             else if (context.canceled)
             {
-                if (element is RadialMenu radialMenu &&
-                    radialMenu.TryGetSelectedState(out var selectedState))
+                var selectedState = UIState.None;
+                var hasSelection = element is RadialMenu radialMenu &&
+                                   radialMenu.TryGetSelectedState(out selectedState);
+                element.gameObject.SetActive(false);
+
+                if (hasSelection)
                 {
                     ChangeState(selectedState);
-                }
-                else
-                {
-                    element.gameObject.SetActive(false);
                 }
             }
         }
@@ -144,6 +148,87 @@ public class UIController : ManagerBase<UIController>
     {
         KillText.text = $"{newKill} Kill";
     }
+
+    public void ShowRequiredWeaponMessage(WeaponType weaponType)
+    {
+        var weaponName = weaponType switch
+        {
+            WeaponType.Sword => "검",
+            WeaponType.Knife => "단검",
+            _ => "알맞은 무기",
+        };
+
+        ShowNotice($"{weaponName}을 장착해야 스킬을 사용할 수 있습니다.");
+    }
+
+    private void InitializeNotice()
+    {
+        if (m_noticeGroup != null) return;
+
+        var noticeObject = new GameObject(
+            "SkillNotice",
+            typeof(RectTransform),
+            typeof(CanvasGroup),
+            typeof(Image));
+        noticeObject.transform.SetParent(transform, false);
+        noticeObject.transform.SetAsLastSibling();
+
+        var noticeRect = noticeObject.GetComponent<RectTransform>();
+        noticeRect.anchorMin = new Vector2(0.5f, 0.22f);
+        noticeRect.anchorMax = new Vector2(0.5f, 0.22f);
+        noticeRect.pivot = new Vector2(0.5f, 0.5f);
+        noticeRect.anchoredPosition = Vector2.zero;
+        noticeRect.sizeDelta = new Vector2(500f, 48f);
+
+        var background = noticeObject.GetComponent<Image>();
+        background.color = new Color(0.05f, 0.05f, 0.05f, 0.82f);
+        background.raycastTarget = false;
+
+        m_noticeGroup = noticeObject.GetComponent<CanvasGroup>();
+        m_noticeGroup.alpha = 0f;
+        m_noticeGroup.interactable = false;
+        m_noticeGroup.blocksRaycasts = false;
+
+        var textObject = new GameObject(
+            "Text",
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(noticeObject.transform, false);
+
+        var textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(16f, 4f);
+        textRect.offsetMax = new Vector2(-16f, -4f);
+
+        m_noticeText = textObject.GetComponent<TextMeshProUGUI>();
+        m_noticeText.font = MoneyText != null ? MoneyText.font : KillText?.font;
+        m_noticeText.alignment = TextAlignmentOptions.Center;
+        m_noticeText.color = Color.white;
+        m_noticeText.fontSize = 22f;
+        m_noticeText.enableAutoSizing = true;
+        m_noticeText.fontSizeMin = 14f;
+        m_noticeText.fontSizeMax = 22f;
+        m_noticeText.raycastTarget = false;
+    }
+
+    private void ShowNotice(string message)
+    {
+        InitializeNotice();
+        if (m_noticeGroup == null || m_noticeText == null) return;
+
+        m_noticeText.text = message;
+        m_noticeGroup.transform.SetAsLastSibling();
+        m_noticeSequence?.Kill();
+        m_noticeGroup.alpha = 0f;
+
+        m_noticeSequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .Append(m_noticeGroup.DOFade(1f, 0.12f))
+            .AppendInterval(1.25f)
+            .Append(m_noticeGroup.DOFade(0f, 0.22f));
+    }
+
     public void DeadUI(float duration)
     {
         ChangeState(UIState.Die);

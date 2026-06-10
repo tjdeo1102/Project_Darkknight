@@ -131,13 +131,18 @@ public class PlayerCombat : MonoBehaviour
         var size = (int)InputSkill.Size;
         int bindingIndex = context.action.GetBindingIndexForControl(context.control);
         if (bindingIndex < 0 || bindingIndex >= size) return;
+        if (ctrl.machine.CanOtherAction() == false || bindingIndex >= skills.Count) return;
 
-        if (ctrl.machine.CanOtherAction() &&
-            bindingIndex < skills.Count &&
-            CanUseEquippedSkill(skills[bindingIndex]))
+        var skill = skills[bindingIndex];
+        if (IsEquippedSkillActive(skill) == false) return;
+
+        if (HasRequiredWeapon(skill) == false)
         {
-            StartCoroutine(skills[bindingIndex].Active(ctrl));
+            UIController.Instance?.ShowRequiredWeaponMessage(skill.RequireWeapon);
+            return;
         }
+
+        StartCoroutine(skill.Active(ctrl));
     }
     #endregion
 
@@ -187,14 +192,22 @@ public class PlayerCombat : MonoBehaviour
         return true;
     }
 
-    private bool CanUseEquippedSkill(SkillBase skill)
+    public bool CanUseEquippedSkill(SkillBase skill)
+    {
+        return IsEquippedSkillActive(skill) && HasRequiredWeapon(skill);
+    }
+
+    private bool IsEquippedSkillActive(SkillBase skill)
     {
         if (skill == null) return false;
 
         var state = GetSkillState(skill);
-        if (state == null || state.IsActive == false) return false;
+        return state != null && state.IsActive;
+    }
 
-        return skill.RequireWeapon == WeaponType.None ||
-               skill.RequireWeapon == CurType;
+    private bool HasRequiredWeapon(SkillBase skill)
+    {
+        return skill != null &&
+               (skill.RequireWeapon == WeaponType.None || skill.RequireWeapon == CurType);
     }
 }
