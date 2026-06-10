@@ -165,12 +165,34 @@ public abstract class SkillBase : CSVScriptableObject
                 player.animator.SetInteger(skillAnimationParam, (int)SkillType);
                 player.machine.ChangeState(StateType.Skill);
             }
-            yield return new WaitForSeconds(EffectDelay);
-            UpdateStartPose(origin, context);
-            SkillEffectManager.Instance?.PlayVFX(SkillType, context.Center, origin.rotation);
+
+            var effectDelay = Mathf.Max(0f, EffectDelay);
+            if (effectDelay <= 0f)
+            {
+                PlaySkillEffect(origin);
+            }
+            else if (owner is MonoBehaviour coroutineOwner)
+            {
+                coroutineOwner.StartCoroutine(PlaySkillEffectAfterDelay(origin, effectDelay));
+            }
         }
 
-        yield return new WaitForSeconds(ActiveDelay);
+        yield return new WaitForSeconds(Mathf.Max(0f, ActiveDelay));
+    }
+
+    private IEnumerator PlaySkillEffectAfterDelay(Transform origin, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        PlaySkillEffect(origin);
+    }
+
+    private void PlaySkillEffect(Transform origin)
+    {
+        if (origin == null) return;
+
+        var effectContext = new SkillExecutionContext();
+        UpdateStartPose(origin, effectContext);
+        SkillEffectManager.Instance?.PlayVFX(SkillType, effectContext.Center, origin.rotation);
     }
 
     public virtual IEnumerator Active(PlayerController player)
