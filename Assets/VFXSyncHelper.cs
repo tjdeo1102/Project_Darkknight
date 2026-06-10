@@ -4,6 +4,8 @@ using UnityEngine;
 public class VFXSyncHelper : MonoBehaviour
 {
     public PlayerCombat PlayerCombat;
+    private WeaponBase m_lastScheduledWeapon;
+    private int m_lastScheduledAttackSequence = -1;
 
     private void Start()
     {
@@ -23,19 +25,68 @@ public class VFXSyncHelper : MonoBehaviour
         var action = weapon.GetCurrentAttackAction();
         if (action == null) return;
 
-        weapon.ApplyAnimationEventHit();
+        var attackSequence = weapon.GetCurrentAttackSequence();
+        if (weapon == m_lastScheduledWeapon &&
+            attackSequence == m_lastScheduledAttackSequence)
+        {
+            return;
+        }
 
-        if (action.MainVFXPrefab != null || action.HitVFXPrefab != null)
-            PlayAttackActionVFX(action, weapon.transform);
+        m_lastScheduledWeapon = weapon;
+        m_lastScheduledAttackSequence = attackSequence;
+        StartCoroutine(PlayAttackActionVFX(weapon, action, attackSequence));
     }
 
-    private void PlayAttackActionVFX(WeaponAttackSO action, Transform weaponTransform)
+    private IEnumerator PlayAttackActionVFX(
+        WeaponBase weapon,
+        WeaponAttackSO action,
+        int attackSequence)
     {
-        if (action.MainVFXPrefab != null)
-            PlayPrefabVFX(action.MainVFXPrefab, action.GetMainVFXPosition(weaponTransform), action.GetMainVFXRotation(weaponTransform));
+        var weaponTransform = weapon.transform;
+        var hitDelay = Mathf.Max(0f, action.ActiveDelay);
+        var effectDelay = Mathf.Max(0f, action.EffectDelay);
+        var elapsed = 0f;
+        var hitResolved = false;
+        var effectResolved = false;
 
-        if (action.HitVFXPrefab != null && PlayerCombat.GetCurWeapon().TryGetLastHitPosition(out var hitPosition))
-            PlayPrefabVFX(action.HitVFXPrefab, action.GetHitVFXPosition(weaponTransform, hitPosition), action.GetHitVFXRotation(weaponTransform));
+        while (hitResolved == false || effectResolved == false)
+        {
+            if (weapon.IsAttackSequenceCurrent(action, attackSequence) == false)
+                yield break;
+
+            if (effectResolved == false && elapsed >= effectDelay)
+            {
+                effectResolved = true;
+                if (action.MainVFXPrefab != null)
+                {
+                    PlayPrefabVFX(
+                        action.MainVFXPrefab,
+                        action.GetMainVFXPosition(weaponTransform),
+                        action.GetMainVFXRotation(weaponTransform));
+                }
+            }
+
+            if (hitResolved == false && elapsed >= hitDelay)
+            {
+                hitResolved = true;
+                var hitSucceeded = weapon.ApplyAnimationEventHit(action, attackSequence);
+                if (hitSucceeded &&
+                    action.HitVFXPrefab != null &&
+                    weapon.TryGetLastHitPosition(out var hitPosition))
+                {
+                    PlayPrefabVFX(
+                        action.HitVFXPrefab,
+                        action.GetHitVFXPosition(weaponTransform, hitPosition),
+                        action.GetHitVFXRotation(weaponTransform));
+                }
+            }
+
+            if (hitResolved && effectResolved)
+                yield break;
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
     }
 
     private void PlayPrefabVFX(ParticleSystem prefab, Vector3 position, Quaternion rotation)
