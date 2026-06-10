@@ -31,7 +31,6 @@ public class WalkState : State
         }
         var camDir = new Vector3(m_cam.forward.x, 0, m_cam.forward.z);
         var dir = Quaternion.LookRotation(camDir) * move;
-        ctrl.transform.rotation = Quaternion.LookRotation(dir);
 
         float runInput = ctrl.input.actions[runAction].ReadValue<float>();
         var isRun = runInput > 0.1f;
@@ -40,7 +39,7 @@ public class WalkState : State
         anim.SetBool(runParam, isRun);
         anim.SetBool(walkParam, !isRun);
 
-        ctrl.Rigid.linearVelocity = new Vector3(dir.x * spd, ctrl.Rigid.linearVelocity.y, dir.z * spd);
+        ctrl.SetMovement(dir * spd, Quaternion.LookRotation(dir));
     }
 
     public override void Exit() 
@@ -48,6 +47,6 @@ public class WalkState : State
         base.Exit();
         anim.SetBool(walkParam, false);
         anim.SetBool(runParam, false);
-        ctrl.Rigid.linearVelocity = new Vector3(0, ctrl.Rigid.linearVelocity.y, 0);
+        ctrl.StopMovement();
     }
 }
