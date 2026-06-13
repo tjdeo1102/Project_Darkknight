@@ -73,9 +73,9 @@ public class MapGenerator : MonoBehaviour
 
         foreach (var room in root.GetRooms())
         {
-            for (var x = room.xMin + 1; x < room.xMax - 1; x++)
+            for (var x = room.xMin; x < room.xMax; x++)
             {
-                for (var y = room.yMin + 1; y < room.yMax - 1; y++)
+                for (var y = room.yMin; y < room.yMax; y++)
                 {
                     if (IsInside(mapData, x, y))
                     {
@@ -143,9 +143,9 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        for (var x = 0; x < width; x++)
+        for (var x = 0; x <= width; x++)
         {
-            for (var y = 0; y < height; y++)
+            for (var y = -1; y < height; y++)
             {
                 if (CreatePillar(mapData, x, y, ToWorldPosition(bounds, x, y, blockSize), parent))
                 {
@@ -175,16 +175,15 @@ public class MapGenerator : MonoBehaviour
 
     private bool CreatePillar(TileType[,] map, int x, int y, Vector3 wallPos, Transform parent)
     {
-        if (x < 1 || y > map.GetLength(1) - 2) return false;
-
-        var left = map[x - 1, y] == TileType.Wall;
-        var up = map[x, y + 1] == TileType.Wall;
-        var leftUp = map[x - 1, y + 1] == TileType.Wall;
-        var exceptions = (left && up && leftUp) || (!left && up && !leftUp) || (left && !up && !leftUp);
-        var exceptions2 = !left && !up && leftUp;
-
-        var shouldCreate = exceptions ^ (map[x, y] == TileType.Wall);
-        shouldCreate |= exceptions2;
+        var current = IsWall(map, x, y);
+        var left = IsWall(map, x - 1, y);
+        var up = IsWall(map, x, y + 1);
+        var leftUp = IsWall(map, x - 1, y + 1);
+        var wallCount = (current ? 1 : 0)
+                        + (left ? 1 : 0)
+                        + (up ? 1 : 0)
+                        + (leftUp ? 1 : 0);
+        var shouldCreate = wallCount == 1 || wallCount == 3;
 
         if (shouldCreate && m_tiles.TryGetValue(TileType.Pillar, out var pillar))
         {
@@ -195,6 +194,11 @@ public class MapGenerator : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool IsWall(TileType[,] map, int x, int y)
+    {
+        return IsInside(map, x, y) && map[x, y] == TileType.Wall;
     }
 
     private void ConnectRooms(BSPNode node, TileType[,] mapData)
@@ -316,8 +320,9 @@ public class MapGenerator : MonoBehaviour
         var current = start;
         var forwardStep = new Vector3(dir.x * blockSize.x, 0f, dir.y * blockSize.z);
         var sideStep = dir.x == 0 ? new Vector3(Mathf.Sign(end.x - start.x) * blockSize.x, 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(end.z - start.z) * blockSize.z);
+        var carvedCells = new HashSet<Vector3>();
 
-        CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+        CarveTunnelCell(chunk, neighborChunk, current, blockSize, carvedCells);
 
         if (dir.x == 0)
         {
@@ -329,7 +334,7 @@ public class MapGenerator : MonoBehaviour
                     current.z = end.z;
                 }
 
-                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize, carvedCells);
             }
 
             while (Mathf.Approximately(current.x, end.x) == false)
@@ -340,7 +345,7 @@ public class MapGenerator : MonoBehaviour
                     current.x = end.x;
                 }
 
-                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize, carvedCells);
             }
         }
         else
@@ -353,7 +358,7 @@ public class MapGenerator : MonoBehaviour
                     current.x = end.x;
                 }
 
-                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize, carvedCells);
             }
 
             while (Mathf.Approximately(current.z, end.z) == false)
@@ -364,12 +369,19 @@ public class MapGenerator : MonoBehaviour
                     current.z = end.z;
                 }
 
-                CarveTunnelCell(chunk, neighborChunk, current, blockSize);
+                CarveTunnelCell(chunk, neighborChunk, current, blockSize, carvedCells);
             }
         }
+
+        RebuildTunnelPillars(chunk, neighborChunk, carvedCells, blockSize);
     }
 
-    private void CarveTunnelCell(Chunk chunk, Chunk neighborChunk, Vector3 pos, Vector3Int blockSize)
+    private void CarveTunnelCell(
+        Chunk chunk,
+        Chunk neighborChunk,
+        Vector3 pos,
+        Vector3Int blockSize,
+        ISet<Vector3> carvedCells)
     {
         var owner = ContainsWorldPosition(chunk, pos, blockSize) ? chunk : neighborChunk;
         RemoveBlockingTiles(pos, blockSize);
@@ -383,6 +395,8 @@ public class MapGenerator : MonoBehaviour
         {
             owner.floorPosData.Add(pos);
         }
+
+        carvedCells.Add(pos);
     }
 
     private bool HasFloorData(List<Vector3> floors, Vector3 pos)
@@ -420,12 +434,10 @@ public class MapGenerator : MonoBehaviour
     private void RemoveBlockingTiles(Vector3 pos, Vector3Int blockSize)
     {
         var wallLayer = LayerMask.NameToLayer(TileType.Wall.ToString());
-        var pillarLayer = LayerMask.NameToLayer(TileType.Pillar.ToString());
         var gateLayer = LayerMask.NameToLayer(TileType.Gate.ToString());
         var mask = 0;
 
         if (wallLayer >= 0) mask |= 1 << wallLayer;
-        if (pillarLayer >= 0) mask |= 1 << pillarLayer;
         if (gateLayer >= 0) mask |= 1 << gateLayer;
         if (mask == 0) mask = Physics.DefaultRaycastLayers;
 
@@ -433,7 +445,69 @@ public class MapGenerator : MonoBehaviour
         var hitCount = Physics.OverlapBoxNonAlloc(pos + Vector3.up * 0.5f, halfExtents, m_overlapBuffer, Quaternion.identity, mask);
         for (var i = 0; i < hitCount; i++)
         {
-            Destroy(m_overlapBuffer[i].gameObject);
+            var blockingObject = m_overlapBuffer[i].gameObject;
+            blockingObject.SetActive(false);
+            Destroy(blockingObject);
+        }
+    }
+
+    private void RebuildTunnelPillars(
+        Chunk chunk,
+        Chunk neighborChunk,
+        IEnumerable<Vector3> carvedCells,
+        Vector3Int blockSize)
+    {
+        if (m_tiles.TryGetValue(TileType.Pillar, out var pillar) == false) return;
+
+        var halfX = blockSize.x * 0.5f;
+        var halfZ = blockSize.z * 0.5f;
+        var vertices = new HashSet<Vector3>();
+        foreach (var cell in carvedCells)
+        {
+            vertices.Add(new Vector3(cell.x - halfX, 0f, cell.z - halfZ));
+            vertices.Add(new Vector3(cell.x - halfX, 0f, cell.z + halfZ));
+            vertices.Add(new Vector3(cell.x + halfX, 0f, cell.z - halfZ));
+            vertices.Add(new Vector3(cell.x + halfX, 0f, cell.z + halfZ));
+        }
+
+        Physics.SyncTransforms();
+        foreach (var vertex in vertices)
+        {
+            RemovePillarAt(vertex);
+
+            var wallCount = 0;
+            if (HasTileAt(vertex + new Vector3(-halfX, 0f, -halfZ), TileType.Wall, blockSize)) wallCount++;
+            if (HasTileAt(vertex + new Vector3(-halfX, 0f, halfZ), TileType.Wall, blockSize)) wallCount++;
+            if (HasTileAt(vertex + new Vector3(halfX, 0f, -halfZ), TileType.Wall, blockSize)) wallCount++;
+            if (HasTileAt(vertex + new Vector3(halfX, 0f, halfZ), TileType.Wall, blockSize)) wallCount++;
+
+            if (wallCount != 1 && wallCount != 3) continue;
+
+            var owner = ContainsWorldPosition(chunk, vertex, blockSize)
+                ? chunk
+                : neighborChunk;
+            var obj = pillar.pool.GetObject();
+            obj.SetParent(owner.ChunkObject.transform, true);
+            obj.position = vertex + Vector3.up * pillar.offset.y;
+        }
+    }
+
+    private void RemovePillarAt(Vector3 vertex)
+    {
+        var pillarLayer = LayerMask.NameToLayer(TileType.Pillar.ToString());
+        if (pillarLayer < 0) return;
+
+        var hitCount = Physics.OverlapBoxNonAlloc(
+            vertex + Vector3.up * 1.5f,
+            new Vector3(0.6f, 2f, 0.6f),
+            m_overlapBuffer,
+            Quaternion.identity,
+            1 << pillarLayer);
+        for (var i = 0; i < hitCount; i++)
+        {
+            var pillarObject = m_overlapBuffer[i].gameObject;
+            pillarObject.SetActive(false);
+            Destroy(pillarObject);
         }
     }
 
@@ -530,7 +604,8 @@ public class MapGenerator : MonoBehaviour
             Destroy(hitInfo.collider.gameObject);
         }
 
-        CreateTunnelGates(startPos, rayDir, tunnelLength, parent);
+        // Gate generation is temporarily disabled.
+        // CreateTunnelGates(startPos, rayDir, tunnelLength, parent);
     }
 
     private void CreateTunnelFloor(Vector3 pos, Transform parent)
