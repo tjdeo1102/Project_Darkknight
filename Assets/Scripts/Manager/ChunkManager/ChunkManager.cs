@@ -39,7 +39,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
         Vector2Int.right
     };
 
-    [SerializeField] private NavMeshSurface m_surface;
+    [SerializeField] private NavMeshSurface m_surface = null;
 
     private IEnumerator Start()
     {
