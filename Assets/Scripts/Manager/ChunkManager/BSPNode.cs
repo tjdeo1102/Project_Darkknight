@@ -76,17 +76,14 @@ public class BSPNode
             return;
         }
 
-        var roomWidthMin = Mathf.Max(1, Area.width / 2);
-        var roomHeightMin = Mathf.Max(1, Area.height / 2);
-        var roomWidthMax = Mathf.Max(roomWidthMin + 1, Area.width - margin);
-        var roomHeightMax = Mathf.Max(roomHeightMin + 1, Area.height - margin);
-
-        var roomWidth = Random.Range(roomWidthMin, roomWidthMax);
-        var roomHeight = Random.Range(roomHeightMin, roomHeightMax);
-        var roomXMax = Mathf.Max(margin + 1, Area.width - roomWidth - margin);
-        var roomYMax = Mathf.Max(margin + 1, Area.height - roomHeight - margin);
-        var roomX = Area.x + Random.Range(margin, roomXMax);
-        var roomY = Area.y + Random.Range(margin, roomYMax);
+        var availableWidth = Area.width - margin * 2;
+        var availableHeight = Area.height - margin * 2;
+        var roomWidthMin = Mathf.Max(1, Mathf.CeilToInt(availableWidth * 0.8f));
+        var roomHeightMin = Mathf.Max(1, Mathf.CeilToInt(availableHeight * 0.8f));
+        var roomWidth = Random.Range(roomWidthMin, availableWidth + 1);
+        var roomHeight = Random.Range(roomHeightMin, availableHeight + 1);
+        var roomX = Area.x + Random.Range(margin, Area.width - roomWidth - margin + 1);
+        var roomY = Area.y + Random.Range(margin, Area.height - roomHeight - margin + 1);
 
         room = new RectInt(roomX, roomY, roomWidth, roomHeight);
     }

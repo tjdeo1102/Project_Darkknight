@@ -2,7 +2,9 @@ using UnityEngine;
 
 public class EnemyAttack : StateMachineBehaviour
 {
-    [SerializeField] private SkillBase skill;
+    [SerializeField]
+    [Tooltip("Optional. Leave empty when this animation state does not activate a skill.")]
+    private SkillBase skill = null;
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
