@@ -1,0 +1,114 @@
+{
+  "npcs": [
+    {
+      "id": "npc_01",
+      "displayName": "드워프 대장장이",
+      "introLines": ["쇳소리만 들어도 좋은 장비인지 알 수 있지.", "자네의 전투 방식에 맞는 물건을 골라보게."],
+      "choicePrompt": "어떤 장비를 살펴보겠나?",
+      "routes": [
+        {"id":"balanced","optionText":"균형 잡힌 {itemName} - {itemPrice}$","lines":["무게 중심이 좋아 오래 싸워도 손목이 버틸 걸세."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"좋은 선택이네. 오래 쓰게."}},
+        {"id":"aggressive","optionText":"공격적인 {itemName} - {itemPrice}$","lines":["날을 얇게 세워 위력을 끌어올린 물건이지."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"적이 이 날을 두려워하게 될 걸세."}},
+        {"id":"durable","optionText":"튼튼한 {itemName} - {itemPrice}$","lines":["몇 번을 부딪쳐도 쉽게 망가지지 않을 걸세."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"험한 길에서 자네를 지켜줄 걸세."}}
+      ]
+    },
+    {
+      "id": "npc_02",
+      "displayName": "저주받은 상인",
+      "introLines": ["내 물건에는 축복과 저주가 함께 스며 있지.", "대가를 감당할 자신이 있다면 골라봐."],
+      "choicePrompt": "어느 운명에 손을 뻗겠나?",
+      "routes": [
+        {"id":"whisper","optionText":"속삭이는 {itemName} - {itemPrice}$","lines":["어둠 속에서 먼저 위험을 알려주는 물건이야."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"속삭임을 너무 오래 듣지는 마."}},
+        {"id":"blood","optionText":"피를 머금은 {itemName} - {itemPrice}$","lines":["싸움이 길어질수록 진가가 드러날 거다."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"이제 그 물건은 네 피를 기억한다."}},
+        {"id":"sealed","optionText":"봉인된 {itemName} - {itemPrice}$","lines":["봉인은 약속이지. 반드시 안전하다는 뜻은 아니야."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"봉인을 풀 시점은 네가 정해."}}
+      ]
+    },
+    {
+      "id": "npc_03",
+      "displayName": "왕실 보급관",
+      "introLines": ["왕실 창고에서 검수한 장비만 취급합니다.", "현재 임무에 적합한 보급품을 선택하십시오."],
+      "choicePrompt": "어떤 보급품을 요청하시겠습니까?",
+      "routes": [
+        {"id":"standard","optionText":"표준 지급품 {itemName} - {itemPrice}$","lines":["검증된 규격이라 어떤 전장에서도 무난합니다."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"보급 기록을 완료했습니다."}},
+        {"id":"vanguard","optionText":"선봉대 장비 {itemName} - {itemPrice}$","lines":["돌파 임무를 위해 공격 성능을 높인 장비입니다."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"선봉대의 명예를 지켜주십시오."}},
+        {"id":"guardian","optionText":"호위대 장비 {itemName} - {itemPrice}$","lines":["생존과 방어를 우선한 장기전용 장비입니다."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"무사 귀환을 기원합니다."}}
+      ]
+    },
+    {
+      "id": "npc_04",
+      "displayName": "떠돌이 수집가",
+      "introLines": ["여러 폐허를 돌며 흥미로운 물건을 모았어요.", "각 물건마다 주인의 이야기가 남아 있답니다."],
+      "choicePrompt": "어떤 이야기를 가져가시겠어요?",
+      "routes": [
+        {"id":"ruin","optionText":"폐허의 {itemName} - {itemPrice}$","lines":["무너진 성벽 아래에서도 온전했던 물건이에요."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"이제 새로운 이야기를 써주세요."}},
+        {"id":"pilgrim","optionText":"순례자의 {itemName} - {itemPrice}$","lines":["긴 여행을 견딘 흔적이 고스란히 남아 있죠."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"당신의 여정에도 도움이 되길 바라요."}},
+        {"id":"unknown","optionText":"이름 없는 {itemName} - {itemPrice}$","lines":["주인의 이름은 사라졌지만 힘은 아직 남아 있어요."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"이번에는 이름을 잃지 않게 해주세요."}}
+      ]
+    },
+    {
+      "id": "npc_05",
+      "displayName": "북부 사냥꾼",
+      "introLines": ["북부의 짐승은 한 번의 실수도 놓치지 않아.", "살아 돌아오려면 믿을 만한 장비가 필요하지."],
+      "choicePrompt": "어떤 사냥을 준비하고 있지?",
+      "routes": [
+        {"id":"tracking","optionText":"추적용 {itemName} - {itemPrice}$","lines":["발소리를 줄이고 움직임을 가볍게 해줄 거야."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"흔적을 놓치지 마."}},
+        {"id":"ambush","optionText":"매복용 {itemName} - {itemPrice}$","lines":["첫 일격에 모든 걸 끝내고 싶을 때 쓰는 물건이지."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"바람이 네 냄새를 숨겨주길."}},
+        {"id":"survival","optionText":"생존용 {itemName} - {itemPrice}$","lines":["사냥감보다 오래 버티는 자가 결국 이기는 법이야."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"반드시 살아서 돌아와."}}
+      ]
+    },
+    {
+      "id": "npc_06",
+      "displayName": "사막 대상인",
+      "introLines": ["모래바람은 값싼 장비부터 집어삼키지.", "내 물건은 긴 사막길을 건너온 진품이야."],
+      "choicePrompt": "어떤 물건에 흥미가 있나?",
+      "routes": [
+        {"id":"sun","optionText":"태양의 {itemName} - {itemPrice}$","lines":["뜨거운 열기 속에서도 힘을 잃지 않는 물건이지."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"태양이 자네의 앞길을 밝히길."}},
+        {"id":"moon","optionText":"달빛의 {itemName} - {itemPrice}$","lines":["밤의 냉기를 머금어 정신을 맑게 해준다네."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"달빛 아래에서 진가를 보게 될 거야."}},
+        {"id":"storm","optionText":"모래폭풍의 {itemName} - {itemPrice}$","lines":["거친 바람을 견딘 만큼 아주 단단하지."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"어떤 폭풍도 두렵지 않겠군."}}
+      ]
+    },
+    {
+      "id": "npc_07",
+      "displayName": "연금술사",
+      "introLines": ["장비도 재료의 조합에 따라 성질이 달라져요.", "제가 조정한 세 가지 결과물을 보여드리죠."],
+      "choicePrompt": "어떤 성질을 원하시나요?",
+      "routes": [
+        {"id":"swift","optionText":"민첩한 {itemName} - {itemPrice}$","lines":["가벼운 촉매로 반응 속도를 높였어요."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"몸이 한결 가볍게 느껴질 거예요."}},
+        {"id":"force","optionText":"강력한 {itemName} - {itemPrice}$","lines":["불안정하지만 강한 에너지를 품고 있죠."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"충격에는 조심하세요."}},
+        {"id":"stable","optionText":"안정된 {itemName} - {itemPrice}$","lines":["오래 사용할 수 있도록 반응을 안정화했어요."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"예측 가능한 힘이 가장 믿음직하죠."}}
+      ]
+    },
+    {
+      "id": "npc_08",
+      "displayName": "성소의 수호자",
+      "introLines": ["이 장비들은 오래된 성소를 지키던 이들의 유산입니다.", "마음가짐에 맞는 유산을 선택하십시오."],
+      "choicePrompt": "당신이 지키고 싶은 것은 무엇입니까?",
+      "routes": [
+        {"id":"self","optionText":"생존의 {itemName} - {itemPrice}$","lines":["자신을 지키는 것도 중요한 의무입니다."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"먼저 살아남으십시오."}},
+        {"id":"ally","optionText":"수호의 {itemName} - {itemPrice}$","lines":["동료 곁을 지키려는 의지가 깃든 장비입니다."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"그 의지를 잊지 마십시오."}},
+        {"id":"oath","optionText":"맹세의 {itemName} - {itemPrice}$","lines":["끝까지 물러서지 않는 자를 위한 유산입니다."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"맹세가 당신을 이끌 것입니다."}}
+      ]
+    },
+    {
+      "id": "npc_09",
+      "displayName": "전장 약탈자",
+      "introLines": ["전장에 주인 없는 물건이 얼마나 많은지 알아?", "쓸 만한 것만 골라왔으니 걱정은 접어둬."],
+      "choicePrompt": "어느 전리품이 마음에 들어?",
+      "routes": [
+        {"id":"officer","optionText":"장교의 {itemName} - {itemPrice}$","lines":["지휘관이 쓰던 물건이라 관리 상태가 좋아."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"이제 지휘관은 자네겠군."}},
+        {"id":"champion","optionText":"용사의 {itemName} - {itemPrice}$","lines":["마지막까지 손에서 놓지 않았던 물건이지."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"전 주인보다 오래 살아남아."}},
+        {"id":"unknown","optionText":"출처 불명의 {itemName} - {itemPrice}$","lines":["어디서 났는지는 묻지 않는 게 서로에게 좋아."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"좋아, 거래는 깔끔하게 끝났어."}}
+      ]
+    },
+    {
+      "id": "npc_10",
+      "displayName": "시간의 기록자",
+      "introLines": ["수많은 가능성 속에서 이 물건들이 당신에게 도달했습니다.", "선택하지 않은 미래는 사라지니 신중히 결정하세요."],
+      "choicePrompt": "어느 미래를 선택하시겠습니까?",
+      "routes": [
+        {"id":"past","optionText":"과거의 {itemName} - {itemPrice}$","lines":["오래된 전투의 경험이 희미하게 남아 있습니다."],"reward":{"type":"ShopItem","shopItemSlot":0,"amount":0,"successMessage":"과거의 실수를 반복하지 마세요."}},
+        {"id":"present","optionText":"현재의 {itemName} - {itemPrice}$","lines":["지금 이 순간 가장 필요한 힘을 담았습니다."],"reward":{"type":"ShopItem","shopItemSlot":1,"amount":0,"successMessage":"현재를 붙잡으세요."}},
+        {"id":"future","optionText":"미래의 {itemName} - {itemPrice}$","lines":["아직 오지 않은 승리의 가능성이 느껴집니다."],"reward":{"type":"ShopItem","shopItemSlot":2,"amount":0,"successMessage":"그 가능성을 현실로 만드세요."}}
+      ]
+    }
+  ]
+}

@@ -29,6 +29,7 @@ public enum StatModifyType
     SkillUse = 1 << 4,
     KillEnemy = 1 << 5,
     BuyItem = 1 << 6,
+    DialogReward = 1 << 7,
 }
 
 public enum TileType

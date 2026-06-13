@@ -77,6 +77,9 @@ public class NPCSpawner : MonoBehaviour
 
     private void SetItem(NPCBase npc)
     {
+        npc.SelectItems ??= new List<InventoryItem>();
+        npc.SelectItems.Clear();
+
         var maxLevel = m_inGameLoop.ExitStage;
         var curLevel = m_inGameLoop.StageLevel.Value;
         var pickList = m_pickList.OrderBy(_ => Random.value).Take(3).ToList();
@@ -96,8 +99,6 @@ public class NPCSpawner : MonoBehaviour
                 startIdx = Mathf.Clamp(startIdx, 0, list.Count - 1);
                 endExclusive = Mathf.Clamp(endExclusive, startIdx + 1, list.Count);
                 var pickIdx = Random.Range(startIdx, endExclusive);
-                if (npc.SelectItems == null) npc.SelectItems = new();
-
                 npc.SelectItems.Add(list[pickIdx]);
             }
         }
