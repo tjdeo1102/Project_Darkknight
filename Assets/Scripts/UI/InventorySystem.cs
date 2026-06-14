@@ -185,6 +185,40 @@ public class InventorySystem : UIElementBase
         return UnequipSlots.Any(slot => slot != null && slot.SlotItem == null);
     }
 
+    public bool HasItem(ItemType itemType, int level)
+    {
+        return EnumerateOwnedItems().Any(item =>
+            item.ItemType == itemType &&
+            item.ProgressionLevel == level);
+    }
+
+    public bool CanPurchaseProgressionItem(
+        InventoryItem item,
+        out int requiredLevel)
+    {
+        requiredLevel = 0;
+        if (item == null ||
+            item.ItemType != ItemType.Weapon ||
+            item.ProgressionLevel <= 1)
+        {
+            return true;
+        }
+
+        requiredLevel = item.ProgressionLevel - 1;
+        return HasItem(ItemType.Weapon, requiredLevel);
+    }
+
+    private IEnumerable<InventoryItem> EnumerateOwnedItems()
+    {
+        var equippedSlots = EquipSlots ?? Enumerable.Empty<ItemSlot>();
+        var unequippedSlots = UnequipSlots ?? Enumerable.Empty<ItemSlot>();
+
+        return equippedSlots
+            .Concat(unequippedSlots)
+            .Where(slot => slot != null && slot.SlotItem != null)
+            .Select(slot => slot.SlotItem);
+    }
+
     private void UpdateDescription(InventoryItem item)
     {
         if (DescriptionImage ==null || DescriptionText ==null) return;

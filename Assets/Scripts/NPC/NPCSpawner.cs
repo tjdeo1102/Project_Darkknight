@@ -35,7 +35,14 @@ public class NPCSpawner : MonoBehaviour
         }
         foreach (var list in m_allItems.Values)
         {
-            list.Sort((left, right) => left.Price.CompareTo(right.Price));
+            list.Sort((left, right) =>
+            {
+                var levelCompare =
+                    left.ProgressionLevel.CompareTo(right.ProgressionLevel);
+                return levelCompare != 0
+                    ? levelCompare
+                    : left.Price.CompareTo(right.Price);
+            });
         }
         var itemTypeCount = (int)ItemType.Pants - (int)ItemType.Helmet + 1;
         m_pickList = Enumerable.Range((int)ItemType.Helmet, itemTypeCount)
@@ -83,25 +90,62 @@ public class NPCSpawner : MonoBehaviour
         var maxLevel = m_inGameLoop.ExitStage;
         var curLevel = m_inGameLoop.StageLevel.Value;
         var pickList = m_pickList.OrderBy(_ => Random.value).Take(3).ToList();
+        var inventory = GetInventorySystem();
 
         foreach (var pick in pickList)
         {
             if (m_allItems.TryGetValue((ItemType)pick,out var list))
             {
-                if (list.Count == 0 || maxLevel <= 0) continue;
+                var sellableItems = GetSellableItems(pick, list, inventory);
+                if (sellableItems.Count == 0 || maxLevel <= 0) continue;
 
                 var clampedLevel = Mathf.Clamp(curLevel, 1, maxLevel);
                 var startIdx = Mathf.FloorToInt(
-                    (clampedLevel - 1) * list.Count / (float)maxLevel);
+                    (clampedLevel - 1) * sellableItems.Count / (float)maxLevel);
                 var endExclusive = Mathf.CeilToInt(
-                    clampedLevel * list.Count / (float)maxLevel);
+                    clampedLevel * sellableItems.Count / (float)maxLevel);
 
-                startIdx = Mathf.Clamp(startIdx, 0, list.Count - 1);
-                endExclusive = Mathf.Clamp(endExclusive, startIdx + 1, list.Count);
+                startIdx = Mathf.Clamp(startIdx, 0, sellableItems.Count - 1);
+                endExclusive = Mathf.Clamp(
+                    endExclusive,
+                    startIdx + 1,
+                    sellableItems.Count);
                 var pickIdx = Random.Range(startIdx, endExclusive);
-                npc.SelectItems.Add(list[pickIdx]);
+
+                npc.SelectItems.Add(sellableItems[pickIdx]);
             }
         }
+    }
+
+    private static List<InventoryItem> GetSellableItems(
+        ItemType itemType,
+        IEnumerable<InventoryItem> items,
+        InventorySystem inventory)
+    {
+        if (itemType != ItemType.Weapon)
+        {
+            return items.Where(item => item != null).ToList();
+        }
+
+        return items.Where(item =>
+            item != null &&
+            (inventory != null
+                ? inventory.CanPurchaseProgressionItem(item, out _)
+                : item.ProgressionLevel <= 1))
+            .ToList();
+    }
+
+    private InventorySystem GetInventorySystem()
+    {
+        if (m_inGameLoop?.UI == null ||
+            m_inGameLoop.UI.UIElements.TryGetValue(
+                UIState.Inventory,
+                out var element) == false)
+        {
+            return null;
+        }
+
+        return element as InventorySystem;
     }
 
     public void DestroyNPC(NPCBase ctrl)
