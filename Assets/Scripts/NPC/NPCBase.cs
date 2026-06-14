@@ -288,8 +288,20 @@ public class NPCBase : MonoBehaviour
         }
 
         if (gameLoop.UI.UIElements.TryGetValue(UIState.Inventory, out var element) == false ||
-            element is not InventorySystem inventory ||
-            inventory.HasEmptySlot() == false)
+            element is not InventorySystem inventory)
+        {
+            message = "인벤토리를 찾을 수 없습니다.";
+            return false;
+        }
+
+        if (inventory.CanPurchaseProgressionItem(item, out var requiredLevel) == false)
+        {
+            message =
+                $"무기 {requiredLevel}단계를 먼저 보유해야 이 무기를 구매할 수 있습니다.";
+            return false;
+        }
+
+        if (inventory.HasEmptySlot() == false)
         {
             message = "인벤토리가 가득 찼습니다.";
             return false;
