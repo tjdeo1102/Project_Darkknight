@@ -241,6 +241,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
             }
         }
 
+        Generator?.ReleaseChunkTiles(chunk.ChunkObject.transform);
         Destroy(chunk.ChunkObject);
     }
 

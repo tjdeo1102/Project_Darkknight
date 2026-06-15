@@ -18,6 +18,7 @@ public class MapGenerator : MonoBehaviour
     public bool IsReady { get; private set; }
 
     private Dictionary<TileType, TileSst> m_tiles;
+    private readonly Dictionary<Transform, ObjectPool<Transform>> m_tileOwners = new();
     private readonly Collider[] m_overlapBuffer = new Collider[64];
     private const int PoolWarmupPerFrame = 64;
     private const int TilePlacementsPerFrame = 64;
@@ -96,7 +97,7 @@ public class MapGenerator : MonoBehaviour
                 var pos = ToWorldPosition(bounds, x, y, blockSize);
                 if (m_tiles.TryGetValue(TileType.Floor, out var floor))
                 {
-                    var obj = floor.pool.GetObject();
+                    var obj = GetTileObject(floor.pool);
                     obj.parent = parent;
                     obj.position = pos;
                     floorPosData.Add(pos);
@@ -105,7 +106,7 @@ public class MapGenerator : MonoBehaviour
 
                 if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
                 {
-                    var obj = ceiling.pool.GetObject();
+                    var obj = GetTileObject(ceiling.pool);
                     obj.position = pos + ceiling.offset;
                     obj.parent = parent;
                     placementCount++;
@@ -128,7 +129,7 @@ public class MapGenerator : MonoBehaviour
                 var pos = ToWorldPosition(bounds, x, y, blockSize);
                 if (m_tiles.TryGetValue(TileType.Wall, out var wall))
                 {
-                    var obj = wall.pool.GetObject();
+                    var obj = GetTileObject(wall.pool);
                     obj.position = pos + wall.offset;
                     obj.parent = parent;
                     placementCount++;
@@ -187,7 +188,7 @@ public class MapGenerator : MonoBehaviour
 
         if (shouldCreate && m_tiles.TryGetValue(TileType.Pillar, out var pillar))
         {
-            var obj = pillar.pool.GetObject();
+            var obj = GetTileObject(pillar.pool);
             obj.position = wallPos + pillar.offset;
             obj.parent = parent;
             return true;
@@ -446,8 +447,8 @@ public class MapGenerator : MonoBehaviour
         for (var i = 0; i < hitCount; i++)
         {
             var blockingObject = m_overlapBuffer[i].gameObject;
-            blockingObject.SetActive(false);
-            Destroy(blockingObject);
+            if (TryReturnTile(blockingObject.transform) == false)
+                Destroy(blockingObject);
         }
     }
 
@@ -486,7 +487,7 @@ public class MapGenerator : MonoBehaviour
             var owner = ContainsWorldPosition(chunk, vertex, blockSize)
                 ? chunk
                 : neighborChunk;
-            var obj = pillar.pool.GetObject();
+            var obj = GetTileObject(pillar.pool);
             obj.SetParent(owner.ChunkObject.transform, true);
             obj.position = vertex + Vector3.up * pillar.offset.y;
         }
@@ -506,8 +507,8 @@ public class MapGenerator : MonoBehaviour
         for (var i = 0; i < hitCount; i++)
         {
             var pillarObject = m_overlapBuffer[i].gameObject;
-            pillarObject.SetActive(false);
-            Destroy(pillarObject);
+            if (TryReturnTile(pillarObject.transform) == false)
+                Destroy(pillarObject);
         }
     }
 
@@ -601,7 +602,8 @@ public class MapGenerator : MonoBehaviour
             var pos = new Vector3(hitInfo.transform.position.x, 0, hitInfo.transform.position.z);
             CreateTunnelFloor(pos, parent);
             tunnelLength = Mathf.Max(tunnelLength, hitInfo.distance);
-            Destroy(hitInfo.collider.gameObject);
+            if (TryReturnTile(hitInfo.collider.transform) == false)
+                Destroy(hitInfo.collider.gameObject);
         }
 
         // Gate generation is temporarily disabled.
@@ -612,14 +614,14 @@ public class MapGenerator : MonoBehaviour
     {
         if (m_tiles.TryGetValue(TileType.Floor, out var floor))
         {
-            var obj = floor.pool.GetObject();
+            var obj = GetTileObject(floor.pool);
             obj.position = pos;
             obj.parent = parent;
         }
 
         if (m_tiles.TryGetValue(TileType.Celling, out var ceiling))
         {
-            var obj = ceiling.pool.GetObject();
+            var obj = GetTileObject(ceiling.pool);
             obj.position = pos + ceiling.offset;
             obj.parent = parent;
         }
@@ -639,14 +641,62 @@ public class MapGenerator : MonoBehaviour
                          + gateOffset.x * right
                          + gateOffset.y * up;
 
-        var gate1 = gate.pool.GetObject();
+        var gate1 = GetTileObject(gate.pool);
         gate1.position = rotatedPos;
         gate1.rotation = rotation;
         gate1.parent = parent;
 
-        var gate2 = gate.pool.GetObject();
+        var gate2 = GetTileObject(gate.pool);
         gate2.position = rotatedPos + tunnelLength * rayDir;
         gate2.rotation = rotation;
         gate2.parent = parent;
+    }
+
+    public void ReleaseChunkTiles(Transform chunkRoot)
+    {
+        if (chunkRoot == null) return;
+
+        var transforms = chunkRoot.GetComponentsInChildren<Transform>(true);
+        foreach (var tile in transforms)
+        {
+            if (tile == chunkRoot) continue;
+            ReturnTrackedTile(tile);
+        }
+    }
+
+    private Transform GetTileObject(ObjectPool<Transform> pool)
+    {
+        var tile = pool.GetObject();
+        m_tileOwners[tile] = pool;
+
+        foreach (var renderer in tile.GetComponentsInChildren<Renderer>(true))
+        {
+            renderer.enabled = true;
+        }
+
+        return tile;
+    }
+
+    private bool TryReturnTile(Transform candidate)
+    {
+        var current = candidate;
+        while (current != null)
+        {
+            if (ReturnTrackedTile(current))
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    private bool ReturnTrackedTile(Transform tile)
+    {
+        if (tile == null || m_tileOwners.TryGetValue(tile, out var pool) == false)
+            return false;
+
+        pool.ReturnObject(tile);
+        return true;
     }
 }
