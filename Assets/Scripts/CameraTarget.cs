@@ -18,7 +18,7 @@ public class CameraTarget : MonoBehaviour
 
     private readonly HashSet<Vector2Int> m_exploredCells = new();
     private readonly List<Renderer> m_minimapRenderers = new();
-    private readonly MaterialPropertyBlock m_exploredProperties = new();
+    private MaterialPropertyBlock m_exploredProperties;
     private int m_minimapLayer = -1;
     private float m_nextUpdateTime;
     private float m_nextMarkerRefreshTime;
@@ -26,6 +26,7 @@ public class CameraTarget : MonoBehaviour
     private void Awake()
     {
         m_minimapLayer = LayerMask.NameToLayer("MinimapMark");
+        m_exploredProperties = new ();
         m_exploredProperties.SetColor(BaseColorId, exploredColor);
         m_exploredProperties.SetColor(ColorId, exploredColor);
 
