@@ -29,6 +29,8 @@ public class NPCBase : MonoBehaviour
     private NPCDialog m_dialog;
     private NPCDialogueEntry m_dialogue;
     private NPCDialogueRoute m_selectedRoute;
+    private NPCSpawner m_shopProvider;
+    private bool m_areShopItemsAssigned;
     private readonly HashSet<Collider> m_playerColliders = new();
 
     private void Awake()
@@ -112,6 +114,8 @@ public class NPCBase : MonoBehaviour
 
     public void StartInteract()
     {
+        EnsureShopItemsAssigned();
+
         if (ResolveDialog() == false)
         {
             EndInteract();
@@ -137,6 +141,22 @@ public class NPCBase : MonoBehaviour
         m_waitingForChoice = false;
         m_isInteract = true;
         Interact();
+    }
+
+    public void PrepareShop(NPCSpawner shopProvider)
+    {
+        m_shopProvider = shopProvider;
+        m_areShopItemsAssigned = false;
+        SelectItems ??= new List<InventoryItem>();
+        SelectItems.Clear();
+    }
+
+    private void EnsureShopItemsAssigned()
+    {
+        if (m_areShopItemsAssigned) return;
+
+        m_areShopItemsAssigned = true;
+        m_shopProvider?.AssignItemsForFirstInteraction(this);
     }
 
     public virtual void Interact()
@@ -297,7 +317,7 @@ public class NPCBase : MonoBehaviour
         if (inventory.CanPurchaseProgressionItem(item, out var requiredLevel) == false)
         {
             message =
-                $"무기 {requiredLevel}단계를 먼저 보유해야 이 무기를 구매할 수 있습니다.";
+                $"{item.ItemType} {requiredLevel}단계를 먼저 보유해야 이 장비를 구매할 수 있습니다.";
             return false;
         }
 

@@ -185,27 +185,36 @@ public class InventorySystem : UIElementBase
         return UnequipSlots.Any(slot => slot != null && slot.SlotItem == null);
     }
 
-    public bool HasItem(ItemType itemType, int level)
-    {
-        return EnumerateOwnedItems().Any(item =>
-            item.ItemType == itemType &&
-            item.ProgressionLevel == level);
-    }
-
     public bool CanPurchaseProgressionItem(
         InventoryItem item,
         out int requiredLevel)
     {
         requiredLevel = 0;
         if (item == null ||
-            item.ItemType != ItemType.Weapon ||
+            item.ItemType == ItemType.None ||
             item.ProgressionLevel <= 1)
         {
             return true;
         }
 
         requiredLevel = item.ProgressionLevel - 1;
-        return HasItem(ItemType.Weapon, requiredLevel);
+        var predecessorLevel = requiredLevel;
+        return EnumerateOwnedItems().Any(ownedItem =>
+            ownedItem.ItemType == item.ItemType &&
+            ownedItem.ProgressionLevel == predecessorLevel &&
+            IsSameProgressionSeries(ownedItem, item));
+    }
+
+    private static bool IsSameProgressionSeries(
+        InventoryItem ownedItem,
+        InventoryItem targetItem)
+    {
+        if (ownedItem.ProgressionSeries < 0 || targetItem.ProgressionSeries < 0)
+        {
+            return true;
+        }
+
+        return ownedItem.ProgressionSeries == targetItem.ProgressionSeries;
     }
 
     private IEnumerable<InventoryItem> EnumerateOwnedItems()
