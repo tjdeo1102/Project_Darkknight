@@ -222,7 +222,7 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "SkillQ",
                     "id": "57640a25-c0c5-4e29-baaf-cbfdf406cc05",
                     "path": "<Keyboard>/q",
                     "interactions": "",
@@ -233,7 +233,7 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "SkillW",
                     "id": "50a6c6fb-7469-4e07-94dc-a0b7f2ab39b8",
                     "path": "<Keyboard>/w",
                     "interactions": "",
@@ -244,7 +244,7 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "SkillE",
                     "id": "4e1401a9-c20c-4a88-8fe7-98acc1e1d731",
                     "path": "<Keyboard>/e",
                     "interactions": "",
@@ -413,7 +413,7 @@
             ],
             "bindings": [
                 {
-                    "name": "",
+                    "name": "SkillQ",
                     "id": "d067c43f-d1e6-4381-87a3-a3946a607e35",
                     "path": "<Keyboard>/q",
                     "interactions": "",
@@ -424,7 +424,7 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "SkillW",
                     "id": "6d44d097-b35f-4ab9-9ee1-7c7083b3bd40",
                     "path": "<Keyboard>/w",
                     "interactions": "",
@@ -435,7 +435,7 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
+                    "name": "SkillE",
                     "id": "263de54c-65e0-4bf5-ab3f-6da1446b1250",
                     "path": "<Keyboard>/e",
                     "interactions": "",

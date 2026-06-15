@@ -70,18 +70,14 @@ public class PlayerCombat : MonoBehaviour
     public void ChangeWeapon(WeaponType type)
     {
         ctrl.animator.SetInteger(lastWeaponParam, (int)CurType);
-        if (weapons.ContainsKey(type))
-        {
-            CurType = type;
-        }
-        else
-        {
-            CurType = WeaponType.None;
-        }
+        if (weapons.TryGetValue(type, out var nextWeapon) == false)
+            weapons.TryGetValue(WeaponType.None, out nextWeapon);
+
+        CurType = nextWeapon != null ? type : WeaponType.None;
+        curWeapon = nextWeapon;
         ctrl.animator.SetInteger(curWeaponParam, (int)CurType);
 
         ctrl.machine.ChangeState(StateType.SwapWeapon);
-        curWeapon = weapons[CurType];
     }
 
     public void RegisterWeapon(WeaponType type, WeaponBase weapon)
@@ -98,10 +94,11 @@ public class PlayerCombat : MonoBehaviour
 
     public void DeleteWeapon(WeaponType type)
     {
-        if (weapons.ContainsKey(type))
-        {
-            weapons.Remove(type);
-        }
+        if (type == WeaponType.None || weapons.Remove(type) == false) return;
+        if (CurType != type) return;
+
+        curWeapon?.ActiveWeapon(false);
+        ChangeWeapon(WeaponType.None);
     }
 
     public void OnAttack(InputAction.CallbackContext context)
@@ -118,8 +115,7 @@ public class PlayerCombat : MonoBehaviour
         if (ctrl.machine.CanOtherAction())
         {
             curWeapon?.ActiveWeapon(false);
-            int next = ((int)CurType + 1) % (int)WeaponType.Size;
-            ChangeWeapon((WeaponType)next);
+            ChangeWeapon(GetNextWeaponType());
             curWeapon?.ActiveWeapon(true);
         }
     }
@@ -129,11 +125,11 @@ public class PlayerCombat : MonoBehaviour
     public void OnSkill(InputAction.CallbackContext context)
     {
         var size = (int)InputSkill.Size;
-        int bindingIndex = context.action.GetBindingIndexForControl(context.control);
-        if (bindingIndex < 0 || bindingIndex >= size) return;
-        if (ctrl.machine.CanOtherAction() == false || bindingIndex >= skills.Count) return;
+        var slotIndex = GetSkillSlotIndex(context);
+        if (slotIndex < 0 || slotIndex >= size) return;
+        if (ctrl.machine.CanOtherAction() == false || slotIndex >= skills.Count) return;
 
-        var skill = skills[bindingIndex];
+        var skill = skills[slotIndex];
         if (IsEquippedSkillActive(skill) == false) return;
 
         if (HasRequiredWeapon(skill) == false)
@@ -166,6 +162,34 @@ public class PlayerCombat : MonoBehaviour
     public WeaponBase GetCurWeapon()
     {
         return curWeapon;
+    }
+
+    public static int GetSkillSlotIndex(InputAction.CallbackContext context)
+    {
+        var bindingIndex = context.action.GetBindingIndexForControl(context.control);
+        if (bindingIndex < 0 || bindingIndex >= context.action.bindings.Count)
+            return -1;
+
+        return context.action.bindings[bindingIndex].name switch
+        {
+            nameof(InputSkill.SkillQ) => (int)InputSkill.SkillQ,
+            nameof(InputSkill.SkillW) => (int)InputSkill.SkillW,
+            nameof(InputSkill.SkillE) => (int)InputSkill.SkillE,
+            _ => bindingIndex < (int)InputSkill.Size ? bindingIndex : -1,
+        };
+    }
+
+    private WeaponType GetNextWeaponType()
+    {
+        var size = (int)WeaponType.Size;
+        for (var offset = 1; offset < size; offset++)
+        {
+            var candidate = (WeaponType)(((int)CurType + offset) % size);
+            if (weapons.ContainsKey(candidate))
+                return candidate;
+        }
+
+        return WeaponType.None;
     }
 
     public SkillRuntimeState GetSkillState(SkillBase skill)
