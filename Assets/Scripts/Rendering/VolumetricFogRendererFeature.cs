@@ -28,6 +28,9 @@ public sealed class VolumetricFogRendererFeature
         if (renderingData.cameraData.cameraType != CameraType.Game)
             return;
 
+        if (renderingData.cameraData.camera.targetTexture != null)
+            return;
+
         pass.Setup(material);
         renderer.EnqueuePass(pass);
     }
