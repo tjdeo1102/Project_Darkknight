@@ -25,6 +25,13 @@ public class PlayerModel : MonoBehaviour
     public Dictionary<StatType, Stat> Stats;
 
     private bool isPlayEffect = false;
+    private bool m_isDead;
+
+    private void OnEnable()
+    {
+        m_isDead = false;
+    }
+
     private void Start()
     {
         Stats = new Dictionary<StatType, Stat>()
@@ -43,13 +50,16 @@ public class PlayerModel : MonoBehaviour
 
     public void ApplyDamage(float damage, Vector3 attackerPos, float force)
     {
+        if (m_isDead) return;
+
         if (Stats.TryGetValue(StatType.Health, out var value))
         {
             value.AddModifier(new StatModifier(-damage), StatModifyType.Damage);
 
-            if (value.TotalValue < 0.0001f && InGameLoop.Instance != null)
+            if (value.TotalValue < 0.0001f)
             {
-                InGameLoop.Instance.DiePlayer();
+                m_isDead = true;
+                InGameLoop.Instance?.DiePlayer();
             }
 
             if (CanHitEffect)

@@ -168,7 +168,7 @@ public class SkillTreeSystem : UIElementBase
         if (ResolveCombat() == false || SkillSlots == null || SkillSlots.gameObject.activeSelf == false) return;
 
         var size = (int)InputSkill.Size;
-        var bindingIndex = context.action.GetBindingIndexForControl(context.control);
+        var bindingIndex = PlayerCombat.GetSkillSlotIndex(context);
         if (bindingIndex < 0 || bindingIndex >= size) return;
 
         var selectedSkill = m_clickedSkillSlot?.SlotSkill;

@@ -1,5 +1,19 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-4462682981781241753
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53834d8e5896c47468455a896f09bf01, type: 3}
+  m_Name: VolumetricFogRendererFeature
+  m_EditorClassIdentifier:
+  m_Active: 1
+  material: {fileID: 2100000, guid: 4ac257ad7194063488aa202ebf5acdad, type: 2}
 --- !u!114 &-3266193103632570898
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61,8 +75,8 @@ MonoBehaviour:
       type: 3}
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
-  - {fileID: 0}
-  m_RendererFeatureMap: ad6b866f10d7b46cee652662ad26acd2
+  - {fileID: -4462682981781241753}
+  m_RendererFeatureMap: ad6b866f10d7b46c6780bfed785d11c2
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}

@@ -9,11 +9,13 @@ public class ObjectPool<T> where T : Component
     public Transform parent;
     public int InitSize;
     private Queue<T> pool;
+    private HashSet<T> m_pooledObjects;
     private Transform m_inactiveRoot;
 
     public void Init(Transform parent = null, int initialSize = -1)
     {
         pool = new Queue<T>();
+        m_pooledObjects = new HashSet<T>();
         if (this.parent == null) this.parent = parent;
         EnsureInactiveRoot();
         CreateObject(initialSize < 0 ? InitSize : initialSize);
@@ -22,12 +24,14 @@ public class ObjectPool<T> where T : Component
     private void CreateObject(int size)
     {
         EnsureInactiveRoot();
+        m_pooledObjects ??= new HashSet<T>();
 
         for (int i = 0; i < size; i++)
         {
             var obj = GameObject.Instantiate(poolObj, m_inactiveRoot);
             obj.gameObject.SetActive(false);
             pool.Enqueue(obj);
+            m_pooledObjects.Add(obj);
         }
     }
 
@@ -45,7 +49,11 @@ public class ObjectPool<T> where T : Component
 
     public T GetObject(bool activate = true)
     {
-        if (pool == null) pool = new Queue<T>();
+        if (pool == null)
+        {
+            pool = new Queue<T>();
+            m_pooledObjects = new HashSet<T>();
+        }
 
         if (pool.Count < 1)
         {
@@ -53,6 +61,7 @@ public class ObjectPool<T> where T : Component
         }
 
         var obj = pool.Dequeue();
+        m_pooledObjects?.Remove(obj);
         obj.transform.SetParent(parent, false);
         if (activate)
             obj.gameObject.SetActive(true);
@@ -61,8 +70,12 @@ public class ObjectPool<T> where T : Component
 
     public void ReturnObject(T obj)
     {
+        if (obj == null) return;
         if (pool == null) pool = new Queue<T>();
+        m_pooledObjects ??= new HashSet<T>();
+        if (m_pooledObjects.Add(obj) == false) return;
 
+        EnsureInactiveRoot();
         obj.gameObject.SetActive(false);
         obj.transform.SetParent(m_inactiveRoot, false);
         pool.Enqueue(obj);

@@ -27,4 +27,10 @@ public abstract class ManagerBase<T> : MonoBehaviour,IManager where T : MonoBeha
             Destroy(gameObject);
         }
     }
+
+    protected virtual void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
 }

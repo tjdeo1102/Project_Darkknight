@@ -69,9 +69,10 @@ public class InGameLoop : ManagerBase<InGameLoop>
         {
             IsReady = false;
             Debug.LogException(exception, this);
+            return;
         }
 
-        if (m_isDestroyed) return;
+        if (m_isDestroyed || IsReady == false) return;
         StartCoroutine(GameStartRoutine());
     }
 
@@ -81,7 +82,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
             KillCount.OnValueChanged -= OnUpdateKill;
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
         m_isDestroyed = true;
 
@@ -91,10 +92,13 @@ public class InGameLoop : ManagerBase<InGameLoop>
             Addressables.Release(m_itemHandle);
         if (m_enemyHandle.IsValid())
             Addressables.Release(m_enemyHandle);
+
+        base.OnDestroy();
     }
 
     private async Task Init()
     {
+        IsReady = false;
         IsSpawnBoss = false;
 
         KillCount = new();
@@ -108,7 +112,8 @@ public class InGameLoop : ManagerBase<InGameLoop>
         {
             m_managers = transform.parent.GetComponentsInChildren<IManager>().ToList();
         }
-        IsReady = true;
+        if (NPCSpawner == null)
+            throw new InvalidOperationException("NPCSpawner is required.");
 
         // Spawner 초기화
         if (NPCSpawner != null)
@@ -140,11 +145,13 @@ public class InGameLoop : ManagerBase<InGameLoop>
             }
             else
             {
-                Debug.LogError("Failed to load");
-                IsReady = false;
+                throw new InvalidOperationException(
+                    "Failed to load NPC or inventory item Addressables.");
             }
         }
-        else IsReady = false;
+
+        if (EnemySpawner == null)
+            throw new InvalidOperationException("EnemySpawner is required.");
 
         if (EnemySpawner != null)
         {
@@ -167,11 +174,12 @@ public class InGameLoop : ManagerBase<InGameLoop>
             }
             else
             {
-                Debug.LogError("Failed to load");
-                IsReady = false;
+                throw new InvalidOperationException(
+                    "Failed to load enemy Addressables.");
             }
         }
-        else IsReady = false;
+
+        IsReady = true;
     }
 
     IEnumerator GameStartRoutine()

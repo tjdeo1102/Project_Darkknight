@@ -43,10 +43,11 @@ public class ScriptableObjectManager : ManagerBase<ScriptableObjectManager>
         RestoreAndRelease();
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
         m_isDestroyed = true;
         RestoreAndRelease();
+        base.OnDestroy();
     }
 
     private void RestoreAndRelease()

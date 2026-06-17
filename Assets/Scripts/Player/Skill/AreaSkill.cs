@@ -13,7 +13,12 @@ public class AreaSkill: SkillBase
 
     public override IEnumerator Active(PlayerController player)
     {
-        if (player == null || player.combat.CurType != RequireWeapon) yield break;
+        if (player == null ||
+            (RequireWeapon != WeaponType.None &&
+             player.combat.CurType != RequireWeapon))
+        {
+            yield break;
+        }
         if (player.model.Stats.TryGetValue(StatType.Mana, out var mp) == false) yield break;
 
         var context = CreateContext(player.combat, player.transform);

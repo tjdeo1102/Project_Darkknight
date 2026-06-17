@@ -33,4 +33,14 @@ public class InventoryItem : CSVScriptableObject
                 : 1;
         }
     }
+
+    public int ProgressionSeries
+    {
+        get
+        {
+            return int.TryParse(ID, out var id) && id > 0
+                ? (id - 1) / 10
+                : -1;
+        }
+    }
 }

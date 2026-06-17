@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -10,6 +9,7 @@ public class NPCBase : MonoBehaviour
     public string DialogueId;
     public Vector3 SpawnOffset = Vector3.up;
     public float ChunkRefreshDelay = 2f;
+    [SerializeField] private NPCNameplate nameplatePrefab;
 
     [Header("Legacy fallback")]
     public List<string> DialogTexts;
@@ -29,7 +29,10 @@ public class NPCBase : MonoBehaviour
     private NPCDialog m_dialog;
     private NPCDialogueEntry m_dialogue;
     private NPCDialogueRoute m_selectedRoute;
+    private NPCSpawner m_shopProvider;
+    private bool m_areShopItemsAssigned;
     private readonly HashSet<Collider> m_playerColliders = new();
+    private NPCNameplate m_nameplate;
 
     private void Awake()
     {
@@ -61,6 +64,8 @@ public class NPCBase : MonoBehaviour
                 m_dialog = element as NPCDialog;
             }
         }
+
+        EnsureNameplate();
     }
 
     private void OnDisable()
@@ -112,6 +117,8 @@ public class NPCBase : MonoBehaviour
 
     public void StartInteract()
     {
+        EnsureShopItemsAssigned();
+
         if (ResolveDialog() == false)
         {
             EndInteract();
@@ -137,6 +144,22 @@ public class NPCBase : MonoBehaviour
         m_waitingForChoice = false;
         m_isInteract = true;
         Interact();
+    }
+
+    public void PrepareShop(NPCSpawner shopProvider)
+    {
+        m_shopProvider = shopProvider;
+        m_areShopItemsAssigned = false;
+        SelectItems ??= new List<InventoryItem>();
+        SelectItems.Clear();
+    }
+
+    private void EnsureShopItemsAssigned()
+    {
+        if (m_areShopItemsAssigned) return;
+
+        m_areShopItemsAssigned = true;
+        m_shopProvider?.AssignItemsForFirstInteraction(this);
     }
 
     public virtual void Interact()
@@ -297,7 +320,7 @@ public class NPCBase : MonoBehaviour
         if (inventory.CanPurchaseProgressionItem(item, out var requiredLevel) == false)
         {
             message =
-                $"무기 {requiredLevel}단계를 먼저 보유해야 이 무기를 구매할 수 있습니다.";
+                $"{item.ItemType} {requiredLevel}단계를 먼저 보유해야 이 장비를 구매할 수 있습니다.";
             return false;
         }
 
@@ -355,6 +378,35 @@ public class NPCBase : MonoBehaviour
             : DialogueId.Trim();
     }
 
+    public string GetDisplayName()
+    {
+        var dialogue = NPCDialogueDatabase.Get(GetDialogueId());
+        if (string.IsNullOrWhiteSpace(dialogue?.displayName) == false)
+            return dialogue.displayName;
+
+        return string.IsNullOrWhiteSpace(DialogueId)
+            ? $"Merchant {(int)Type:00}"
+            : DialogueId;
+    }
+
+    private void EnsureNameplate()
+    {
+        if (m_nameplate == null)
+        {
+            if (nameplatePrefab == null)
+            {
+                Debug.LogError(
+                    $"NPC nameplate prefab is not assigned to {name}.",
+                    this);
+                return;
+            }
+
+            m_nameplate = Instantiate(nameplatePrefab, transform, false);
+        }
+
+        m_nameplate.Initialize(this);
+    }
+
     private bool ResolveDialog()
     {
         if (m_dialog != null) return true;
@@ -390,155 +442,6 @@ public class NPCBase : MonoBehaviour
         if (InGameLoop.Instance != null)
         {
             InGameLoop.Instance.NPCSpawner.DestroyNPC(this);
-        }
-    }
-}
-
-[Serializable]
-public class NPCDialogueCollection
-{
-    public NPCDialogueEntry[] npcs;
-}
-
-[Serializable]
-public class NPCDialogueEntry
-{
-    public string id;
-    public string displayName;
-    public string[] introLines;
-    public string choicePrompt;
-    public NPCDialogueRoute[] routes;
-}
-
-[Serializable]
-public class NPCDialogueRoute
-{
-    public string id;
-    public string optionText;
-    public string[] lines;
-    public NPCDialogueReward reward;
-}
-
-[Serializable]
-public class NPCDialogueReward
-{
-    public string type;
-    public int shopItemSlot = -1;
-    public float amount;
-    public string successMessage;
-}
-
-public static class NPCDialogueDatabase
-{
-    private const string ResourcePath = "NPC/NPCDialogues";
-    private static Dictionary<string, NPCDialogueEntry> s_dialogues;
-
-    public static NPCDialogueEntry Get(string id)
-    {
-        EnsureLoaded();
-        if (string.IsNullOrWhiteSpace(id)) return null;
-
-        s_dialogues.TryGetValue(id, out var dialogue);
-        return dialogue;
-    }
-
-    public static string FormatOption(
-        NPCDialogueRoute route,
-        IReadOnlyList<InventoryItem> shopItems)
-    {
-        if (route == null) return string.Empty;
-
-        var text = route.optionText ?? string.Empty;
-        var reward = route.reward;
-        if (reward == null ||
-            string.Equals(reward.type, "ShopItem", StringComparison.OrdinalIgnoreCase) == false)
-        {
-            return text;
-        }
-
-        var item = GetShopItem(shopItems, reward.shopItemSlot);
-        return item != null
-            ? $"{item.Name}\n{item.Price:N0} G"
-            : "품절";
-    }
-
-    public static InventoryItem GetShopItem(
-        IReadOnlyList<InventoryItem> shopItems,
-        int slot)
-    {
-        return shopItems != null && slot >= 0 && slot < shopItems.Count
-            ? shopItems[slot]
-            : null;
-    }
-
-    public static NPCDialogueEntry CreateLegacy(
-        IReadOnlyList<string> lines,
-        int shopItemCount)
-    {
-        var introCount = Mathf.Max(0, (lines?.Count ?? 0) - 1);
-        var introLines = new string[introCount];
-        for (var index = 0; index < introCount; index++)
-        {
-            introLines[index] = lines[index];
-        }
-
-        var routeCount = Mathf.Clamp(shopItemCount, 0, 3);
-        var routes = new NPCDialogueRoute[routeCount];
-        for (var index = 0; index < routeCount; index++)
-        {
-            routes[index] = new NPCDialogueRoute
-            {
-                id = $"legacy_shop_{index}",
-                optionText = "{itemName}",
-                lines = Array.Empty<string>(),
-                reward = new NPCDialogueReward
-                {
-                    type = "ShopItem",
-                    shopItemSlot = index,
-                    successMessage = "거래 고맙네. 행운을 빌지, 모험가."
-                }
-            };
-        }
-
-        return new NPCDialogueEntry
-        {
-            id = "legacy",
-            displayName = "Merchant",
-            introLines = introLines,
-            choicePrompt = lines != null && lines.Count > 0
-                ? lines[lines.Count - 1]
-                : "필요한 장비를 골라보게.",
-            routes = routes
-        };
-    }
-
-    private static void EnsureLoaded()
-    {
-        if (s_dialogues != null) return;
-
-        s_dialogues = new Dictionary<string, NPCDialogueEntry>(
-            StringComparer.OrdinalIgnoreCase);
-        var asset = Resources.Load<TextAsset>(ResourcePath);
-        if (asset == null)
-        {
-            Debug.LogError($"NPC dialogue JSON was not found at Resources/{ResourcePath}.json.");
-            return;
-        }
-
-        var collection = JsonUtility.FromJson<NPCDialogueCollection>(asset.text);
-        if (collection?.npcs == null)
-        {
-            Debug.LogError("NPC dialogue JSON is empty or invalid.");
-            return;
-        }
-
-        foreach (var dialogue in collection.npcs)
-        {
-            if (dialogue == null || string.IsNullOrWhiteSpace(dialogue.id)) continue;
-            if (s_dialogues.TryAdd(dialogue.id, dialogue) == false)
-            {
-                Debug.LogWarning($"Duplicate NPC dialogue id ignored: {dialogue.id}");
-            }
         }
     }
 }

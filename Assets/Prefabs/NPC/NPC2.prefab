@@ -54,6 +54,7 @@ MonoBehaviour:
   Type: 2
   SpawnOffset: {x: 0, y: 1, z: 0}
   ChunkRefreshDelay: 2
+  nameplatePrefab: {fileID: 100006, guid: e75a4d006b1f41f0a1426ca70e00fe55, type: 3}
   DialogTexts:
   - "\uB0B4 \uBB3C\uAC74\uC744 \uC6D0\uD560 \uB54C, \uD070 \uB300\uAC00\uB97C \uCE58\uB7EC\uC57C
     \uD560\uAC70\uC57C"

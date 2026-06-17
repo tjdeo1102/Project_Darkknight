@@ -73,60 +73,65 @@ public class NPCSpawner : MonoBehaviour
 
             var keyValue = m_allNPCs.ElementAt(Random.Range(0, m_allNPCs.Keys.Count));
 
-            var npc = keyValue.Value.GetObject();
+            var npc = keyValue.Value.GetObject(false);
             var trans = npc.transform;
             trans.position = pos;
             trans.rotation = Quaternion.identity;
-            SetItem(npc);
+            npc.PrepareShop(this);
+            npc.gameObject.SetActive(true);
+            MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(npc.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
             npc.ChunkRefresh();
         }
     }
 
-    private void SetItem(NPCBase npc)
+    public void AssignItemsForFirstInteraction(NPCBase npc)
     {
+        if (npc == null) return;
+
         npc.SelectItems ??= new List<InventoryItem>();
         npc.SelectItems.Clear();
 
         var maxLevel = m_inGameLoop.ExitStage;
         var curLevel = m_inGameLoop.StageLevel.Value;
-        var pickList = m_pickList.OrderBy(_ => Random.value).Take(3).ToList();
         var inventory = GetInventorySystem();
-
-        foreach (var pick in pickList)
-        {
-            if (m_allItems.TryGetValue((ItemType)pick,out var list))
+        var sellableItemsByType = m_pickList
+            .Select(itemType => new
             {
-                var sellableItems = GetSellableItems(pick, list, inventory);
-                if (sellableItems.Count == 0 || maxLevel <= 0) continue;
+                Items = m_allItems.TryGetValue(itemType, out var items)
+                    ? GetSellableItems(items, inventory)
+                    : new List<InventoryItem>()
+            })
+            .Where(entry => entry.Items.Count > 0)
+            .OrderBy(_ => Random.value)
+            .Take(3)
+            .ToList();
 
-                var clampedLevel = Mathf.Clamp(curLevel, 1, maxLevel);
-                var startIdx = Mathf.FloorToInt(
-                    (clampedLevel - 1) * sellableItems.Count / (float)maxLevel);
-                var endExclusive = Mathf.CeilToInt(
-                    clampedLevel * sellableItems.Count / (float)maxLevel);
+        foreach (var entry in sellableItemsByType)
+        {
+            if (maxLevel <= 0) break;
 
-                startIdx = Mathf.Clamp(startIdx, 0, sellableItems.Count - 1);
-                endExclusive = Mathf.Clamp(
-                    endExclusive,
-                    startIdx + 1,
-                    sellableItems.Count);
-                var pickIdx = Random.Range(startIdx, endExclusive);
+            var sellableItems = entry.Items;
+            var clampedLevel = Mathf.Clamp(curLevel, 1, maxLevel);
+            var startIdx = Mathf.FloorToInt(
+                (clampedLevel - 1) * sellableItems.Count / (float)maxLevel);
+            var endExclusive = Mathf.CeilToInt(
+                clampedLevel * sellableItems.Count / (float)maxLevel);
 
-                npc.SelectItems.Add(sellableItems[pickIdx]);
-            }
+            startIdx = Mathf.Clamp(startIdx, 0, sellableItems.Count - 1);
+            endExclusive = Mathf.Clamp(
+                endExclusive,
+                startIdx + 1,
+                sellableItems.Count);
+            var pickIdx = Random.Range(startIdx, endExclusive);
+
+            npc.SelectItems.Add(sellableItems[pickIdx]);
         }
     }
 
     private static List<InventoryItem> GetSellableItems(
-        ItemType itemType,
         IEnumerable<InventoryItem> items,
         InventorySystem inventory)
     {
-        if (itemType != ItemType.Weapon)
-        {
-            return items.Where(item => item != null).ToList();
-        }
-
         return items.Where(item =>
             item != null &&
             (inventory != null
@@ -152,6 +157,7 @@ public class NPCSpawner : MonoBehaviour
     {
         if (m_allNPCs.TryGetValue(ctrl.Type, out var pool))
         {
+            MinimapFogOfWar.Instance?.UnregisterDynamicMarkerRoot(ctrl.transform);
             ctrl.SelectItems.Clear();
             pool.ReturnObject(ctrl);
         }
