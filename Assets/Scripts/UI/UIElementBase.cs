@@ -8,7 +8,14 @@ public class UIElementBase : MonoBehaviour
 
     protected virtual void OnDisable()
     {
-        if (Controller != null && Controller.CurrentState == Type)
-            Controller.ChangeState(UIState.None);
+        if (Controller != null &&
+            Controller.IsChangingState == false &&
+            Controller.CurrentState == Type)
+        {
+            if (Controller.HasOverlayReturn)
+                Controller.CloseOverlay();
+            else
+                Controller.ChangeState(UIState.None);
+        }
     }
 }

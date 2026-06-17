@@ -79,6 +79,7 @@ public class NPCSpawner : MonoBehaviour
             trans.rotation = Quaternion.identity;
             npc.PrepareShop(this);
             npc.gameObject.SetActive(true);
+            MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(npc.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
             npc.ChunkRefresh();
         }
     }
@@ -156,6 +157,7 @@ public class NPCSpawner : MonoBehaviour
     {
         if (m_allNPCs.TryGetValue(ctrl.Type, out var pool))
         {
+            MinimapFogOfWar.Instance?.UnregisterDynamicMarkerRoot(ctrl.transform);
             ctrl.SelectItems.Clear();
             pool.ReturnObject(ctrl);
         }

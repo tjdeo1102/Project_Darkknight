@@ -19,10 +19,12 @@ public class InventorySystem : UIElementBase
     private Dictionary<StatType, Action> listeners = new();
 
     private Dictionary<StatType, string> statTexts = new();
+    private Button m_closeButton;
 
     private void OnEnable()
     {
         if (Controller == null || Controller.Player == null) return;
+        EnsureCloseButton();
         var model = Controller.Player.model;
         if (model != null)
         {
@@ -59,6 +61,7 @@ public class InventorySystem : UIElementBase
 
     private void Start()
     {
+        EnsureCloseButton();
         foreach (ItemSlot slot in EquipSlots)
         {
             equipDic.Add(slot.SlotType, slot);
@@ -69,6 +72,48 @@ public class InventorySystem : UIElementBase
         {
             slot.System = this;
         }
+    }
+
+    private void EnsureCloseButton()
+    {
+        if (m_closeButton != null) return;
+
+        var buttonObject = new GameObject(
+            "CloseButton",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button));
+        buttonObject.transform.SetParent(transform, false);
+        buttonObject.transform.SetAsLastSibling();
+
+        var rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(1f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(1f, 1f);
+        rect.anchoredPosition = new Vector2(-38f, -32f);
+        rect.sizeDelta = new Vector2(42f, 42f);
+
+        m_closeButton = buttonObject.GetComponent<Button>();
+        m_closeButton.targetGraphic = buttonObject.GetComponent<Image>();
+        m_closeButton.onClick.AddListener(() => Controller?.CloseCurrentPanel());
+        EasternFantasyUI.StyleButton(m_closeButton);
+
+        var label = EasternFantasyUI.CreateLabel(
+            buttonObject.transform,
+            "Label",
+            StatText);
+        label.text = "X";
+        label.fontSize = 24f;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 14f;
+        label.fontSizeMax = 24f;
+
+        var labelRect = label.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
     }
 
     public void UpdateStat(StatType type ,Stat newStat)

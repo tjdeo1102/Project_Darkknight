@@ -172,6 +172,7 @@ MonoBehaviour:
   Type: 1
   SpawnOffset: {x: 0, y: 1, z: 0}
   ChunkRefreshDelay: 2
+  nameplatePrefab: {fileID: 100006, guid: e75a4d006b1f41f0a1426ca70e00fe55, type: 3}
   DialogTexts:
   - "\uC5EC\uAE30 \uB0B4 \uC190\uC5D0\uC11C \uD0C4\uC0DD\uD55C \uBB34\uAE30\uB4E4\uC774
     \uC788\uB2E4\uB124. \uD55C\uBC88 \uC368\uBCF4\uBA74 \uADF8 \uCC28\uC774\uB97C

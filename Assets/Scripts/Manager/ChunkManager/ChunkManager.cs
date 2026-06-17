@@ -21,6 +21,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
     public MapGenerator Generator;
     public InGameLoop GameLoop;
 
+    private MinimapFogOfWar m_minimapFog;
     private Vector2Int m_playerChunk;
     private readonly Dictionary<Vector2Int, Chunk> m_chunks = new();
     private readonly HashSet<Vector2Int> m_loadedCoords = new();
@@ -44,6 +45,9 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private IEnumerator Start()
     {
         GameLoop = InGameLoop.Instance;
+        m_minimapFog = MinimapFogOfWar.Instance != null
+            ? MinimapFogOfWar.Instance
+            : FindFirstObjectByType<MinimapFogOfWar>();
         CacheCombinableTileLayers();
 
         if (Generator != null)
@@ -151,6 +155,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
             didGenerate = true;
         }
 
+        RegisterChunkFog(chunk);
+
         if (chunk.IsLoaded == false)
         {
             chunk.Load();
@@ -217,6 +223,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private void ReleaseChunkContents(Chunk chunk)
     {
         if (chunk?.ChunkObject == null) return;
+
+        m_minimapFog?.UnregisterChunk(chunk);
 
         var enemies = chunk.ChunkObject.GetComponentsInChildren<EnemyController>(true);
         foreach (var enemy in enemies)
@@ -556,9 +564,23 @@ public class ChunkManager : ManagerBase<ChunkManager>
             neighborChunk.CheckDirection.Add(-dir);
             currentChunk.RefreshNavMeshModifiers();
             neighborChunk.RefreshNavMeshModifiers();
+            RegisterChunkFog(currentChunk);
+            RegisterChunkFog(neighborChunk);
             RequestCombineMesh(currentChunk);
             RequestCombineMesh(neighborChunk);
         }
+    }
+
+    private void RegisterChunkFog(Chunk chunk)
+    {
+        if (m_minimapFog == null)
+        {
+            m_minimapFog = MinimapFogOfWar.Instance != null
+                ? MinimapFogOfWar.Instance
+                : FindFirstObjectByType<MinimapFogOfWar>();
+        }
+
+        m_minimapFog?.RegisterChunk(chunk);
     }
 
     private void RequestCombineMesh(Chunk chunk)

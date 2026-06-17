@@ -23,7 +23,12 @@ public class UIController : ManagerBase<UIController>
     private CanvasGroup m_noticeGroup;
     private TextMeshProUGUI m_noticeText;
     private DG.Tweening.Sequence m_noticeSequence;
+    private readonly List<GameObject> m_hudObjects = new();
+    private UIState m_overlayReturnState = UIState.None;
+    private Image m_menuBackdrop;
     public UIState CurrentState => m_currentState;
+    public bool IsChangingState { get; private set; }
+    public bool HasOverlayReturn => m_overlayReturnState != UIState.None;
 
     private void Start()
     {
@@ -38,6 +43,7 @@ public class UIController : ManagerBase<UIController>
         }
 
         ChangeState(UIState.None);
+        InitializePresentation();
         InitializeNotice();
         IsReady = true;
     }
@@ -122,7 +128,18 @@ public class UIController : ManagerBase<UIController>
 
     public void OnExitPanel(InputAction.CallbackContext context)
     {
+        CloseCurrentPanel();
+    }
+
+    public void CloseCurrentPanel()
+    {
         if (m_currentState == UIState.None || m_currentState == UIState.Die) return;
+        if (m_overlayReturnState != UIState.None)
+        {
+            CloseOverlay();
+            return;
+        }
+
         ChangeState(UIState.None);
     }
 
@@ -296,6 +313,8 @@ public class UIController : ManagerBase<UIController>
         if (state != UIState.None && UIElements.ContainsKey(state) == false)
             state = UIState.None;
 
+        m_overlayReturnState = UIState.None;
+        IsChangingState = true;
         m_currentState = state;
         foreach (var pair in UIElements)
         {
@@ -306,14 +325,219 @@ public class UIController : ManagerBase<UIController>
             if (element.gameObject.activeSelf != shouldBeActive)
                 element.gameObject.SetActive(shouldBeActive);
         }
+        IsChangingState = false;
 
         Time.timeScale = state == UIState.None ? 1f : 0f;
+        ApplyInputMap(state);
+        UpdatePresentation(state);
+        AnimateStateElement(state);
+    }
+
+    public void OpenOverlay(UIState overlayState, UIState returnState)
+    {
+        if (UIElements == null ||
+            UIElements.TryGetValue(overlayState, out var overlay) == false ||
+            UIElements.TryGetValue(returnState, out var returnElement) == false)
+        {
+            return;
+        }
+
+        IsChangingState = true;
+        m_overlayReturnState = returnState;
+        m_currentState = overlayState;
+        returnElement.gameObject.SetActive(true);
+        overlay.gameObject.SetActive(true);
+        overlay.transform.SetAsLastSibling();
+        IsChangingState = false;
+
+        Time.timeScale = 0f;
+        ApplyInputMap(overlayState);
+        UpdatePresentation(overlayState);
+        AnimateStateElement(overlayState);
+    }
+
+    public void CloseOverlay()
+    {
+        if (m_overlayReturnState == UIState.None || UIElements == null) return;
+
+        var returnState = m_overlayReturnState;
+        IsChangingState = true;
+        if (UIElements.TryGetValue(m_currentState, out var overlay))
+            overlay.gameObject.SetActive(false);
+        if (UIElements.TryGetValue(returnState, out var returnElement))
+        {
+            returnElement.gameObject.SetActive(true);
+            returnElement.transform.SetAsLastSibling();
+            RestoreElementInteraction(returnElement);
+        }
+        m_currentState = returnState;
+        m_overlayReturnState = UIState.None;
+        IsChangingState = false;
+
+        Time.timeScale = 0f;
+        ApplyInputMap(returnState);
+        UpdatePresentation(returnState);
+        AnimateStateElement(returnState);
+    }
+
+    private void ApplyInputMap(UIState state)
+    {
+        if (Player == null) return;
+
         var inputMap = state switch
         {
             UIState.None => InputActionMap.Player,
             UIState.Dialog => InputActionMap.Dialog,
             _ => InputActionMap.UI,
         };
-        Player?.SetActionMap(inputMap);
+
+        Player.SetActionMap(inputMap);
+        SetUiActionMapEnabled(state == UIState.Dialog);
+    }
+
+    private void SetUiActionMapEnabled(bool isEnabled)
+    {
+        var uiMap = Player?.input?.actions?.FindActionMap(InputActionMap.UI.ToString(), false);
+        if (uiMap == null) return;
+
+        if (isEnabled)
+            uiMap.Enable();
+        else if (Player.input.currentActionMap != uiMap)
+            uiMap.Disable();
+    }
+
+    private static void RestoreElementInteraction(UIElementBase element)
+    {
+        if (element == null) return;
+
+        var group = element.GetComponent<CanvasGroup>();
+        if (group == null) return;
+
+        group.interactable = true;
+        group.blocksRaycasts = true;
+    }
+
+    private void InitializePresentation()
+    {
+        CacheHudObject("BasePanel");
+        CacheHudObject("Minimap");
+        CacheHudObject("SkillSlots");
+        CacheHudObject("KillBox");
+        CacheHudObject("Money");
+
+        var backdropObject = new GameObject(
+            "MenuBackdrop",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        backdropObject.transform.SetParent(transform, false);
+        backdropObject.transform.SetAsFirstSibling();
+
+        var rect = backdropObject.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        m_menuBackdrop = backdropObject.GetComponent<Image>();
+        m_menuBackdrop.color = new Color(0.018f, 0.028f, 0.024f, 0.88f);
+        m_menuBackdrop.raycastTarget = true;
+        backdropObject.SetActive(false);
+
+        StylePlayerBars();
+        StyleMenuElement(UIState.Inventory);
+        StyleMenuElement(UIState.SkillTree);
+    }
+
+    private void CacheHudObject(string objectName)
+    {
+        foreach (var child in GetComponentsInChildren<Transform>(true))
+        {
+            if (child == transform || child.name != objectName) continue;
+            if (child.GetComponentInParent<UIElementBase>(true) != null) continue;
+            if (m_hudObjects.Contains(child.gameObject) == false)
+                m_hudObjects.Add(child.gameObject);
+        }
+    }
+
+    private void UpdatePresentation(UIState state)
+    {
+        var showHud = state == UIState.None || state == UIState.RadialMenu;
+        foreach (var hudObject in m_hudObjects)
+        {
+            if (hudObject != null)
+                hudObject.SetActive(showHud);
+        }
+
+        if (m_menuBackdrop == null) return;
+
+        var showBackdrop = state == UIState.Inventory ||
+                           state == UIState.SkillTree ||
+                           state == UIState.Dialog ||
+                           state == UIState.Setting;
+        m_menuBackdrop.gameObject.SetActive(showBackdrop);
+        if (showBackdrop)
+        {
+            m_menuBackdrop.color = state == UIState.Dialog
+                ? new Color(0.012f, 0.018f, 0.016f, 0.64f)
+                : new Color(0.018f, 0.028f, 0.024f, 0.88f);
+            m_menuBackdrop.transform.SetAsFirstSibling();
+        }
+    }
+
+    private void StylePlayerBars()
+    {
+        StyleSlider(HPSlider, EasternFantasyUI.Vermilion);
+        StyleSlider(MPSlider, EasternFantasyUI.Jade);
+    }
+
+    private static void StyleSlider(Slider slider, Color fillColor)
+    {
+        if (slider == null) return;
+
+        if (slider.fillRect != null)
+        {
+            var fill = slider.fillRect.GetComponent<Image>();
+            if (fill == null)
+                fill = slider.fillRect.GetComponentInChildren<Image>(true);
+            if (fill != null) fill.color = fillColor;
+        }
+
+        var background = slider.GetComponentInChildren<Image>(true);
+        if (background != null)
+            EasternFantasyUI.StylePanel(background, 0.88f);
+    }
+
+    private void StyleMenuElement(UIState state)
+    {
+        if (UIElements.TryGetValue(state, out var element) == false || element == null)
+            return;
+
+        var panel = element.GetComponent<Image>();
+        if (panel == null)
+            panel = element.GetComponentInChildren<Image>(true);
+        EasternFantasyUI.StylePanel(panel, 0.96f);
+
+        foreach (var button in element.GetComponentsInChildren<Button>(true))
+            EasternFantasyUI.StyleButton(button);
+    }
+
+    private void AnimateStateElement(UIState state)
+    {
+        if (state == UIState.None ||
+            UIElements.TryGetValue(state, out var element) == false ||
+            element == null)
+        {
+            return;
+        }
+
+        var group = element.GetComponent<CanvasGroup>();
+        if (group == null)
+            group = element.gameObject.AddComponent<CanvasGroup>();
+        if (group == null) return;
+
+        group.DOKill();
+        group.alpha = 0f;
+        group.DOFade(1f, 0.18f).SetUpdate(true);
     }
 }

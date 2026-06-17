@@ -72,6 +72,7 @@ public class EnemySpawner : MonoBehaviour
             trans.rotation = Quaternion.identity;
             enemy.Target = m_inGameLoop.Player.gameObject;
             enemy.gameObject.SetActive(true);
+            MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(enemy.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
             if (enemy.enabled)
             {
                 enemy.ChunkRefresh();
@@ -105,6 +106,7 @@ public class EnemySpawner : MonoBehaviour
             trans.rotation = Quaternion.identity;
             enemy.Target = m_inGameLoop.Player.gameObject;
             enemy.gameObject.SetActive(true);
+            MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(enemy.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
             if (enemy.enabled)
             {
                 enemy.ChunkRefresh();
@@ -116,13 +118,15 @@ public class EnemySpawner : MonoBehaviour
     {
         if (idx < 0|| idx >= CinemaBoss.Count) return;
 
-        Instantiate(CinemaBoss[idx]);
+        var boss = Instantiate(CinemaBoss[idx]);
+        MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(boss.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
     }
 
     public void DestroyEnemy(EnemyController ctrl)
     {
         if (m_allEnemys.TryGetValue(ctrl.EnemyType, out var pool))
         {
+            MinimapFogOfWar.Instance?.UnregisterDynamicMarkerRoot(ctrl.transform);
             ctrl.AI.enabled = false;
             ctrl.Rigid.useGravity = false;
             pool.ReturnObject(ctrl);
