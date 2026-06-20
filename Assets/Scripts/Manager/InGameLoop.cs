@@ -32,6 +32,7 @@ public class InGameLoop : ManagerBase<InGameLoop>
     public int ExitStage = 3;
     public int StageUpCount = 15;
     public float DeadDuration = 2f;
+    [Min(1)] public int RestAreaMaxNPCs = 2;
     [Min(1f)] public float ManagerInitializationTimeout = 30f;
     public bool IsStartGame = false;
     public PlayerController Player;

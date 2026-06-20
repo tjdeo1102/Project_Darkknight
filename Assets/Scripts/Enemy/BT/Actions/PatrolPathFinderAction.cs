@@ -104,14 +104,21 @@ public partial class PatrolPathFinderAction : Action
 
     public GameObject CreatePatrolPoint()
     {
-        Vector3 ranPos = UnityEngine.Random.insideUnitCircle * PatrolPointDistance;
-        ranPos += Agent.Value.transform.position;
-        if (NavMesh.SamplePosition(ranPos, out NavMeshHit hit, PatrolPointDistance, NavMesh.AllAreas))
+        const int maxAttempts = 12;
+        for (var i = 0; i < maxAttempts; i++)
         {
+            Vector3 ranPos = UnityEngine.Random.insideUnitCircle * PatrolPointDistance;
+            ranPos += Agent.Value.transform.position;
+            if (NavMesh.SamplePosition(ranPos, out NavMeshHit hit, PatrolPointDistance, NavMesh.AllAreas) == false)
+                continue;
+            if (ChunkManager.Instance != null && ChunkManager.Instance.IsInRestArea(hit.position))
+                continue;
+
             var obj = m_patrolPool.GetObject();
             obj.position = hit.position;
             return obj.gameObject;
         }
+
         return null;
     }
 

@@ -59,7 +59,7 @@ public class MapGenerator : MonoBehaviour
         Transform parent,
         int minRoomSize,
         Vector3Int blockSize,
-        Action<List<Vector3>> onComplete)
+        Action<List<Vector3>, List<RectInt>> onComplete)
     {
         InitTiles();
 
@@ -72,7 +72,8 @@ public class MapGenerator : MonoBehaviour
         var root = new BSPNode(new RectInt(0, 0, width, height));
         root.Split(minRoomSize);
 
-        foreach (var room in root.GetRooms())
+        var rooms = root.GetRooms();
+        foreach (var room in rooms)
         {
             for (var x = room.xMin; x < room.xMax; x++)
             {
@@ -161,7 +162,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        onComplete?.Invoke(floorPosData);
+        onComplete?.Invoke(floorPosData, rooms);
     }
 
     private Vector3 ToWorldPosition(RectInt bounds, int x, int y, Vector3Int blockSize)
