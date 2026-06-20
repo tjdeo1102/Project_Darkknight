@@ -16,6 +16,24 @@ public class ChunkManager : ManagerBase<ChunkManager>
     public bool IsBlockUpdateMap = false;
     [Min(1)] public int RetainedChunkPadding = 2;
 
+    [Header("Rest Area")]
+    [SerializeField, Range(0f, 1f)] private float restAreaBaseChance = 0.08f;
+    [SerializeField, Range(0f, 1f)] private float restAreaMissStackBonus = 0.04f;
+    [SerializeField, Range(0f, 1f)] private float restAreaKillWeight = 0.01f;
+    [SerializeField, Range(0f, 1f)] private float restAreaMaxChance = 0.45f;
+    [SerializeField, Min(0)] private int restAreaNpcSpawnPaddingCells = 1;
+    [SerializeField, Min(0.1f)] private float restAreaNavMeshSampleRadius = 0.45f;
+    [SerializeField, Min(1f)] private float restAreaLightSpacing = 5f;
+    [SerializeField, Min(0f)] private float restAreaLightHeight = 2.2f;
+    [SerializeField, Min(0f)] private float restAreaLightWallInset = 0.35f;
+    [SerializeField, Min(0f)] private float restAreaLightRange = 5.5f;
+    [SerializeField, Min(0f)] private float restAreaLightIntensity = 1.6f;
+    [SerializeField, Min(0)] private int restAreaMaxLightsPerRoom = 8;
+    [SerializeField, Min(0f)] private float restAreaLightActiveDistance = 40f;
+    [SerializeField, Min(0.05f)] private float restAreaLightVisibilityCheckInterval = 0.5f;
+    [SerializeField] private bool restAreaLightCastsShadows = false;
+    [SerializeField] private Color restAreaLightColor = new(1f, 0.58f, 0.28f, 1f);
+
     public Transform Player;
     public Vector3 PlayerSpawnOffset = new Vector3(0, 2, 0);
     public MapGenerator Generator;
@@ -30,7 +48,10 @@ public class ChunkManager : ManagerBase<ChunkManager>
     private bool m_isUpdatingNavMesh;
     private bool m_pendingNavMeshUpdate;
     private bool m_isNavMeshUpdateQueued;
+    private int m_restAreaMissStack;
+    private float m_nextRestAreaLightVisibilityCheckTime;
     private readonly HashSet<Chunk> m_pendingSpawnChunks = new();
+    private readonly HashSet<Chunk> m_restAreaChunks = new();
     private readonly HashSet<int> m_combinableTileLayers = new();
     private static readonly Vector2Int[] NeighborDirs =
     {
@@ -74,6 +95,8 @@ public class ChunkManager : ManagerBase<ChunkManager>
         {
             RequestMapUpdate();
         }
+
+        UpdateRestAreaLightVisibility();
     }
 
     private void RequestMapUpdate()
@@ -152,6 +175,17 @@ public class ChunkManager : ManagerBase<ChunkManager>
         if (chunk.IsGenerate == false)
         {
             yield return chunk.GenerateRoutine(MinRoomSize, BlockSize);
+            if (RollRestArea() && chunk.TrySelectRestAreaRoom(restAreaNpcSpawnPaddingCells))
+            {
+                m_restAreaChunks.Add(chunk);
+                BuildRestAreaLights(chunk);
+            }
+            else
+            {
+                m_restAreaChunks.Remove(chunk);
+                chunk.ClearRestArea();
+            }
+
             didGenerate = true;
         }
 
@@ -168,15 +202,11 @@ public class ChunkManager : ManagerBase<ChunkManager>
             RequestCombineMesh(chunk);
         }
 
-        if (didGenerate && queueSpawn == false)
+        if (didGenerate && chunk.IsGenerateMonster == false)
         {
             chunk.IsGenerateMonster = true;
-        }
-
-        if (didGenerate && queueSpawn && chunk.IsGenerateMonster == false)
-        {
-            chunk.IsGenerateMonster = true;
-            m_pendingSpawnChunks.Add(chunk);
+            if (queueSpawn || chunk.IsRestArea)
+                m_pendingSpawnChunks.Add(chunk);
         }
     }
 
@@ -216,6 +246,7 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
             ReleaseChunkContents(chunk);
             m_pendingSpawnChunks.Remove(chunk);
+            m_restAreaChunks.Remove(chunk);
             m_chunks.Remove(coord);
         }
     }
@@ -248,6 +279,14 @@ public class ChunkManager : ManagerBase<ChunkManager>
                 Destroy(filter.sharedMesh);
             }
         }
+
+        foreach (var lightObject in chunk.RestAreaLightObjects)
+        {
+            if (lightObject != null)
+                Destroy(lightObject);
+        }
+
+        chunk.RestAreaLightObjects.Clear();
 
         Generator?.ReleaseChunkTiles(chunk.ChunkObject.transform);
         Destroy(chunk.ChunkObject);
@@ -429,15 +468,169 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
             if (CanSpawnOnChunk(chunk) == false) continue;
 
-            GameLoop?.EnemySpawner?.RandomUnitSpawnPerChunk(chunk);
-            GameLoop?.NPCSpawner?.RandomUnitSpawnPerChunk(chunk);
+            if (chunk.IsRestArea)
+            {
+                GameLoop?.NPCSpawner?.RandomUnitSpawnPerChunk(chunk);
+            }
+            else
+            {
+                GameLoop?.EnemySpawner?.RandomUnitSpawnPerChunk(chunk);
+            }
+
             m_pendingSpawnChunks.Remove(chunk);
         }
     }
 
+    private bool RollRestArea()
+    {
+        var killCount = GameLoop?.KillCount != null ? GameLoop.KillCount.Value : 0;
+        var chance = restAreaBaseChance
+                     + m_restAreaMissStack * restAreaMissStackBonus
+                     + killCount * restAreaKillWeight;
+        chance = Mathf.Clamp(chance, 0f, restAreaMaxChance);
+
+        var isRestArea = Random.value < chance;
+        if (isRestArea)
+        {
+            m_restAreaMissStack = 0;
+        }
+        else
+        {
+            m_restAreaMissStack++;
+        }
+
+        return isRestArea;
+    }
+
     private bool CanSpawnOnChunk(Chunk chunk)
     {
+        if (chunk != null && chunk.IsRestArea)
+            return TryGetSpawnPointInRestArea(chunk, Vector3.up, out _);
+
         return TryGetSpawnPointOnChunk(chunk, Vector3.up, out _);
+    }
+
+    private void BuildRestAreaLights(Chunk chunk)
+    {
+        if (chunk?.ChunkObject == null || chunk.IsRestArea == false || chunk.HasRestAreaRoom == false)
+            return;
+
+        foreach (var lightObject in chunk.RestAreaLightObjects)
+        {
+            if (lightObject != null)
+                Destroy(lightObject);
+        }
+
+        chunk.RestAreaLightObjects.Clear();
+
+        var room = chunk.RestAreaRoom;
+        var parent = new GameObject("RestArea_Lights");
+        parent.transform.SetParent(chunk.ChunkObject.transform, false);
+        chunk.RestAreaLightObjects.Add(parent);
+
+        var positions = new List<Vector3>();
+        var usedCells = new HashSet<Vector2Int>();
+        AddRestAreaLightLine(chunk, positions, usedCells, room.xMin, room.xMax - 1, room.yMin, true);
+        AddRestAreaLightLine(chunk, positions, usedCells, room.xMin, room.xMax - 1, room.yMax - 1, true);
+        AddRestAreaLightLine(chunk, positions, usedCells, room.yMin, room.yMax - 1, room.xMin, false);
+        AddRestAreaLightLine(chunk, positions, usedCells, room.yMin, room.yMax - 1, room.xMax - 1, false);
+
+        var lightCount = restAreaMaxLightsPerRoom <= 0
+            ? positions.Count
+            : Mathf.Min(restAreaMaxLightsPerRoom, positions.Count);
+        for (var i = 0; i < lightCount; i++)
+        {
+            var index = lightCount == positions.Count
+                ? i
+                : Mathf.FloorToInt(i * positions.Count / (float)lightCount);
+            CreateRestAreaPointLight(parent.transform, positions[index]);
+        }
+    }
+
+    private void AddRestAreaLightLine(
+        Chunk chunk,
+        List<Vector3> positions,
+        HashSet<Vector2Int> usedCells,
+        int from,
+        int to,
+        int fixedAxis,
+        bool horizontal)
+    {
+        var blockStep = horizontal ? BlockSize.x : BlockSize.z;
+        if (blockStep <= 0) return;
+
+        var roomLength = Mathf.Max(0, to - from) * blockStep;
+        var count = Mathf.Max(1, Mathf.FloorToInt(roomLength / restAreaLightSpacing) + 1);
+        for (var i = 0; i < count; i++)
+        {
+            var t = count == 1 ? 0.5f : i / (count - 1f);
+            var movingCell = Mathf.RoundToInt(Mathf.Lerp(from, to, t));
+            var localX = horizontal ? movingCell : fixedAxis;
+            var localY = horizontal ? fixedAxis : movingCell;
+            if (usedCells.Add(new Vector2Int(localX, localY)) == false)
+                continue;
+
+            var position = new Vector3(
+                chunk.Bounds.x + localX * BlockSize.x,
+                restAreaLightHeight,
+                chunk.Bounds.y + localY * BlockSize.z);
+
+            if (horizontal)
+            {
+                var roomCenter = chunk.Bounds.y + (chunk.RestAreaRoom.center.y * BlockSize.z);
+                position.z += position.z < roomCenter ? -restAreaLightWallInset : restAreaLightWallInset;
+            }
+            else
+            {
+                var roomCenter = chunk.Bounds.x + (chunk.RestAreaRoom.center.x * BlockSize.x);
+                position.x += position.x < roomCenter ? -restAreaLightWallInset : restAreaLightWallInset;
+            }
+
+            positions.Add(position);
+        }
+    }
+
+    private void CreateRestAreaPointLight(Transform parent, Vector3 position)
+    {
+        var lightObject = new GameObject("RestArea_PointLight");
+        lightObject.transform.SetParent(parent, true);
+        lightObject.transform.position = position;
+
+        var pointLight = lightObject.AddComponent<Light>();
+        pointLight.type = LightType.Point;
+        pointLight.color = restAreaLightColor;
+        pointLight.range = restAreaLightRange;
+        pointLight.intensity = restAreaLightIntensity;
+        pointLight.shadows = restAreaLightCastsShadows ? LightShadows.Hard : LightShadows.None;
+    }
+
+    private void UpdateRestAreaLightVisibility()
+    {
+        if (Player == null || Time.time < m_nextRestAreaLightVisibilityCheckTime)
+            return;
+
+        m_nextRestAreaLightVisibilityCheckTime = Time.time + restAreaLightVisibilityCheckInterval;
+        var activeDistanceSquared = restAreaLightActiveDistance * restAreaLightActiveDistance;
+        foreach (var chunk in m_restAreaChunks)
+        {
+            if (chunk == null ||
+                chunk.IsRestArea == false ||
+                chunk.HasRestAreaRoom == false ||
+                chunk.RestAreaLightObjects.Count == 0)
+            {
+                continue;
+            }
+
+            var restCenter = chunk.RestAreaCenter;
+            restCenter.y = restAreaLightHeight;
+            var shouldEnable = restAreaLightActiveDistance <= 0f ||
+                               (Player.position - restCenter).sqrMagnitude <= activeDistanceSquared;
+            foreach (var lightObject in chunk.RestAreaLightObjects)
+            {
+                if (lightObject != null && lightObject.activeSelf != shouldEnable)
+                    lightObject.SetActive(shouldEnable);
+            }
+        }
     }
 
     private Bounds GetWorldBounds(Matrix4x4 mat, Bounds bounds)
@@ -497,8 +690,47 @@ public class ChunkManager : ManagerBase<ChunkManager>
 
     public bool TryGetSpawnPointOnChunk(Chunk chunk, Vector3 spawnOffset, out Vector3 res)
     {
+        return TryGetSpawnPoint(
+            chunk,
+            chunk?.floorPosData,
+            spawnOffset,
+            Mathf.Max(BlockSize.x, BlockSize.z) * 2f,
+            false,
+            out res);
+    }
+
+    public bool TryGetSpawnPointInRestArea(Chunk chunk, Vector3 spawnOffset, out Vector3 res)
+    {
+        return TryGetSpawnPoint(
+            chunk,
+            chunk?.GetRestAreaFloorPositions(true),
+            spawnOffset,
+            restAreaNavMeshSampleRadius,
+            true,
+            out res);
+    }
+
+    public IReadOnlyList<Vector3> GetRestAreaRoamPoints(Chunk chunk)
+    {
+        return chunk?.GetRestAreaFloorPositions(true) ?? System.Array.Empty<Vector3>();
+    }
+
+    public bool IsInRestArea(Vector3 position)
+    {
+        var chunk = GetChunk(position);
+        return chunk != null && chunk.IsWorldPositionInRestAreaRoom(position);
+    }
+
+    private bool TryGetSpawnPoint(
+        Chunk chunk,
+        IReadOnlyList<Vector3> floorPositions,
+        Vector3 spawnOffset,
+        float sampleRadius,
+        bool requireRestArea,
+        out Vector3 res)
+    {
         res = Vector3.zero;
-        if (chunk == null || chunk.floorPosData == null || chunk.floorPosData.Count == 0)
+        if (chunk == null || floorPositions == null || floorPositions.Count == 0)
         {
             return false;
         }
@@ -506,11 +738,14 @@ public class ChunkManager : ManagerBase<ChunkManager>
         const int maxAttempts = 12;
         for (var i = 0; i < maxAttempts; i++)
         {
-            var pickNum = Random.Range(0, chunk.floorPosData.Count);
-            var candidate = chunk.floorPosData[pickNum] + spawnOffset;
+            var pickNum = Random.Range(0, floorPositions.Count);
+            var candidate = floorPositions[pickNum] + spawnOffset;
 
-            if (NavMesh.SamplePosition(candidate, out var hit, Mathf.Max(BlockSize.x, BlockSize.z) * 2f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(candidate, out var hit, sampleRadius, NavMesh.AllAreas))
             {
+                if (requireRestArea && chunk.IsWorldPositionInRestAreaRoom(hit.position) == false)
+                    continue;
+
                 res = hit.position;
                 return true;
             }

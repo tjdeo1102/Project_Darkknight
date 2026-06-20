@@ -13,11 +13,14 @@ public class MinimapFogOfWar : MonoBehaviour
     {
         public Renderer Renderer;
         public bool LastEnabled;
+        public bool IsOutline;
+        public bool LastRestTint;
 
-        public MapMarker(Renderer renderer)
+        public MapMarker(Renderer renderer, bool isOutline)
         {
             Renderer = renderer;
             LastEnabled = renderer != null && renderer.enabled;
+            IsOutline = isOutline;
         }
     }
 
@@ -39,6 +42,7 @@ public class MinimapFogOfWar : MonoBehaviour
         public readonly List<FogOverlay> FogOverlays = new();
         public bool Explored;
         public bool CurrentVisible;
+        public bool RestArea;
     }
 
     private sealed class ChunkMarkerRegistration
@@ -68,6 +72,7 @@ public class MinimapFogOfWar : MonoBehaviour
     [SerializeField, Min(1f)] private float revealRadius = 12f;
     [SerializeField, Min(0.5f)] private float cellSize = 3f;
     [SerializeField] private Color fogColor = Color.black;
+    [SerializeField] private Color restAreaOutlineColor = new(1f, 0.82f, 0.1f, 1f);
     [SerializeField, Min(0f)] private float fogOverlayHeight = 2f;
     [SerializeField, Min(0.1f)] private float fogOverlayScale = 1.08f;
 
@@ -79,6 +84,7 @@ public class MinimapFogOfWar : MonoBehaviour
     private readonly List<Vector2Int> m_dirtyCells = new();
     private readonly HashSet<Renderer> m_registeredDynamicRenderers = new();
     private readonly HashSet<Renderer> m_registeredMapRenderers = new();
+    private MaterialPropertyBlock m_restAreaOutlineProperties;
     private Material m_fogMaterial;
     private Mesh m_fogMesh;
     private int m_minimapLayer = -1;
@@ -121,7 +127,7 @@ public class MinimapFogOfWar : MonoBehaviour
             if (IsBaseMapMarker(renderer) == false) continue;
 
             var cell = WorldToCell(renderer.transform.position);
-            var marker = new MapMarker(renderer);
+            var marker = new MapMarker(renderer, IsOutlineMapMarker(renderer));
             registration.Markers.Add((cell, marker));
             m_registeredMapRenderers.Add(renderer);
 
@@ -131,6 +137,7 @@ public class MinimapFogOfWar : MonoBehaviour
                 m_cells[cell] = fogCell;
             }
 
+            fogCell.RestArea = chunk.IsWorldPositionInRestAreaRoom(renderer.transform.position);
             fogCell.BaseMarkers.Add(marker);
         }
 
@@ -309,6 +316,7 @@ public class MinimapFogOfWar : MonoBehaviour
             if (marker?.Renderer == null) continue;
 
             SetMarkerEnabled(marker, true);
+            SetMarkerRestTint(marker, marker.IsOutline && cell.RestArea);
         }
 
         foreach (var overlay in cell.FogOverlays)
@@ -357,6 +365,11 @@ public class MinimapFogOfWar : MonoBehaviour
         return name.Contains("WhiteMark") || name.Contains("BlackMark") || name.Contains("GrayMark");
     }
 
+    private static bool IsOutlineMapMarker(Renderer renderer)
+    {
+        return renderer.gameObject.name.Contains("WhiteMark");
+    }
+
     private void SetMarkerEnabled(MapMarker marker, bool enabled)
     {
         if (marker.LastEnabled == enabled && marker.Renderer.enabled == enabled)
@@ -364,6 +377,15 @@ public class MinimapFogOfWar : MonoBehaviour
 
         marker.Renderer.enabled = enabled;
         marker.LastEnabled = enabled;
+    }
+
+    private void SetMarkerRestTint(MapMarker marker, bool enabled)
+    {
+        if (marker.LastRestTint == enabled)
+            return;
+
+        marker.Renderer.SetPropertyBlock(enabled ? m_restAreaOutlineProperties : null);
+        marker.LastRestTint = enabled;
     }
 
     private void SetOverlayEnabled(FogOverlay overlay, bool enabled)
@@ -404,6 +426,11 @@ public class MinimapFogOfWar : MonoBehaviour
         m_minimapLayer = LayerMask.NameToLayer("MinimapMark");
         if (m_minimapLayer < 0)
             m_minimapLayer = 0;
+
+        m_restAreaOutlineProperties ??= new MaterialPropertyBlock();
+        m_restAreaOutlineProperties.Clear();
+        m_restAreaOutlineProperties.SetColor("_BaseColor", restAreaOutlineColor);
+        m_restAreaOutlineProperties.SetColor("_Color", restAreaOutlineColor);
 
         if (m_fogMesh == null)
         {

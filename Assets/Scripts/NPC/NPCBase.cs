@@ -16,6 +16,11 @@ public class NPCBase : MonoBehaviour
     public NavMeshAgent NavAgent;
     [Header("Max Count is 3")]
     public List<InventoryItem> SelectItems;
+    [Header("Rest Area Roam")]
+    [SerializeField, Min(0.5f)] private float restAreaRoamIntervalMin = 2f;
+    [SerializeField, Min(0.5f)] private float restAreaRoamIntervalMax = 5f;
+    [SerializeField, Min(0.1f)] private float restAreaRoamStoppingDistance = 0.8f;
+    [SerializeField, Min(0.1f)] private float restAreaRoamSampleRadius = 0.45f;
 
     private bool m_isTouch;
     private bool m_isInteract;
@@ -32,7 +37,10 @@ public class NPCBase : MonoBehaviour
     private NPCSpawner m_shopProvider;
     private bool m_areShopItemsAssigned;
     private readonly HashSet<Collider> m_playerColliders = new();
+    private readonly List<Vector3> m_restAreaRoamPoints = new();
     private NPCNameplate m_nameplate;
+    private bool m_canRestAreaRoam;
+    private float m_nextRestAreaRoamTime;
 
     private void Awake()
     {
@@ -78,6 +86,8 @@ public class NPCBase : MonoBehaviour
         m_isTouch = false;
         m_player = null;
         m_playerColliders.Clear();
+        m_restAreaRoamPoints.Clear();
+        m_canRestAreaRoam = false;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -94,16 +104,20 @@ public class NPCBase : MonoBehaviour
 
     private void Update()
     {
-        if (m_isTouch == false) return;
-        var interactAction = m_player?.input?.currentActionMap?.FindAction("Interact");
-        if (interactAction != null && interactAction.triggered)
+        if (m_isTouch)
         {
-            var target = m_player.transform.position;
-            target.y = transform.position.y;
-            transform.LookAt(target, Vector3.up);
-            if (m_isInteract) Interact();
-            else StartInteract();
+            var interactAction = m_player?.input?.currentActionMap?.FindAction("Interact");
+            if (interactAction != null && interactAction.triggered)
+            {
+                var target = m_player.transform.position;
+                target.y = transform.position.y;
+                transform.LookAt(target, Vector3.up);
+                if (m_isInteract) Interact();
+                else StartInteract();
+            }
         }
+
+        UpdateRestAreaRoam();
     }
 
     private void OnTriggerExit(Collider other)
@@ -152,6 +166,55 @@ public class NPCBase : MonoBehaviour
         m_areShopItemsAssigned = false;
         SelectItems ??= new List<InventoryItem>();
         SelectItems.Clear();
+    }
+
+    public void ConfigureRestAreaRoam(IReadOnlyList<Vector3> roamPoints)
+    {
+        m_restAreaRoamPoints.Clear();
+        if (roamPoints != null)
+        {
+            for (var i = 0; i < roamPoints.Count; i++)
+                m_restAreaRoamPoints.Add(roamPoints[i]);
+        }
+
+        m_canRestAreaRoam = NavAgent != null && m_restAreaRoamPoints.Count > 1;
+        if (m_canRestAreaRoam == false) return;
+
+        NavAgent.enabled = true;
+        NavAgent.stoppingDistance = restAreaRoamStoppingDistance;
+        if (NavMesh.SamplePosition(transform.position, out var hit, restAreaRoamSampleRadius, NavMesh.AllAreas) &&
+            IsValidRestAreaPoint(hit.position))
+        {
+            NavAgent.Warp(hit.position);
+        }
+
+        m_nextRestAreaRoamTime = Time.time + Random.Range(0.5f, restAreaRoamIntervalMax);
+    }
+
+    private void UpdateRestAreaRoam()
+    {
+        if (m_canRestAreaRoam == false || m_isInteract || NavAgent == null || NavAgent.enabled == false)
+            return;
+        if (Time.time < m_nextRestAreaRoamTime)
+            return;
+        if (NavAgent.isOnNavMesh == false)
+            return;
+        if (NavAgent.pathPending || NavAgent.remainingDistance > NavAgent.stoppingDistance)
+            return;
+
+        var target = m_restAreaRoamPoints[Random.Range(0, m_restAreaRoamPoints.Count)];
+        if (NavMesh.SamplePosition(target, out var hit, restAreaRoamSampleRadius, NavMesh.AllAreas) &&
+            IsValidRestAreaPoint(hit.position))
+        {
+            NavAgent.SetDestination(hit.position);
+        }
+
+        m_nextRestAreaRoamTime = Time.time + Random.Range(restAreaRoamIntervalMin, restAreaRoamIntervalMax);
+    }
+
+    private bool IsValidRestAreaPoint(Vector3 position)
+    {
+        return ChunkManager.Instance == null || ChunkManager.Instance.IsInRestArea(position);
     }
 
     private void EnsureShopItemsAssigned()

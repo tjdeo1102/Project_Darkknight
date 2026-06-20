@@ -184,6 +184,7 @@ public partial class CustomPatrolAction : Action
             m_CurrentPatrolPoint = (m_CurrentPatrolPoint + 1) % Waypoints.Value.Count;
             var waypoint = Waypoints.Value[m_CurrentPatrolPoint];
             if (waypoint == null || waypoint.activeInHierarchy == false) continue;
+            if (ChunkManager.Instance != null && ChunkManager.Instance.IsInRestArea(waypoint.transform.position)) continue;
 
             m_CurrentTarget = waypoint.transform.position;
             if (m_NavMeshAgent != null && m_NavMeshAgent.isOnNavMesh)

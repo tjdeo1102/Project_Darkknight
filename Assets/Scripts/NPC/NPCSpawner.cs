@@ -64,11 +64,15 @@ public class NPCSpawner : MonoBehaviour
 
     public void RandomUnitSpawnPerChunk(Chunk chunk)
     {
-        for (var i = 0; i < UnitCountPerChunk; i++)
+        if (chunk == null || chunk.IsRestArea == false) return;
+
+        var maxCount = Mathf.Max(1, m_inGameLoop != null ? m_inGameLoop.RestAreaMaxNPCs : UnitCountPerChunk);
+        var spawnCount = Random.Range(1, maxCount + 1);
+        for (var i = 0; i < spawnCount; i++)
         {
             if (ChunkManager.Instance == null || m_inGameLoop == null) break;
             Vector3 pos = Vector3.zero;
-            var res = ChunkManager.Instance.TryGetSpawnPointOnChunk(chunk, Vector3.up, out pos);
+            var res = ChunkManager.Instance.TryGetSpawnPointInRestArea(chunk, Vector3.up, out pos);
             if (res == false) continue;
 
             var keyValue = m_allNPCs.ElementAt(Random.Range(0, m_allNPCs.Keys.Count));
@@ -79,6 +83,7 @@ public class NPCSpawner : MonoBehaviour
             trans.rotation = Quaternion.identity;
             npc.PrepareShop(this);
             npc.gameObject.SetActive(true);
+            npc.ConfigureRestAreaRoam(ChunkManager.Instance.GetRestAreaRoamPoints(chunk));
             MinimapFogOfWar.Instance?.RegisterDynamicMarkerRoot(npc.transform, MinimapFogOfWar.DynamicMarkerKind.Entity);
             npc.ChunkRefresh();
         }
