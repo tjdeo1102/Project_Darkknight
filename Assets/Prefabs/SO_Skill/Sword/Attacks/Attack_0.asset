@@ -12,18 +12,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c5b0b0d9a0b4c7f9e2e3d1c8a6b5f02, type: 3}
   m_Name: Attack_0
   m_EditorClassIdentifier: 
+  ID: Sword_Attack_0
+  OriginSO: 
+  AnimatorStateName: Base Layer.Attack.SwordAttack1
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
+  EnableHitStop: 1
+  HitStopDuration: 0.04
+  HitStopTimeScale: 0.05
+  EnableCameraImpulse: 0
+  CameraImpulseForce: 0.2
   EffectDelay: 0
   ActiveDelay: 0.1
+  AnimationEventFallbackDelay: 0.6
   UseAnimationEvent: 1
   AdditionalDamage: 0
   KnockBackForce: 1
-  HitOffset: {x: 0, y: 0.4, z: 0}
-  Range: {x: 2.2, y: 1.3, z: 1.3}
+  HitOffset: {x: 0, y: 1.2, z: 1.5}
+  Range: {x: 2.5, y: 1.5, z: 2}
+  ShowHitboxGizmo: 1
+  ShowMainVFXGizmo: 1
   MainVFXPrefab: {fileID: 2207980223332717684, guid: 7ac4148849889f24aaf753fda4f520c8,
     type: 3}
   HitVFXPrefab: {fileID: 8135987346848125384, guid: 9c317e4246498bb4a9f5dfdadff545e8,
     type: 3}
-  MainVFXOffset: {x: 0, y: 1.2, z: 1}
+  MainVFXOffset: {x: 0, y: 1.2, z: 1.5}
   MainVFXEulerAngles: {x: -1.8866676e-13, y: 180, z: 135.90001}
+  MainVFXScale: {x: 0.8, y: 0.8, z: 0.8}
   HitVFXOffset: {x: 0, y: 0, z: 0}
   HitVFXEulerAngles: {x: 0, y: 0, z: 0}
+  HitVFXScale: {x: 0.7, y: 0.7, z: 0.7}

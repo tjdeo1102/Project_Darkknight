@@ -34,6 +34,7 @@ public class VFXSyncHelper : MonoBehaviour
 
         m_lastScheduledWeapon = weapon;
         m_lastScheduledAttackSequence = attackSequence;
+        weapon.CancelFallbackHit(action, attackSequence);
         StartCoroutine(PlayAttackActionVFX(weapon, action, attackSequence));
     }
 
@@ -42,7 +43,6 @@ public class VFXSyncHelper : MonoBehaviour
         WeaponAttackSO action,
         int attackSequence)
     {
-        var weaponTransform = weapon.transform;
         var hitDelay = Mathf.Max(0f, action.ActiveDelay);
         var effectDelay = Mathf.Max(0f, action.EffectDelay);
         var elapsed = 0f;
@@ -57,28 +57,15 @@ public class VFXSyncHelper : MonoBehaviour
             if (effectResolved == false && elapsed >= effectDelay)
             {
                 effectResolved = true;
-                if (action.MainVFXPrefab != null)
-                {
-                    PlayPrefabVFX(
-                        action.MainVFXPrefab,
-                        action.GetMainVFXPosition(weaponTransform),
-                        action.GetMainVFXRotation(weaponTransform));
-                }
+                weapon.PlayAttackMainVFX(action);
             }
 
             if (hitResolved == false && elapsed >= hitDelay)
             {
                 hitResolved = true;
                 var hitSucceeded = weapon.ApplyAnimationEventHit(action, attackSequence);
-                if (hitSucceeded &&
-                    action.HitVFXPrefab != null &&
-                    weapon.TryGetLastHitPosition(out var hitPosition))
-                {
-                    PlayPrefabVFX(
-                        action.HitVFXPrefab,
-                        action.GetHitVFXPosition(weaponTransform, hitPosition),
-                        action.GetHitVFXRotation(weaponTransform));
-                }
+                if (hitSucceeded)
+                    weapon.PlayAttackHitVFX(action);
             }
 
             if (hitResolved && effectResolved)
@@ -89,17 +76,4 @@ public class VFXSyncHelper : MonoBehaviour
         }
     }
 
-    private void PlayPrefabVFX(ParticleSystem prefab, Vector3 position, Quaternion rotation)
-    {
-        var instance = Instantiate(prefab, position, rotation);
-        instance.Play();
-        StartCoroutine(DestroyVFXAfterPlay(instance));
-    }
-
-    private IEnumerator DestroyVFXAfterPlay(ParticleSystem particle)
-    {
-        yield return new WaitForSeconds(particle.main.duration + particle.main.startLifetime.constantMax + 0.2f);
-        if (particle != null)
-            Destroy(particle.gameObject);
-    }
 }

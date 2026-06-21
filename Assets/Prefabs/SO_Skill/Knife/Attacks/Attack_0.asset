@@ -12,16 +12,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c5b0b0d9a0b4c7f9e2e3d1c8a6b5f02, type: 3}
   m_Name: Attack_0
   m_EditorClassIdentifier: 
+  ID: Knife_Attack_0
+  OriginSO: ''
+  AnimatorStateName: Base Layer.Attack.KnifeAttack1
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
+  EnableHitStop: 1
+  HitStopDuration: 0.04
+  HitStopTimeScale: 0.05
+  EnableCameraImpulse: 0
+  CameraImpulseForce: 0.2
   EffectDelay: 0
   ActiveDelay: 0.1
+  AnimationEventFallbackDelay: 0.45
   UseAnimationEvent: 1
   AdditionalDamage: 0
   KnockBackForce: 1
   HitOffset: {x: 0, y: 0.4, z: 0.15}
   Range: {x: 1.7, y: 1.2, z: 1.4}
-  MainVFXPrefab: {fileID: 0}
-  HitVFXPrefab: {fileID: 0}
-  MainVFXOffset: {x: 0, y: 0, z: 0}
-  MainVFXEulerAngles: {x: 0, y: 0, z: 0}
+  MainVFXPrefab: {fileID: 2207980223332717684, guid: a10f2e4c9b0a4f0aa3f8e9170d4c8001,
+    type: 3}
+  HitVFXPrefab: {fileID: 8135987346848125384, guid: a10f2e4c9b0a4f0aa3f8e9170d4c8002,
+    type: 3}
+  MainVFXOffset: {x: 0, y: 0.95, z: 0.75}
+  MainVFXEulerAngles: {x: 0, y: 180, z: 135}
+  MainVFXScale: {x: 1, y: 1, z: 1}
   HitVFXOffset: {x: 0, y: 0, z: 0}
   HitVFXEulerAngles: {x: 0, y: 0, z: 0}
+  HitVFXScale: {x: 1, y: 1, z: 1}

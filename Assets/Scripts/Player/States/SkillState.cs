@@ -16,7 +16,10 @@ public class SkillState : State
     {
         base.Enter();
 
-        ctrl.animator.SetTrigger(skillParam);
+        var animationAlreadyPlayed = ctrl.combat != null &&
+                                     ctrl.combat.ConsumeNextSkillAnimationAlreadyPlayed();
+        if (animationAlreadyPlayed == false)
+            ctrl.animator.SetTrigger(skillParam);
         enterTime = Time.time;
 
     }

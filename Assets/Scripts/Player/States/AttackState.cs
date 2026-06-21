@@ -14,7 +14,9 @@ public class AttackState : State
     {
         base.Enter();
 
-        ctrl.animator.SetTrigger(attackParam);
+        var weapon = ctrl.combat != null ? ctrl.combat.GetCurWeapon() : null;
+        if (weapon == null || weapon.TryPlayCurrentAttackAnimation() == false)
+            ctrl.animator.SetTrigger(attackParam);
         enterTime = Time.time;
 
     }

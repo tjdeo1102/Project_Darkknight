@@ -14721,7 +14721,7 @@ GameObject:
   - component: {fileID: 8913455889422923577}
   - component: {fileID: 2012983417123670682}
   m_Layer: 0
-  m_Name: Sword Slash 1
+  m_Name: Knife Slash 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -14737,7 +14737,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -3.5527137e-15, y: -0, z: 0.27798533, w: 0.96058536}
   m_LocalPosition: {x: 0, y: 1.2, z: 1}
-  m_LocalScale: {x: 0.70000005, y: 0.70000005, z: 0.7}
+  m_LocalScale: {x: 0.45, y: 0.45, z: 0.45}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1485269387279582233}

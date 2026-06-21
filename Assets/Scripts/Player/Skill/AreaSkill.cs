@@ -66,6 +66,7 @@ public class AreaSkill: SkillBase
 
         var damagedPlayers = new HashSet<PlayerModel>();
         var damagedEnemies = new HashSet<EnemyStat>();
+        var hasHitTarget = false;
         foreach (Collider hit in hits)
         {
             if (hit.CompareTag(TagManager.GetTagString(target)))
@@ -83,6 +84,7 @@ public class AreaSkill: SkillBase
                     if (player != null && damagedPlayers.Add(player))
                     {
                         player.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                        hasHitTarget = true;
                     }
                 }
                 else if (target == TargetTag.Enemy)
@@ -91,9 +93,13 @@ public class AreaSkill: SkillBase
                     if (enemy != null && damagedEnemies.Add(enemy))
                     {
                         enemy.ApplyDamage(Damage + atk, origin.transform.position, KnockBackForce);
+                        hasHitTarget = true;
                     }
                 }
             }
         }
+
+        if (hasHitTarget)
+            CombatActionFeedback.PlayOnHit(this, origin);
     }
 }

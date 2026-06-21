@@ -49,7 +49,6 @@ MonoBehaviour:
   AttackActions:
   - {fileID: 11400000, guid: b31f28d09a6c4e17af5927c834d061e2, type: 2}
   - {fileID: 11400000, guid: c82a4e913f7b46d5b1a290ec685f3a74, type: 2}
-  - {fileID: 11400000, guid: d9473bc20e5f4816a73d19c864b20fa5, type: 2}
   ctrl: {fileID: 9106986210577024241}
   WeaponObject: {fileID: 356757173437157669}
 --- !u!1 &1327669763105304696

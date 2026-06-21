@@ -18,6 +18,7 @@ public class PlayerCombat : MonoBehaviour
     private InputAction m_skillAction;
     private InputAction m_swapWeaponAction;
     private InputAction m_attackAction;
+    private bool m_nextSkillAnimationAlreadyPlayed;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
@@ -196,6 +197,18 @@ public class PlayerCombat : MonoBehaviour
     {
         m_skillStates ??= SkillRuntimeStateStore.GetOrCreate(this);
         return m_skillStates?.GetState(skill);
+    }
+
+    public void MarkNextSkillAnimationAlreadyPlayed()
+    {
+        m_nextSkillAnimationAlreadyPlayed = true;
+    }
+
+    public bool ConsumeNextSkillAnimationAlreadyPlayed()
+    {
+        var result = m_nextSkillAnimationAlreadyPlayed;
+        m_nextSkillAnimationAlreadyPlayed = false;
+        return result;
     }
 
     public bool IsSkillUnlocked(SkillBase skill)
