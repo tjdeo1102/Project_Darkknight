@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8135987346848125384}
   - component: {fileID: 8353758754935871022}
   m_Layer: 0
-  m_Name: Sword Slash Hit
+  m_Name: Knife Slash Hit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
