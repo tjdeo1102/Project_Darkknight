@@ -127,49 +127,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1297209967201056672, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: AttackActions.Array.size
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 1297209967201056672, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: 'AttackActions.Array.data[0]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 4368e96bb7eef9a46845582d4c4bef6d,
-        type: 2}
-    - target: {fileID: 1297209967201056672, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: 'AttackActions.Array.data[1]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 49d572d5a50c17245b3756cb096ae98a,
-        type: 2}
-    - target: {fileID: 1297209967201056672, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: 'AttackActions.Array.data[2]'
-      value: 
-      objectReference: {fileID: 11400000, guid: ec95fa660efbe1245bef32ad01eddef2,
-        type: 2}
     - target: {fileID: 1327669763105304696, guid: 12bebde5d2e537142a50aafd7f07e9aa,
         type: 3}
       propertyPath: m_Name
       value: Player_V2
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: InitStat
-      value: 
-      objectReference: {fileID: 11400000, guid: e8a548d7541593143b818e516f6ad25f,
-        type: 2}
-    - target: {fileID: 2417790653008530519, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: Health.baseValue
-      value: 20000
-      objectReference: {fileID: 0}
-    - target: {fileID: 2417790653008530519, guid: 12bebde5d2e537142a50aafd7f07e9aa,
-        type: 3}
-      propertyPath: AttackPower.baseValue
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4171037769350407759, guid: 12bebde5d2e537142a50aafd7f07e9aa,
         type: 3}

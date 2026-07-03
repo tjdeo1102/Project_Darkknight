@@ -162,11 +162,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Ctrl: {fileID: 9106986210577024241}
-  InitStat: {fileID: 11400000, guid: 4dc8ccf5789ba5c438b950871d1b8b7c, type: 2}
+  InitStat: {fileID: 11400000, guid: e8a548d7541593143b818e516f6ad25f, type: 2}
   CanHitEffect: 1
   HitEffectLength: 0.2
   Health:
-    baseValue: 200
+    baseValue: 20000
     TotalValue: 0
     maxValue: 0
   Mana:
@@ -174,7 +174,7 @@ MonoBehaviour:
     TotalValue: 0
     maxValue: 0
   AttackPower:
-    baseValue: 10
+    baseValue: 1
     TotalValue: 0
     maxValue: 0
   Defense:
