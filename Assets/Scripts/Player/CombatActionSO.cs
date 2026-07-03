@@ -8,6 +8,11 @@ public abstract class CombatActionSO : CSVScriptableObject
     public string AnimatorStateName;
     [Min(0)] public int AnimatorLayerIndex;
     [Min(0f)] public float CrossFadeDuration = 0.05f;
+    [Range(0f, 1f), Tooltip("다음 연계 입력이 있을 때, 현재 공격을 캔슬하고 넘어갈 수 있는 최소 시점 (기존 exitMinTime 대체)")]
+    public float CancelAvailableNormalizedTime = 0.25f;
+
+    [Range(0f, 1f), Tooltip("다음 연계 입력이 없을 때, 자연스럽게 Idle로 돌아가는 시점")]
+    public float FinishNormalizedTime = 0.75f;
 
     [Header("Hit Feedback")]
     public bool EnableHitStop = true;

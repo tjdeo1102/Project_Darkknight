@@ -17,6 +17,8 @@ MonoBehaviour:
   AnimatorStateName: Base Layer.Attack.SwordAttack2
   AnimatorLayerIndex: 0
   CrossFadeDuration: 0.05
+  CancelAvailableNormalizedTime: 0.6
+  FinishNormalizedTime: 0.75
   EnableHitStop: 1
   HitStopDuration: 0.04
   HitStopTimeScale: 0.05
@@ -30,7 +32,7 @@ MonoBehaviour:
   KnockBackForce: 1
   HitOffset: {x: 0, y: 1.3, z: 1.4}
   Range: {x: 2.5, y: 2.5, z: 2.5}
-  ShowHitboxGizmo: 1
+  ShowHitboxGizmo: 0
   ShowMainVFXGizmo: 0
   MainVFXPrefab: {fileID: 2207980223332717684, guid: 7ac4148849889f24aaf753fda4f520c8,
     type: 3}
@@ -41,4 +43,4 @@ MonoBehaviour:
   MainVFXScale: {x: 0.8, y: 0.8, z: 0.8}
   HitVFXOffset: {x: 0, y: 0, z: 0}
   HitVFXEulerAngles: {x: 0, y: 0, z: 0}
-  HitVFXScale: {x: 1.5, y: 1.5, z: 1.5}
+  HitVFXScale: {x: 0.35, y: 0.35, z: 0.35}
