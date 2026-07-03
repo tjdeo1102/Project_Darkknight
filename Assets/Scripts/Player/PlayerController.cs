@@ -16,11 +16,24 @@ public class PlayerController : MonoBehaviour
     public Rigidbody Rigid;
     public CinemachineImpulseSource Impulse;
     public Volume hitScreenVolume;
+    
+    public Vector3 moveDir;
+    public float runInput;
 
     private Vector3 m_desiredPlanarVelocity;
     private Quaternion m_desiredRotation;
     private bool m_hasDesiredRotation;
     private Vector3 m_pendingRootMotion;
+
+    private void OnEnable()
+    {
+        SubscribeInput();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeInput();
+    }
 
     private void LateUpdate()
     {
@@ -86,4 +99,65 @@ public class PlayerController : MonoBehaviour
         input.SwitchCurrentActionMap(mapName);
     }
 
+    #region Input Handling
+    private bool m_isInputSubscribed;
+    private InputAction m_walkAction;
+    private InputAction m_runAction;
+    private InputAction m_skillAction;
+    private InputAction m_swapWeaponAction;
+    private InputAction m_attackAction;
+
+    private void SubscribeInput()
+    {
+        if (m_isInputSubscribed) return;
+        if (input == null || input.actions == null) return;
+
+        m_walkAction = input.actions.FindAction("Player/Move");
+        m_runAction = input.actions.FindAction("Player/Run");
+        m_skillAction = input.actions.FindAction("Player/Skill");
+        m_swapWeaponAction = input.actions.FindAction("Player/SwapWeapon");
+        m_attackAction = input.actions.FindAction("Player/Attack");
+        if (m_skillAction == null || m_swapWeaponAction == null || m_attackAction == null) return;
+
+        m_walkAction.performed += OnWalk;
+        m_walkAction.canceled += OnWalk;
+        m_runAction.performed += OnRun;
+        m_runAction.canceled += OnRun;
+        m_skillAction.performed += combat.OnSkill;
+        m_swapWeaponAction.performed += combat.OnSwapWeapon;
+        m_attackAction.performed += combat.OnAttack;
+        m_isInputSubscribed = true;
+    }
+
+    private void UnsubscribeInput()
+    {
+        if (m_isInputSubscribed == false) return;
+        if (input == null || input.actions == null)
+        {
+            m_isInputSubscribed = false;
+            return;
+        }
+
+        m_skillAction.performed -= combat.OnSkill;
+        m_swapWeaponAction.performed -= combat.OnSwapWeapon;
+        m_attackAction.performed -= combat.OnAttack;
+        m_walkAction.performed -= OnWalk;
+        m_walkAction.canceled -= OnWalk;
+        m_runAction.performed -= OnRun;
+        m_runAction.canceled -= OnRun;
+        m_isInputSubscribed = false;
+    }
+
+
+    public void OnWalk(InputAction.CallbackContext context)
+    {
+        moveDir = context.ReadValue<Vector2>();
+    }
+
+    public void OnRun(InputAction.CallbackContext context)
+    {
+        runInput = context.ReadValue<float>();
+    }
+
+    #endregion
 }

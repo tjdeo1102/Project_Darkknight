@@ -2,8 +2,6 @@ using UnityEngine;
 
 public class WalkState : State
 {
-    private static readonly string moveAction = "Move";
-    private static readonly string runAction = "Run";
     private readonly int walkParam = Animator.StringToHash("Walk");
     private readonly int runParam = Animator.StringToHash("Run");
 
@@ -21,7 +19,7 @@ public class WalkState : State
     public override void Update()
     {
         base.Update();
-        var input = ctrl.input.actions[moveAction].ReadValue<Vector2>();
+        var input = ctrl.moveDir;
         Vector3 move = new Vector3(input.x, 0, input.y).normalized;
             
         if (move.sqrMagnitude < 0.1f)
@@ -32,14 +30,16 @@ public class WalkState : State
         var camDir = new Vector3(m_cam.forward.x, 0, m_cam.forward.z);
         var dir = Quaternion.LookRotation(camDir) * move;
 
-        float runInput = ctrl.input.actions[runAction].ReadValue<float>();
+        float runInput = ctrl.runInput;
         var isRun = runInput > 0.1f;
         var spd =  isRun ? ctrl.model.RunSpeed.TotalValue : ctrl.model.Speed.TotalValue;
         
         anim.SetBool(runParam, isRun);
         anim.SetBool(walkParam, !isRun);
 
-        ctrl.SetMovement(dir * spd, Quaternion.LookRotation(dir));
+        var targetRot = Quaternion.LookRotation(dir);
+        var smoothRot = Quaternion.Slerp(ctrl.transform.rotation, targetRot, 12f * Time.deltaTime);
+        ctrl.SetMovement(dir * spd, smoothRot);
     }
 
     public override void Exit() 

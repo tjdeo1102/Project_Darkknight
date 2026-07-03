@@ -13,58 +13,12 @@ public class PlayerCombat : MonoBehaviour
 
     private WeaponBase curWeapon;
     private Dictionary<WeaponType, WeaponBase> weapons;
-    private bool m_isInputSubscribed;
+    private bool m_hasComboReserved = false;
     private SkillRuntimeStateStore m_skillStates;
-    private InputAction m_skillAction;
-    private InputAction m_swapWeaponAction;
-    private InputAction m_attackAction;
     private bool m_nextSkillAnimationAlreadyPlayed;
 
     private readonly int lastWeaponParam = Animator.StringToHash("LastWeapon");
     private readonly int curWeaponParam = Animator.StringToHash("CurWeapon");
-
-    private void OnEnable()
-    {
-        SubscribeInput();
-    }
-
-    private void OnDisable()
-    {
-        UnsubscribeInput();
-    }
-
-    private void SubscribeInput()
-    {
-        if (m_isInputSubscribed) return;
-        if (ctrl == null) ctrl = GetComponentInParent<PlayerController>();
-        if (ctrl == null || ctrl.input == null || ctrl.input.actions == null) return;
-
-        m_skillAction = ctrl.input.actions.FindAction("Player/Skill");
-        m_swapWeaponAction = ctrl.input.actions.FindAction("Player/SwapWeapon");
-        m_attackAction = ctrl.input.actions.FindAction("Player/Attack");
-        if (m_skillAction == null || m_swapWeaponAction == null || m_attackAction == null) return;
-
-        m_skillAction.performed += OnSkill;
-        m_swapWeaponAction.performed += OnSwapWeapon;
-        m_attackAction.performed += OnAttack;
-        m_isInputSubscribed = true;
-    }
-
-    private void UnsubscribeInput()
-    {
-        if (m_isInputSubscribed == false) return;
-        if (ctrl == null || ctrl.input == null || ctrl.input.actions == null)
-        {
-            m_isInputSubscribed = false;
-            return;
-        }
-
-        m_skillAction.performed -= OnSkill;
-        m_swapWeaponAction.performed -= OnSwapWeapon;
-        m_attackAction.performed -= OnAttack;
-        m_isInputSubscribed = false;
-    }
-
 
     #region Weapon & General Attack
 
@@ -104,12 +58,25 @@ public class PlayerCombat : MonoBehaviour
 
     public void OnAttack(InputAction.CallbackContext context)
     {
-        if (ctrl.machine.CanOtherAction() && curWeapon != null)
+        if (context.started != false ||curWeapon == null) return;
+
+        // 만약 현재 상태가 이미 공격 상태라면? -> 상태 전환을 하지 않고 입력 예약만 설정!
+        if (ctrl.machine.CurType == StateType.Attack)
+        {
+            m_hasComboReserved = true;
+            return;
+        }
+
+        // 공격 상태가 아니라면 기존처럼 일반적인 첫 공격 시작
+        if (ctrl.machine.CanOtherAction())
         {
             curWeapon.Attack();
             ctrl.machine.ChangeState(StateType.Attack);
         }
     }
+
+    public bool HasComboReserved() => m_hasComboReserved;
+    public void ClearComboReservation() => m_hasComboReserved = false;
 
     public void OnSwapWeapon(InputAction.CallbackContext context)
     {
