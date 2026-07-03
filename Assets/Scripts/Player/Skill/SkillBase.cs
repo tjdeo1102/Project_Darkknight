@@ -51,7 +51,7 @@ public sealed class SkillExecutionContext
 }
 
 [CreateAssetMenu(fileName = "SkillBase", menuName = "Scriptable Objects/Skill Base")]
-public abstract class SkillBase : CSVScriptableObject
+public abstract class SkillBase : CombatActionSO
 {
     private static int skillAnimationParam = Animator.StringToHash("SkillType");
 
@@ -163,6 +163,9 @@ public abstract class SkillBase : CSVScriptableObject
             if (player != null)
             {
                 player.animator.SetInteger(skillAnimationParam, (int)SkillType);
+                if (CombatActionRunner.TryPlayAnimation(this, player.animator))
+                    player.combat?.MarkNextSkillAnimationAlreadyPlayed();
+
                 player.machine.ChangeState(StateType.Skill);
             }
 

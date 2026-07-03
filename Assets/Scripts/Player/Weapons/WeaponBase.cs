@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class WeaponBase: MonoBehaviour
 {
+    private const int HitBufferSize = 32;
+
     public float ComboTime = 1;
     public WeaponAttackSO[] AttackActions;
     public PlayerController ctrl;
@@ -19,6 +21,8 @@ public class WeaponBase: MonoBehaviour
     private bool m_lastHitSucceeded;
     private Vector3 m_lastHitPosition;
     private int m_attackSequence;
+    private readonly Collider[] m_hitBuffer = new Collider[HitBufferSize];
+    private readonly HashSet<EnemyStat> m_damagedTargets = new();
 
     public virtual void AddWeapon(WeaponType type)
     {
@@ -46,26 +50,28 @@ public class WeaponBase: MonoBehaviour
         m_pendingAction = GetAttackAction(m_attackCount);
         m_attackSequence++;
 
-        if (ShouldUseAnimationEventHit() == false)
-        {
-            if (m_hitRoutine != null)
-                StopCoroutine(m_hitRoutine);
+        if (m_hitRoutine != null)
+            StopCoroutine(m_hitRoutine);
 
-            m_hitRoutine = StartCoroutine(HitRoutine(m_pendingAction, m_attackSequence));
-        }
+        var fallbackDelay = GetFallbackHitDelay(m_pendingAction);
+        if (fallbackDelay >= 0f)
+            m_hitRoutine = StartCoroutine(HitRoutine(m_pendingAction, m_attackSequence, fallbackDelay));
 
         m_lastAttackTime = Time.time;
 
     }
 
-    IEnumerator HitRoutine(WeaponAttackSO action, int attackSequence)
+    IEnumerator HitRoutine(WeaponAttackSO action, int attackSequence, float delay)
     {
-        var delay = GetFallbackHitDelay(action);
         if (delay > 0f)
             yield return new WaitForSeconds(delay);
 
         if (IsCurrentAttack(action, attackSequence))
+        {
+            PlayAttackMainVFX(action);
             ApplyHit(action);
+            PlayAttackHitVFX(action);
+        }
         m_hitRoutine = null;
     }
 
@@ -73,14 +79,20 @@ public class WeaponBase: MonoBehaviour
     {
         if (IsCurrentAttack(action, attackSequence) == false) return false;
 
+        CancelFallbackHit(action, attackSequence);
+        ApplyHit(action);
+        return m_lastHitSucceeded;
+    }
+
+    public void CancelFallbackHit(WeaponAttackSO action, int attackSequence)
+    {
+        if (IsAttackSequenceCurrent(action, attackSequence) == false) return;
+
         if (m_hitRoutine != null)
         {
             StopCoroutine(m_hitRoutine);
             m_hitRoutine = null;
         }
-
-        ApplyHit(action);
-        return m_lastHitSucceeded;
     }
 
     private void ApplyHit(WeaponAttackSO action)
@@ -96,22 +108,30 @@ public class WeaponBase: MonoBehaviour
         var range = action.Range;
         var center = action.GetHitCenter(transform);
         var rotation = action.GetHitRotation(transform);
-        Vector3 halfExtents = range * 0.5f;
-        Collider[] hits = Physics.OverlapBox(center, halfExtents, rotation, TargetLayerManager.GetLayerMask(TargetLayer.Enemy));
+        var halfExtents = range * 0.5f;
+        var hitCount = Physics.OverlapBoxNonAlloc(
+            center,
+            halfExtents,
+            m_hitBuffer,
+            rotation,
+            TargetLayerManager.GetLayerMask(TargetLayer.Enemy));
 
-        Tool.DrawOverlapBox(center, range, rotation, Color.green, 2f);
+        if (action.ShowHitboxGizmo)
+            Tool.DrawOverlapBox(center, range, rotation, Color.green, 2f);
 
-        var damagedTargets = new HashSet<EnemyStat>();
+        m_damagedTargets.Clear();
         m_lastHitSucceeded = false;
         m_lastHitPosition = Vector3.zero;
         var additionalDamage = action.AdditionalDamage;
         var knockBackForce = action.KnockBackForce;
-        foreach (Collider hit in hits)
+        var enemyTag = TagManager.GetTagString(TargetTag.Enemy);
+        for (var i = 0; i < hitCount; i++)
         {
-            if (hit.CompareTag(TagManager.GetTagString(TargetTag.Enemy)))
+            var hit = m_hitBuffer[i];
+            if (hit.CompareTag(enemyTag))
             {
                 var stat = hit.GetComponentInParent<EnemyStat>();
-                if (stat != null && damagedTargets.Add(stat))
+                if (stat != null && m_damagedTargets.Add(stat))
                 {
                     stat.ApplyDamage(ctrl.model.AttackPower.TotalValue + additionalDamage, ctrl.transform.position , knockBackForce);
                     m_lastHitSucceeded = true;
@@ -119,6 +139,9 @@ public class WeaponBase: MonoBehaviour
                 }
             }
         }
+
+        if (m_lastHitSucceeded)
+            CombatActionFeedback.PlayOnHit(action, ctrl);
     }
 
     private Vector3 GetHitEffectPosition(Collider hit, Vector3 attackCenter)
@@ -130,12 +153,65 @@ public class WeaponBase: MonoBehaviour
         return hitPosition;
     }
 
-    private bool ShouldUseAnimationEventHit()
+    public void PlayAttackMainVFX(WeaponAttackSO action)
     {
-        return m_pendingAction != null && m_pendingAction.UseAnimationEvent;
+        if (action == null || action.MainVFXPrefab == null) return;
+
+        PlayPrefabVFX(
+            action.MainVFXPrefab,
+            action.GetMainVFXPosition(transform),
+            action.GetMainVFXRotation(transform),
+            action.GetMainVFXScale());
     }
 
-    private int GetAttackCountSize()
+    public void PlayAttackHitVFX(WeaponAttackSO action)
+    {
+        if (action == null ||
+            action.HitVFXPrefab == null ||
+            m_lastHitSucceeded == false)
+        {
+            return;
+        }
+
+        PlayPrefabVFX(
+            action.HitVFXPrefab,
+            action.GetHitVFXPosition(transform, m_lastHitPosition),
+            action.GetHitVFXRotation(transform),
+            action.GetHitVFXScale());
+    }
+
+    private void PlayPrefabVFX(
+        ParticleSystem prefab,
+        Vector3 position,
+        Quaternion rotation,
+        Vector3 scaleMultiplier)
+    {
+        if (SkillEffectManager.Instance != null &&
+            SkillEffectManager.Instance.PlayVFX(prefab, position, rotation, scaleMultiplier))
+        {
+            return;
+        }
+
+        var instance = Instantiate(prefab, position, rotation);
+        instance.transform.localScale = Vector3.Scale(prefab.transform.localScale, scaleMultiplier);
+        instance.Play();
+        StartCoroutine(DestroyVFXAfterPlay(instance));
+    }
+
+    private IEnumerator DestroyVFXAfterPlay(ParticleSystem particle)
+    {
+        if (particle == null) yield break;
+
+        yield return new WaitForSeconds(
+            particle.main.duration +
+            particle.main.startLifetime.constantMax +
+            0.2f);
+
+        if (particle != null)
+            Destroy(particle.gameObject);
+    }
+
+    protected virtual int GetAttackCountSize()
     {
         if (AttackActions != null && AttackActions.Length > 0) return AttackActions.Length;
         return 0;
@@ -149,7 +225,12 @@ public class WeaponBase: MonoBehaviour
 
     private float GetFallbackHitDelay(WeaponAttackSO action)
     {
-        if (action == null) return 0f;
+        if (action == null) return -1f;
+        if (action.UseAnimationEvent)
+            return action.AnimationEventFallbackDelay > 0f
+                ? action.AnimationEventFallbackDelay
+                : -1f;
+
         return Mathf.Max(0f, action.ActiveDelay);
     }
 
@@ -167,6 +248,13 @@ public class WeaponBase: MonoBehaviour
     public WeaponAttackSO GetCurrentAttackAction()
     {
         return GetAttackAction(m_attackCount);
+    }
+
+    public bool TryPlayCurrentAttackAnimation()
+    {
+        return CombatActionRunner.TryPlayAnimation(
+            m_pendingAction,
+            ctrl != null ? ctrl.animator : null);
     }
 
     public int GetCurrentAttackSequence()
@@ -192,24 +280,35 @@ public class WeaponBase: MonoBehaviour
         return m_lastHitSucceeded;
     }
 
-    private void OnDrawGizmosSelected()
+    private void OnDrawGizmos()
     {
         if (AttackActions == null) return;
 
         for (var i = 0; i < AttackActions.Length; i++)
         {
+            if (i != m_attackCount)
+                continue;
+
             var action = AttackActions[i];
             if (action == null) continue;
+            if (action.ShowHitboxGizmo == false && action.ShowMainVFXGizmo == false) continue;
 
-            var center = action.GetHitCenter(transform);
-            var rotation = action.GetHitRotation(transform);
-            Gizmos.color = i == m_attackCount ? Color.green : Color.yellow;
-            Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
-            Gizmos.DrawWireCube(Vector3.zero, action.Range);
+            if (action.ShowHitboxGizmo)
+            {
+                var center = action.GetHitCenter(transform);
+                var rotation = action.GetHitRotation(transform);
+                Gizmos.color = Color.green;
+                Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+                Gizmos.DrawWireCube(Vector3.zero, action.Range);
+                Gizmos.matrix = Matrix4x4.identity;
+            }
 
-            Gizmos.matrix = Matrix4x4.identity;
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(action.GetMainVFXPosition(transform), 0.08f);
+            if (action.ShowMainVFXGizmo)
+            {
+                Gizmos.matrix = Matrix4x4.identity;
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(action.GetMainVFXPosition(transform), 0.08f);
+            }
         }
     }
 }

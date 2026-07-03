@@ -12,6 +12,8 @@ public class Projectile : MonoBehaviour
     private Rigidbody m_rigid;
     private Coroutine m_lifetimeRoutine;
     private bool m_isReturning;
+    private CombatActionSO m_feedbackAction;
+    private Component m_feedbackOwner;
 
     private void Awake()
     {
@@ -19,6 +21,19 @@ public class Projectile : MonoBehaviour
     }
 
     public void Init(float damage, float lifeTime, Vector3 velocity, float knockBackForce,TargetTag tag,ObjectPool<Projectile> pool)
+    {
+        Init(damage, lifeTime, velocity, knockBackForce, tag, pool, null, null);
+    }
+
+    public void Init(
+        float damage,
+        float lifeTime,
+        Vector3 velocity,
+        float knockBackForce,
+        TargetTag tag,
+        ObjectPool<Projectile> pool,
+        CombatActionSO feedbackAction,
+        Component feedbackOwner)
     {
         if (m_lifetimeRoutine != null)
         {
@@ -33,6 +48,8 @@ public class Projectile : MonoBehaviour
         m_LifeTIme = new WaitForSeconds(lifeTime);
         Tag = tag;
         m_pool = pool;
+        m_feedbackAction = feedbackAction;
+        m_feedbackOwner = feedbackOwner;
         m_lifetimeRoutine = StartCoroutine(BulletRoutine());
     }
 
@@ -50,13 +67,21 @@ public class Projectile : MonoBehaviour
 
         if (Tag == TargetTag.Player)
         {
-            other.GetComponentInParent<PlayerModel>()?
-                .ApplyDamage(Damage, transform.position, KnockBackForce);
+            var player = other.GetComponentInParent<PlayerModel>();
+            if (player != null)
+            {
+                player.ApplyDamage(Damage, transform.position, KnockBackForce);
+                CombatActionFeedback.PlayOnHit(m_feedbackAction, m_feedbackOwner);
+            }
         }
         else if (Tag == TargetTag.Enemy)
         {
-            other.GetComponentInParent<EnemyStat>()?
-                .ApplyDamage(Damage, transform.position, KnockBackForce);
+            var enemy = other.GetComponentInParent<EnemyStat>();
+            if (enemy != null)
+            {
+                enemy.ApplyDamage(Damage, transform.position, KnockBackForce);
+                CombatActionFeedback.PlayOnHit(m_feedbackAction, m_feedbackOwner);
+            }
         }
 
         ReturnToPool();
@@ -72,6 +97,9 @@ public class Projectile : MonoBehaviour
 
         if (m_rigid != null)
             m_rigid.linearVelocity = Vector3.zero;
+
+        m_feedbackAction = null;
+        m_feedbackOwner = null;
     }
 
     private void ReturnToPool()

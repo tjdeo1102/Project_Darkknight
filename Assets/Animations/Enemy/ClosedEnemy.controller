@@ -148,7 +148,7 @@ AnimatorStateTransition:
   m_ExitTime: 0.75
   m_HasExitTime: 0
   m_HasFixedDuration: 1
-  m_InterruptionSource: 0
+  m_InterruptionSource: 1
   m_OrderedInterruption: 1
   m_CanTransitionToSelf: 1
 --- !u!1102 &-7013335934455372597
@@ -302,14 +302,14 @@ AnimatorStateMachine:
   m_EntryTransitions:
   - {fileID: -4439777010649781203}
   m_StateMachineTransitions:
+  - first: {fileID: 2462640015419116463}
+    second:
+    - {fileID: 7738304057247845536}
   - first: {fileID: -2473341179625456095}
     second:
     - {fileID: 2130868880919145509}
   - first: {fileID: -8897191367167349048}
     second: []
-  - first: {fileID: 2462640015419116463}
-    second:
-    - {fileID: 7738304057247845536}
   m_StateMachineBehaviours: []
   m_AnyStatePosition: {x: 50, y: 20, z: 0}
   m_EntryPosition: {x: 50, y: 110, z: 0}
@@ -849,7 +849,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: KnockBack
-  m_Speed: 1
+  m_Speed: 1.5
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -9137626015497849563}
@@ -998,7 +998,7 @@ AnimatorStateMachine:
   m_ChildStates:
   - serializedVersion: 1
     m_State: {fileID: 4125662160532266686}
-    m_Position: {x: 290, y: 10, z: 0}
+    m_Position: {x: 280, y: 40, z: 0}
   - serializedVersion: 1
     m_State: {fileID: -107302858418315760}
     m_Position: {x: 270, y: 110, z: 0}

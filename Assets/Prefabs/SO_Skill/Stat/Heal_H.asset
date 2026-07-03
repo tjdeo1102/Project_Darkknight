@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ID: 9
   OriginSO: '{}'
+  AnimatorStateName: Base Layer.Skill.Heal
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
   SkillName: "\uAD73\uAC74\uD55C \uC758\uC9C0"
   Description: "\uC77C\uC2DC\uC801\uC73C\uB85C \uC2A4\uD53C\uB4DC\uAC00 \uB290\uB824\uC9C0\uACE0
     \uBC29\uC5B4\uB825\uC774 \uC62C\uB77C\uAC11\uB2C8\uB2E4."

@@ -14,6 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ID: 1
   OriginSO: '{}'
+  AnimatorStateName: Base Layer.Skill.FireBreath
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
+  EnableHitStop: 1
+  HitStopDuration: 0.055
+  HitStopTimeScale: 0.04
+  EnableCameraImpulse: 1
+  CameraImpulseForce: 0.35
   SkillName: "\uD654\uC5FC \uC228\uACB0"
   Description: "\uC804\uBC29\uC5D0 \uAC15\uB825\uD55C \uD654\uC5FC\uC744 \uB0B4\uBFDC\uC5B4
     \uAD11\uC5ED \uD53C\uD574\uB97C \uC785\uD799\uB2C8\uB2E4."

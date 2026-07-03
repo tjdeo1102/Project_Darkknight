@@ -14,6 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ID: 2
   OriginSO: '{}'
+  AnimatorStateName: Base Layer.Skill.SpinSlash
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
+  EnableHitStop: 1
+  HitStopDuration: 0.055
+  HitStopTimeScale: 0.04
+  EnableCameraImpulse: 1
+  CameraImpulseForce: 0.35
   SkillName: "\uD68C\uC804 \uBCA0\uAE30"
   Description: "\uBE60\uB974\uAC8C \uC8FC\uC704\uB97C \uD68C\uC804\uD558\uC5EC \uC8FC\uBCC0\uC758
     \uC801\uB4E4\uC744 \uBCA0\uC5B4\uBC84\uB9AC\uBA70 \uAD11\uC5ED \uD53C\uD574\uB97C

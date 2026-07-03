@@ -12,15 +12,15 @@ public class MinimapFogOfWar : MonoBehaviour
     private sealed class MapMarker
     {
         public Renderer Renderer;
-        public bool LastEnabled;
         public bool IsOutline;
+        public bool LastEnabled;
         public bool LastRestTint;
 
         public MapMarker(Renderer renderer, bool isOutline)
         {
             Renderer = renderer;
-            LastEnabled = renderer != null && renderer.enabled;
             IsOutline = isOutline;
+            LastEnabled = renderer != null && renderer.enabled;
         }
     }
 
@@ -84,10 +84,10 @@ public class MinimapFogOfWar : MonoBehaviour
     private readonly List<Vector2Int> m_dirtyCells = new();
     private readonly HashSet<Renderer> m_registeredDynamicRenderers = new();
     private readonly HashSet<Renderer> m_registeredMapRenderers = new();
-    private MaterialPropertyBlock m_restAreaOutlineProperties;
     private Material m_fogMaterial;
     private Mesh m_fogMesh;
     private int m_minimapLayer = -1;
+    private MaterialPropertyBlock m_restAreaOutlineProperties;
 
     private void Awake()
     {
@@ -379,15 +379,6 @@ public class MinimapFogOfWar : MonoBehaviour
         marker.LastEnabled = enabled;
     }
 
-    private void SetMarkerRestTint(MapMarker marker, bool enabled)
-    {
-        if (marker.LastRestTint == enabled)
-            return;
-
-        marker.Renderer.SetPropertyBlock(enabled ? m_restAreaOutlineProperties : null);
-        marker.LastRestTint = enabled;
-    }
-
     private void SetOverlayEnabled(FogOverlay overlay, bool enabled)
     {
         if (overlay.LastEnabled == enabled && overlay.Renderer.enabled == enabled)
@@ -395,6 +386,16 @@ public class MinimapFogOfWar : MonoBehaviour
 
         overlay.Renderer.enabled = enabled;
         overlay.LastEnabled = enabled;
+    }
+
+    private void SetMarkerRestTint(MapMarker marker, bool enabled)
+    {
+        if (marker.LastRestTint == enabled)
+            return;
+
+        EnsureFogResources();
+        marker.Renderer.SetPropertyBlock(enabled ? m_restAreaOutlineProperties : null);
+        marker.LastRestTint = enabled;
     }
 
     private FogOverlay CreateFogOverlay(Chunk chunk, Vector2Int cell, Vector3 samplePosition)
@@ -427,11 +428,6 @@ public class MinimapFogOfWar : MonoBehaviour
         if (m_minimapLayer < 0)
             m_minimapLayer = 0;
 
-        m_restAreaOutlineProperties ??= new MaterialPropertyBlock();
-        m_restAreaOutlineProperties.Clear();
-        m_restAreaOutlineProperties.SetColor("_BaseColor", restAreaOutlineColor);
-        m_restAreaOutlineProperties.SetColor("_Color", restAreaOutlineColor);
-
         if (m_fogMesh == null)
         {
             m_fogMesh = new Mesh { name = "Minimap Fog Overlay Quad" };
@@ -453,6 +449,11 @@ public class MinimapFogOfWar : MonoBehaviour
             m_fogMesh.RecalculateNormals();
             m_fogMesh.RecalculateBounds();
         }
+
+        m_restAreaOutlineProperties ??= new MaterialPropertyBlock();
+        m_restAreaOutlineProperties.Clear();
+        m_restAreaOutlineProperties.SetColor("_BaseColor", restAreaOutlineColor);
+        m_restAreaOutlineProperties.SetColor("_Color", restAreaOutlineColor);
 
         if (m_fogMaterial != null) return;
 

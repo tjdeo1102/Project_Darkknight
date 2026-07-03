@@ -14,6 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ID: 3
   OriginSO: '{}'
+  AnimatorStateName: Base Layer.Skill.SkyRipper
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
+  EnableHitStop: 1
+  HitStopDuration: 0.06
+  HitStopTimeScale: 0.04
+  EnableCameraImpulse: 1
+  CameraImpulseForce: 0.45
   SkillName: "\uD558\uB298 \uAC00\uB974\uAE30"
   Description: "\uCDA9\uACA9\uD30C\uB85C \uB300\uC9C0\uB97C \uAC08\uB77C \uD070 \uD53C\uD574\uB97C
     \uC785\uD799\uB2C8\uB2E4."

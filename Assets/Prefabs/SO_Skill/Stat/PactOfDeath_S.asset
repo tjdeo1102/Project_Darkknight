@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ID: 10
   OriginSO: '{}'
+  AnimatorStateName: Base Layer.Skill.PactOfDeath
+  AnimatorLayerIndex: 0
+  CrossFadeDuration: 0.05
   SkillName: "\uC8FD\uC74C \uC11C\uC57D"
   Description: "\uC77C\uC2DC\uC801\uC73C\uB85C \uCCB4\uB825\uC774 \uC0DD\uBA85\uB825
     \uD761\uC218\uB85C \uC804\uD658\uB429\uB2C8\uB2E4."

@@ -158,7 +158,6 @@ public class EnemyStat : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             direction = -transform.forward;
 
-        HitEffect?.OnHit();
         Ctrl.Anim?.SetTrigger(KnockBackHash);
 
         if (Ctrl.AI != null && Ctrl.AI.NavAgent != null)
@@ -244,8 +243,6 @@ public class EnemyStat : MonoBehaviour
         m_isDead = true;
         m_hasPendingHit = false;
         m_hasPendingDeath = false;
-        HitEffect?.OnHit();
-
         if (m_navRestoreRoutine != null)
         {
             StopCoroutine(m_navRestoreRoutine);

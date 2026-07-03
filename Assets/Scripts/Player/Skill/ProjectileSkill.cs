@@ -46,7 +46,15 @@ public class ProjectileSkill : SkillBase
                 Damage = atts[0].EnforceStatFactor * context.State.EnforceLevel + baseDamage;
             }
 
-            bullet.Init(Damage + atk.TotalValue, LifeTime, velocity, KnockBackForce, TagManager.TryGetTargetTag(Target.tag), pool);
+            bullet.Init(
+                Damage + atk.TotalValue,
+                LifeTime,
+                velocity,
+                KnockBackForce,
+                TagManager.TryGetTargetTag(Target.tag),
+                pool,
+                this,
+                owner);
         }
     }
 }
